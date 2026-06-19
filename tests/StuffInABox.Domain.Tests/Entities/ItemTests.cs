@@ -1,0 +1,52 @@
+using StuffInABox.Domain.Entities;
+using StuffInABox.Domain.ValueObjects;
+
+namespace StuffInABox.Domain.Tests.Entities;
+
+public class ItemTests
+{
+    private static readonly UserId OwnerId = new(Guid.NewGuid());
+    private static readonly BoxNumber BoxNum = new(1);
+
+    [Fact]
+    public void Create_WithValidArgs_HasEmptyTags()
+    {
+        var item = Item.Create(BoxNum, OwnerId, "Hammare");
+
+        Assert.Equal("Hammare", item.Name);
+        Assert.Equal(BoxNum, item.BoxNumber);
+        Assert.Empty(item.Tags);
+        Assert.Null(item.PhotoStorageKey);
+    }
+
+    [Fact]
+    public void ReplaceTags_SetsTags_Lowercased()
+    {
+        var item = Item.Create(BoxNum, OwnerId, "Hammare");
+        item.ReplaceTags(["Verktyg", "HAMMARE", "metall"]);
+
+        Assert.Equal(["verktyg", "hammare", "metall"], item.Tags);
+    }
+
+    [Fact]
+    public void MergeTags_AddsNewTagsOnly()
+    {
+        var item = Item.Create(BoxNum, OwnerId, "Hammare");
+        item.ReplaceTags(["verktyg"]);
+        item.MergeTags(["verktyg", "hantverk", "metall"]);
+
+        Assert.Equal(3, item.Tags.Count);
+        Assert.Contains("verktyg", item.Tags);
+        Assert.Contains("hantverk", item.Tags);
+        Assert.Contains("metall", item.Tags);
+    }
+
+    [Fact]
+    public void SetPhoto_SetsStorageKey()
+    {
+        var item = Item.Create(BoxNum, OwnerId, "Hammare");
+        item.SetPhoto("items/user1/abc123.jpg");
+
+        Assert.Equal("items/user1/abc123.jpg", item.PhotoStorageKey);
+    }
+}

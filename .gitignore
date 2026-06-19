@@ -1,0 +1,22 @@
+# .NET build output
+bin/
+obj/
+*.user
+
+# Frontend
+node_modules/
+src/StuffInABox.Web/ClientApp/dist/
+
+# Generated SPA build output (reproducible via `npm run build`)
+src/StuffInABox.Web/wwwroot/
+
+# Local data & logs
+*.db
+*.db-shm
+*.db-wal
+logs/
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.vs/

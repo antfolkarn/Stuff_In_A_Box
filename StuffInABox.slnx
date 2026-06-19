@@ -1,0 +1,14 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/StuffInABox.Application/StuffInABox.Application.csproj" />
+    <Project Path="src/StuffInABox.Domain/StuffInABox.Domain.csproj" />
+    <Project Path="src/StuffInABox.Infrastructure/StuffInABox.Infrastructure.csproj" />
+    <Project Path="src/StuffInABox.Web/StuffInABox.Web.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/StuffInABox.Application.Tests/StuffInABox.Application.Tests.csproj" />
+    <Project Path="tests/StuffInABox.Domain.Tests/StuffInABox.Domain.Tests.csproj" />
+    <Project Path="tests/StuffInABox.Infrastructure.Tests/StuffInABox.Infrastructure.Tests.csproj" />
+    <Project Path="tests/StuffInABox.Web.Tests/StuffInABox.Web.Tests.csproj" />
+  </Folder>
+</Solution>

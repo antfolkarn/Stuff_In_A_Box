@@ -1,0 +1,937 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="" />
+<link href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/tabler-icons.min.css" />
+<script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.js"></script>
+<style>
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{font-family:'Hanken Grotesk',system-ui,sans-serif;background:#F3F4F5;color:#16181C;-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility;}
+  button{font-family:inherit;cursor:pointer;border:none;background:none;color:inherit;}
+  input,select{font-family:inherit;}
+  input::placeholder{color:#9AA0A8;}
+  select{-webkit-appearance:none;appearance:none;}
+  :focus-visible{outline:2px solid var(--accent,#2f63e6);outline-offset:2px;}
+  ::-webkit-scrollbar{width:11px;height:11px;}
+  ::-webkit-scrollbar-thumb{background:rgba(0,0,0,0.15);border-radius:9px;border:3px solid #F3F4F5;}
+  @keyframes sib-spin{to{transform:rotate(360deg);}}
+  @keyframes sib-up{from{opacity:0;transform:translateY(10px);}to{opacity:1;transform:translateY(0);}}
+  @keyframes sib-fade{from{opacity:0;}to{opacity:1;}}
+  @keyframes sib-scan{0%{top:8%;}50%{top:84%;}100%{top:8%;}}
+  @media print{
+    header{display:none!important;}
+    .sib-noprint{display:none!important;}
+    body{background:#fff!important;}
+    main{padding:0!important;max-width:none!important;}
+    .sib-labels{grid-template-columns:repeat(2,1fr)!important;gap:0!important;}
+    .sib-label{break-inside:avoid;border:1px dashed #888!important;border-radius:0!important;box-shadow:none!important;}
+    @page{margin:12mm;}
+  }
+</style>
+</helmet>
+
+<div style="min-height:100vh; --accent: {{ accentVar }};">
+
+  <!-- LOGIN -->
+  <sc-if value="{{ notAuthed }}" hint-placeholder-val="{{ true }}">
+    <div style="min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px;">
+      <div style="width:100%;max-width:392px;animation:sib-up .3s cubic-bezier(.2,.8,.2,1);">
+        <div style="display:flex;flex-direction:column;align-items:center;gap:11px;margin-bottom:26px;">
+          <span style="width:48px;height:48px;border-radius:13px;background:var(--accent,#2f63e6);display:flex;align-items:center;justify-content:center;color:#fff;box-shadow:0 2px 8px color-mix(in srgb, var(--accent,#2f63e6) 30%, transparent);"><i class="ti ti-stack-2-filled" style="font-size:26px;" aria-hidden="true"></i></span>
+          <div style="text-align:center;">
+            <p style="margin:0;font-size:19px;font-weight:600;letter-spacing:-0.01em;">StuffInABox</p>
+            <p style="margin:3px 0 0;font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:0.14em;text-transform:uppercase;color:#9AA0A8;">Index för fysisk förvaring</p>
+          </div>
+        </div>
+        <div style="background:#fff;border:1px solid rgba(20,24,30,0.1);border-radius:18px;box-shadow:0 8px 30px rgba(20,24,30,0.07);padding:28px;">
+          <h1 style="margin:0 0 4px;font-size:20px;font-weight:600;letter-spacing:-0.015em;">{{ authTitle }}</h1>
+          <p style="margin:0 0 20px;font-size:13.5px;color:#6B7078;">{{ authSubtitle }}</p>
+
+          <div style="display:flex;flex-direction:column;gap:9px;margin-bottom:18px;">
+            <button onClick="{{ googleLogin }}" style="display:flex;align-items:center;justify-content:center;gap:9px;height:46px;border-radius:11px;border:1px solid rgba(20,24,30,0.16);background:#fff;font-size:14.5px;font-weight:500;color:#16181C;" style-hover="background:#F4F5F6;"><i class="ti ti-brand-google" style="font-size:18px;" aria-hidden="true"></i>Fortsätt med Google</button>
+            <button onClick="{{ appleLogin }}" style="display:flex;align-items:center;justify-content:center;gap:9px;height:46px;border-radius:11px;background:#16181C;color:#fff;font-size:14.5px;font-weight:500;" style-hover="filter:brightness(1.4);"><i class="ti ti-brand-apple-filled" style="font-size:19px;" aria-hidden="true"></i>Fortsätt med Apple</button>
+          </div>
+
+          <div style="display:flex;align-items:center;gap:12px;margin-bottom:18px;">
+            <span style="flex:1;height:1px;background:rgba(20,24,30,0.1);"></span>
+            <span style="font-size:12px;color:#9AA0A8;">eller med e-post</span>
+            <span style="flex:1;height:1px;background:rgba(20,24,30,0.1);"></span>
+          </div>
+
+          <form onSubmit="{{ submitAuth }}" style="display:flex;flex-direction:column;gap:11px;">
+            <label style="display:flex;flex-direction:column;gap:6px;">
+              <span style="font-size:12.5px;font-weight:500;color:#3C4048;">E-post</span>
+              <input value="{{ email }}" onInput="{{ onEmail }}" type="email" placeholder="du@exempel.se" style="height:46px;padding:0 13px;border:1px solid rgba(20,24,30,0.14);border-radius:11px;font-size:15px;" />
+            </label>
+            <label style="display:flex;flex-direction:column;gap:6px;">
+              <span style="display:flex;justify-content:space-between;align-items:center;font-size:12.5px;font-weight:500;color:#3C4048;">Lösenord
+                <sc-if value="{{ isLogin }}" hint-placeholder-val="{{ true }}"><button type="button" onClick="{{ noop }}" style="font-size:12px;font-weight:400;color:var(--accent,#2f63e6);padding:0;">Glömt?</button></sc-if>
+              </span>
+              <input value="{{ password }}" onInput="{{ onPassword }}" type="password" placeholder="••••••••" style="height:46px;padding:0 13px;border:1px solid rgba(20,24,30,0.14);border-radius:11px;font-size:15px;" />
+            </label>
+            <button type="submit" style="margin-top:5px;height:48px;border-radius:12px;background:var(--accent,#2f63e6);color:#fff;font-size:15px;font-weight:600;box-shadow:0 2px 8px color-mix(in srgb, var(--accent,#2f63e6) 28%, transparent);" style-hover="filter:brightness(1.07);">{{ authCta }}</button>
+          </form>
+
+          <p style="margin:18px 0 0;text-align:center;font-size:13.5px;color:#6B7078;">{{ switchPrompt }} <button onClick="{{ toggleAuthMode }}" style="color:var(--accent,#2f63e6);font-weight:600;padding:0;">{{ switchAction }}</button></p>
+        </div>
+        <p style="margin:18px 0 0;text-align:center;font-size:11.5px;color:#9AA0A8;line-height:1.5;">Genom att fortsätta godkänner du våra villkor och vår integritetspolicy.</p>
+      </div>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{ authed }}" hint-placeholder-val="{{ false }}">
+  <header style="position:sticky;top:0;z-index:30;background:rgba(243,244,245,0.82);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);border-bottom:1px solid rgba(20,24,30,0.08);">
+    <div style="max-width:1080px;margin:0 auto;padding:13px 24px;display:flex;align-items:center;gap:18px;flex-wrap:wrap;">
+      <button onClick="{{ goHome }}" style="display:flex;align-items:center;gap:11px;padding:0;flex:none;">
+        <span style="width:32px;height:32px;border-radius:9px;background:var(--accent,#2f63e6);display:flex;align-items:center;justify-content:center;color:#fff;flex:none;box-shadow:0 1px 2px rgba(0,0,0,0.18);"><i class="ti ti-stack-2-filled" style="font-size:18px;" aria-hidden="true"></i></span>
+        <span style="display:flex;flex-direction:column;align-items:flex-start;line-height:1.05;">
+          <span style="font-size:15.5px;font-weight:600;letter-spacing:-0.01em;">StuffInABox</span>
+          <span style="font-family:'IBM Plex Mono',monospace;font-size:9.5px;letter-spacing:0.14em;text-transform:uppercase;color:#9AA0A8;">Index för fysisk förvaring</span>
+        </span>
+      </button>
+
+      <div style="flex:1 1 280px;max-width:540px;position:relative;display:flex;align-items:center;">
+        <i class="ti ti-search" style="position:absolute;left:14px;font-size:16px;color:#9AA0A8;pointer-events:none;" aria-hidden="true"></i>
+        <input value="{{ query }}" onInput="{{ onSearch }}" placeholder="Sök – t.ex. täcke, verktyg, vinter…" style="width:100%;height:42px;padding:0 38px 0 40px;border:1px solid rgba(20,24,30,0.12);border-radius:11px;background:#fff;font-size:14.5px;color:#16181C;box-shadow:0 1px 2px rgba(20,24,30,0.04);" />
+        <sc-if value="{{ hasQuery }}" hint-placeholder-val="{{ false }}">
+          <button onClick="{{ clearSearch }}" aria-label="Rensa sökning" style="position:absolute;right:8px;width:26px;height:26px;border-radius:7px;display:flex;align-items:center;justify-content:center;color:#9AA0A8;"><i class="ti ti-x" style="font-size:15px;" aria-hidden="true"></i></button>
+        </sc-if>
+      </div>
+
+      <button onClick="{{ openAddItem }}" style="flex:none;display:flex;align-items:center;gap:7px;height:42px;padding:0 17px 0 14px;border-radius:11px;background:var(--accent,#2f63e6);color:#fff;font-size:14.5px;font-weight:600;box-shadow:0 1px 2px rgba(0,0,0,0.18);" style-hover="filter:brightness(1.07);">
+        <i class="ti ti-plus" style="font-size:18px;" aria-hidden="true"></i>Lägg till
+      </button>
+      <button onClick="{{ logout }}" title="Logga ut" style="flex:none;display:flex;align-items:center;gap:8px;height:42px;padding:4px 13px 4px 4px;border-radius:11px;background:#fff;border:1px solid rgba(20,24,30,0.14);color:#3C4048;" style-hover="border-color:rgba(20,24,30,0.26);background:#F4F5F6;">
+        <span style="width:32px;height:32px;border-radius:8px;background:#F1F2F4;display:flex;align-items:center;justify-content:center;font-family:'IBM Plex Mono',monospace;font-size:14px;font-weight:600;color:#3C4048;flex:none;">{{ userInitial }}</span>
+        <span style="display:flex;align-items:center;gap:5px;font-size:13.5px;font-weight:500;"><i class="ti ti-logout" style="font-size:16px;" aria-hidden="true"></i>Logga ut</span>
+      </button>
+    </div>
+  </header>
+
+  <main style="max-width:1080px;margin:0 auto;padding:28px 24px 80px;">
+
+    <!-- BREADCRUMB -->
+    <sc-if value="{{ showCrumb }}" hint-placeholder-val="{{ false }}">
+      <nav style="display:flex;align-items:center;gap:7px;font-size:13px;color:#6B7078;margin-bottom:20px;flex-wrap:wrap;">
+        <button onClick="{{ goHome }}" style="color:#6B7078;padding:0;" style-hover="color:#16181C;">Mina utrymmen</button>
+        <i class="ti ti-chevron-right" style="font-size:13px;color:#B7BCC2;" aria-hidden="true"></i>
+        <button onClick="{{ openCurrentSpace }}" style="color:{{ crumbSpaceColor }};padding:0;font-weight:500;" style-hover="color:#16181C;">{{ crumbSpaceName }}</button>
+        <sc-if value="{{ showBox }}" hint-placeholder-val="{{ false }}">
+          <i class="ti ti-chevron-right" style="font-size:13px;color:#B7BCC2;" aria-hidden="true"></i>
+          <span style="color:#16181C;font-weight:500;">{{ crumbBoxName }}</span>
+        </sc-if>
+      </nav>
+    </sc-if>
+
+    <!-- SEARCH RESULTS -->
+    <sc-if value="{{ showSearch }}" hint-placeholder-val="{{ false }}">
+      <section style="animation:sib-fade .18s ease;">
+        <div style="display:flex;align-items:baseline;gap:10px;margin-bottom:6px;">
+          <h1 style="margin:0;font-size:21px;font-weight:600;letter-spacing:-0.015em;">Sökresultat</h1>
+          <span style="font-family:'IBM Plex Mono',monospace;font-size:12px;color:#9AA0A8;">{{ resultCount }}</span>
+        </div>
+        <p style="margin:0 0 20px;font-size:13.5px;color:#6B7078;">Söker även på relaterade ord – var sakerna finns, utan att öppna en låda.</p>
+
+        <sc-if value="{{ anyResults }}" hint-placeholder-val="{{ true }}">
+          <div style="display:flex;flex-direction:column;gap:22px;">
+
+            <sc-if value="{{ hasSearchSpaces }}" hint-placeholder-val="{{ false }}">
+              <div style="display:flex;flex-direction:column;gap:9px;">
+                <span style="font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:0.12em;text-transform:uppercase;color:#9AA0A8;">Utrymmen</span>
+                <sc-for list="{{ searchSpaces }}" as="r" hint-placeholder-count="1">
+                  <button onClick="{{ r.onOpen }}" style="display:flex;align-items:center;gap:14px;width:100%;text-align:left;padding:13px 14px;background:#fff;border:1px solid rgba(20,24,30,0.10);border-radius:13px;box-shadow:0 1px 2px rgba(20,24,30,0.04);" style-hover="border-color:rgba(20,24,30,0.2);box-shadow:0 6px 22px rgba(20,24,30,0.08);transform:translateY(-1px);">
+                    <span style="width:38px;height:38px;border-radius:10px;background:#F1F2F4;display:flex;align-items:center;justify-content:center;color:#8B9098;flex:none;"><i class="ti {{ r.icon }}" style="font-size:18px;" aria-hidden="true"></i></span>
+                    <span style="flex:1;min-width:0;display:flex;flex-direction:column;gap:2px;"><span style="font-size:15px;font-weight:500;">{{ r.name }}</span><span style="font-size:12.5px;color:#6B7078;">Utrymme · {{ r.sub }}</span></span>
+                    <i class="ti ti-arrow-right" style="font-size:16px;color:#B7BCC2;" aria-hidden="true"></i>
+                  </button>
+                </sc-for>
+              </div>
+            </sc-if>
+
+            <sc-if value="{{ hasSearchBoxes }}" hint-placeholder-val="{{ false }}">
+              <div style="display:flex;flex-direction:column;gap:9px;">
+                <span style="font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:0.12em;text-transform:uppercase;color:#9AA0A8;">Lådor</span>
+                <sc-for list="{{ searchBoxes }}" as="r" hint-placeholder-count="1">
+                  <button onClick="{{ r.onOpen }}" style="display:flex;align-items:center;gap:14px;width:100%;text-align:left;padding:13px 14px;background:#fff;border:1px solid rgba(20,24,30,0.10);border-radius:13px;box-shadow:0 1px 2px rgba(20,24,30,0.04);" style-hover="border-color:rgba(20,24,30,0.2);box-shadow:0 6px 22px rgba(20,24,30,0.08);transform:translateY(-1px);">
+                    <span style="width:38px;height:38px;border-radius:10px;background:color-mix(in srgb, var(--accent,#2f63e6) 9%, #fff);display:flex;align-items:center;justify-content:center;font-family:'IBM Plex Mono',monospace;font-size:16px;font-weight:600;color:var(--accent,#2f63e6);flex:none;">{{ r.num }}</span>
+                    <span style="flex:1;min-width:0;display:flex;flex-direction:column;gap:2px;">
+                      <span style="font-size:15px;font-weight:500;">{{ r.title }}</span>
+                      <span style="font-size:12.5px;color:#6B7078;">{{ r.sub }}</span>
+                      <sc-if value="{{ r.hasReason }}" hint-placeholder-val="{{ false }}"><span style="font-size:11.5px;color:var(--accent,#2f63e6);">{{ r.reason }}</span></sc-if>
+                    </span>
+                    <i class="ti ti-arrow-right" style="font-size:16px;color:#B7BCC2;" aria-hidden="true"></i>
+                  </button>
+                </sc-for>
+              </div>
+            </sc-if>
+
+            <sc-if value="{{ hasSearchItems }}" hint-placeholder-val="{{ true }}">
+              <div style="display:flex;flex-direction:column;gap:9px;">
+                <span style="font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:0.12em;text-transform:uppercase;color:#9AA0A8;">Föremål</span>
+                <sc-for list="{{ searchItems }}" as="r" hint-placeholder-count="3">
+                  <button onClick="{{ r.onOpen }}" style="display:flex;align-items:center;gap:14px;width:100%;text-align:left;padding:13px 14px;background:#fff;border:1px solid rgba(20,24,30,0.10);border-radius:13px;box-shadow:0 1px 2px rgba(20,24,30,0.04);" style-hover="border-color:rgba(20,24,30,0.2);box-shadow:0 6px 22px rgba(20,24,30,0.08);transform:translateY(-1px);">
+                    <span style="width:38px;height:38px;border-radius:10px;background:#F1F2F4;display:flex;align-items:center;justify-content:center;color:#8B9098;flex:none;"><i class="ti ti-photo" style="font-size:18px;" aria-hidden="true"></i></span>
+                    <span style="flex:1;min-width:0;display:flex;flex-direction:column;gap:3px;">
+                      <span style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+                        <span style="font-size:15px;font-weight:500;">{{ r.title }}</span>
+                        <sc-if value="{{ r.via }}" hint-placeholder-val="{{ false }}"><span style="display:inline-flex;align-items:center;gap:3px;font-size:11px;font-weight:500;background:color-mix(in srgb, var(--accent,#2f63e6) 11%, #fff);color:var(--accent,#2f63e6);padding:2px 8px;border-radius:999px;"><i class="ti ti-sparkles" style="font-size:11px;" aria-hidden="true"></i>{{ r.term }}</span></sc-if>
+                      </span>
+                      <span style="font-size:12.5px;color:#6B7078;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{{ r.sub }}</span>
+                    </span>
+                    <span style="flex:none;display:flex;align-items:center;gap:11px;">
+                      <span style="display:flex;flex-direction:column;align-items:center;gap:1px;padding:5px 12px;border-radius:10px;background:color-mix(in srgb, var(--accent,#2f63e6) 9%, #fff);border:1px solid color-mix(in srgb, var(--accent,#2f63e6) 22%, #fff);">
+                        <span style="font-family:'IBM Plex Mono',monospace;font-size:8.5px;letter-spacing:0.12em;color:var(--accent,#2f63e6);text-transform:uppercase;">Låda</span>
+                        <span style="font-family:'IBM Plex Mono',monospace;font-size:20px;font-weight:600;line-height:1;color:var(--accent,#2f63e6);">{{ r.boxNum }}</span>
+                      </span>
+                      <i class="ti ti-arrow-right" style="font-size:16px;color:#B7BCC2;" aria-hidden="true"></i>
+                    </span>
+                  </button>
+                </sc-for>
+              </div>
+            </sc-if>
+
+          </div>
+        </sc-if>
+        <sc-if value="{{ noResults }}" hint-placeholder-val="{{ false }}">
+          <div style="text-align:center;padding:56px 24px;background:#fff;border:1px solid rgba(20,24,30,0.08);border-radius:14px;">
+            <i class="ti ti-search-off" style="font-size:26px;color:#B7BCC2;" aria-hidden="true"></i>
+            <p style="margin:12px 0 3px;font-size:15px;font-weight:500;">Inga träffar</p>
+            <p style="margin:0;font-size:13.5px;color:#6B7078;">Inget i registret matchar “{{ query }}”.</p>
+          </div>
+        </sc-if>
+      </section>
+    </sc-if>
+
+    <!-- HOME / OVERVIEW -->
+    <sc-if value="{{ showHome }}" hint-placeholder-val="{{ true }}">
+      <section>
+        <div style="display:flex;align-items:flex-end;justify-content:space-between;gap:16px;margin-bottom:22px;flex-wrap:wrap;">
+          <div>
+            <h1 style="margin:0;font-size:24px;font-weight:600;letter-spacing:-0.02em;">Mina utrymmen</h1>
+            <p style="margin:6px 0 0;font-size:14px;color:#6B7078;">{{ totalsLine }}</p>
+          </div>
+          <div style="display:flex;gap:9px;">
+            <button onClick="{{ openLabels }}" style="display:flex;align-items:center;gap:7px;height:38px;padding:0 14px;border-radius:10px;background:#fff;border:1px solid rgba(20,24,30,0.14);font-size:13.5px;font-weight:500;" style-hover="border-color:rgba(20,24,30,0.26);">
+              <i class="ti ti-printer" style="font-size:16px;color:#6B7078;" aria-hidden="true"></i>Etiketter
+            </button>
+            <button onClick="{{ toggleAddSpace }}" style="display:flex;align-items:center;gap:7px;height:38px;padding:0 14px;border-radius:10px;background:#fff;border:1px solid rgba(20,24,30,0.14);font-size:13.5px;font-weight:500;" style-hover="border-color:rgba(20,24,30,0.26);">
+              <i class="ti ti-plus" style="font-size:16px;color:#6B7078;" aria-hidden="true"></i>Nytt utrymme
+            </button>
+          </div>
+        </div>
+
+        <sc-if value="{{ addingSpace }}" hint-placeholder-val="{{ false }}">
+          <div style="padding:14px;margin-bottom:14px;background:#fff;border:1px solid color-mix(in srgb, var(--accent,#2f63e6) 35%, #fff);border-radius:13px;box-shadow:0 4px 18px rgba(20,24,30,0.06);display:flex;flex-direction:column;gap:13px;">
+            <div style="display:flex;align-items:center;gap:9px;">
+              <span style="width:38px;height:38px;border-radius:10px;background:color-mix(in srgb, var(--accent,#2f63e6) 10%, #fff);display:flex;align-items:center;justify-content:center;color:var(--accent,#2f63e6);flex:none;"><i class="ti {{ newSpaceIcon }}" style="font-size:20px;" aria-hidden="true"></i></span>
+              <input value="{{ newSpaceName }}" onInput="{{ onNewSpaceName }}" onKeyDown="{{ onNewSpaceKey }}" placeholder="Namn, t.ex. Vinden eller Förråd" autofocus="true" style="flex:1;height:38px;padding:0 11px;border:1px solid rgba(20,24,30,0.12);border-radius:9px;font-size:14px;" />
+              <button onClick="{{ saveSpace }}" style="height:38px;padding:0 16px;border-radius:9px;background:var(--accent,#2f63e6);color:#fff;font-size:13.5px;font-weight:600;">Spara</button>
+              <button onClick="{{ toggleAddSpace }}" aria-label="Avbryt" style="width:38px;height:38px;border-radius:9px;color:#8B9098;display:flex;align-items:center;justify-content:center;"><i class="ti ti-x" style="font-size:16px;" aria-hidden="true"></i></button>
+            </div>
+            <div style="display:flex;flex-direction:column;gap:7px;border-top:1px solid rgba(20,24,30,0.07);padding-top:12px;">
+              <span style="font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:0.1em;text-transform:uppercase;color:#9AA0A8;">Välj ikon</span>
+              <div style="display:flex;flex-wrap:wrap;gap:7px;">
+                <sc-for list="{{ iconChoices }}" as="ic" hint-placeholder-count="8">
+                  <button onClick="{{ ic.onPick }}" aria-label="Ikon" style="width:40px;height:40px;border-radius:10px;border:1.5px solid {{ ic.border }};background:{{ ic.bg }};display:flex;align-items:center;justify-content:center;color:{{ ic.color }};flex:none;" style-hover="border-color:var(--accent,#2f63e6);"><i class="ti {{ ic.icon }}" style="font-size:19px;" aria-hidden="true"></i></button>
+                </sc-for>
+              </div>
+            </div>
+          </div>
+        </sc-if>
+
+        <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(252px,1fr));gap:14px;">
+          <sc-for list="{{ spaceCards }}" as="s" hint-placeholder-count="3">
+            <button onClick="{{ s.onOpen }}" style="text-align:left;padding:18px;background:#fff;border:1px solid rgba(20,24,30,0.10);border-radius:16px;box-shadow:0 1px 2px rgba(20,24,30,0.04);display:flex;flex-direction:column;gap:14px;" style-hover="border-color:rgba(20,24,30,0.2);box-shadow:0 8px 26px rgba(20,24,30,0.09);transform:translateY(-2px);">
+              <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:10px;">
+                <span style="width:42px;height:42px;border-radius:12px;background:#F1F2F4;display:flex;align-items:center;justify-content:center;color:#6B7078;flex:none;"><i class="ti {{ s.icon }}" style="font-size:21px;" aria-hidden="true"></i></span>
+                <sc-if value="{{ showCodes }}" hint-placeholder-val="{{ true }}">
+                  <span style="font-family:'IBM Plex Mono',monospace;font-size:11px;font-weight:500;letter-spacing:0.08em;color:#9AA0A8;border:1px solid rgba(20,24,30,0.1);border-radius:6px;padding:3px 7px;">{{ s.code }}</span>
+                </sc-if>
+              </div>
+              <div>
+                <p style="margin:0;font-size:17px;font-weight:600;letter-spacing:-0.01em;">{{ s.name }}</p>
+                <p style="margin:5px 0 0;font-family:'IBM Plex Mono',monospace;font-size:12px;color:#8B9098;">{{ s.meta }}</p>
+              </div>
+            </button>
+          </sc-for>
+        </div>
+      </section>
+    </sc-if>
+
+    <!-- SPACE VIEW -->
+    <sc-if value="{{ showSpace }}" hint-placeholder-val="{{ false }}">
+      <section style="animation:sib-fade .18s ease;">
+        <div style="display:flex;align-items:center;gap:15px;margin-bottom:18px;">
+          <button onClick="{{ toggleEditIcon }}" title="Ändra ikon" style="position:relative;width:54px;height:54px;border-radius:15px;background:#fff;border:1px solid rgba(20,24,30,0.1);display:flex;align-items:center;justify-content:center;color:#6B7078;flex:none;box-shadow:0 1px 2px rgba(20,24,30,0.04);" style-hover="border-color:var(--accent,#2f63e6);color:var(--accent,#2f63e6);">
+            <i class="ti {{ currentSpaceIcon }}" style="font-size:26px;" aria-hidden="true"></i>
+            <span style="position:absolute;right:-5px;bottom:-5px;width:21px;height:21px;border-radius:50%;background:var(--accent,#2f63e6);border:2px solid #F3F4F5;display:flex;align-items:center;justify-content:center;color:#fff;"><i class="ti ti-pencil" style="font-size:11px;" aria-hidden="true"></i></span>
+          </button>
+          <div style="flex:1;">
+            <div style="display:flex;align-items:center;gap:10px;">
+              <h1 style="margin:0;font-size:24px;font-weight:600;letter-spacing:-0.02em;">{{ currentSpaceName }}</h1>
+              <sc-if value="{{ showCodes }}" hint-placeholder-val="{{ true }}">
+                <span style="font-family:'IBM Plex Mono',monospace;font-size:11px;letter-spacing:0.08em;color:#9AA0A8;border:1px solid rgba(20,24,30,0.1);border-radius:6px;padding:3px 7px;">{{ currentSpaceCode }}</span>
+              </sc-if>
+            </div>
+            <p style="margin:5px 0 0;font-size:14px;color:#6B7078;">{{ currentSpaceMeta }}</p>
+          </div>
+          <button onClick="{{ openLabelsForSpace }}" style="flex:none;display:flex;align-items:center;gap:7px;height:38px;padding:0 14px;border-radius:10px;background:#fff;border:1px solid rgba(20,24,30,0.14);font-size:13.5px;font-weight:500;" style-hover="border-color:rgba(20,24,30,0.26);">
+            <i class="ti ti-printer" style="font-size:16px;color:#6B7078;" aria-hidden="true"></i>Etiketter
+          </button>
+        </div>
+
+        <sc-if value="{{ editingIcon }}" hint-placeholder-val="{{ false }}">
+          <div style="display:flex;flex-direction:column;gap:9px;padding:14px;margin-bottom:18px;background:#fff;border:1px solid color-mix(in srgb, var(--accent,#2f63e6) 30%, #fff);border-radius:13px;box-shadow:0 4px 18px rgba(20,24,30,0.06);">
+            <span style="font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:0.1em;text-transform:uppercase;color:#9AA0A8;">Välj ikon för {{ currentSpaceName }}</span>
+            <div style="display:flex;flex-wrap:wrap;gap:7px;">
+              <sc-for list="{{ spaceIconChoices }}" as="ic" hint-placeholder-count="8">
+                <button onClick="{{ ic.onPick }}" aria-label="Ikon" style="width:40px;height:40px;border-radius:10px;border:1.5px solid {{ ic.border }};background:{{ ic.bg }};display:flex;align-items:center;justify-content:center;color:{{ ic.color }};flex:none;" style-hover="border-color:var(--accent,#2f63e6);"><i class="ti {{ ic.icon }}" style="font-size:19px;" aria-hidden="true"></i></button>
+              </sc-for>
+            </div>
+          </div>
+        </sc-if>
+
+        <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(168px,1fr));gap:13px;">
+          <sc-for list="{{ boxCards }}" as="b" hint-placeholder-count="5">
+            <button onClick="{{ b.onOpen }}" style="text-align:left;padding:15px;background:#fff;border:1px solid rgba(20,24,30,0.1);border-radius:14px;box-shadow:0 1px 2px rgba(20,24,30,0.04);display:flex;flex-direction:column;gap:11px;min-height:128px;" style-hover="border-color:rgba(20,24,30,0.2);box-shadow:0 7px 24px rgba(20,24,30,0.09);transform:translateY(-2px);">
+              <span style="display:flex;align-items:center;justify-content:space-between;">
+                <span style="width:38px;height:38px;border-radius:11px;background:color-mix(in srgb, var(--accent,#2f63e6) 10%, #fff);display:flex;align-items:center;justify-content:center;font-family:'IBM Plex Mono',monospace;font-size:18px;font-weight:600;color:var(--accent,#2f63e6);">{{ b.num }}</span>
+                <sc-if value="{{ showCodes }}" hint-placeholder-val="{{ true }}">
+                  <span style="font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:0.06em;color:#B7BCC2;">{{ b.code }}</span>
+                </sc-if>
+              </span>
+              <span style="flex:1;display:flex;flex-direction:column;justify-content:flex-end;gap:3px;">
+                <span style="font-size:14.5px;font-weight:500;line-height:1.25;">{{ b.label }}</span>
+                <span style="font-family:'IBM Plex Mono',monospace;font-size:11.5px;color:#9AA0A8;">{{ b.itemMeta }}</span>
+              </span>
+            </button>
+          </sc-for>
+          <button onClick="{{ addBox }}" style="min-height:128px;border:1.5px dashed rgba(20,24,30,0.18);border-radius:14px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;color:#8B9098;background:transparent;" style-hover="border-color:var(--accent,#2f63e6);color:var(--accent,#2f63e6);background:color-mix(in srgb, var(--accent,#2f63e6) 5%, transparent);">
+            <i class="ti ti-plus" style="font-size:22px;" aria-hidden="true"></i>
+            <span style="font-size:13px;font-weight:500;">Ny låda</span>
+          </button>
+        </div>
+      </section>
+    </sc-if>
+
+    <!-- BOX VIEW -->
+    <sc-if value="{{ showBox }}" hint-placeholder-val="{{ false }}">
+      <section style="animation:sib-fade .18s ease;">
+        <div style="display:flex;align-items:center;gap:17px;margin-bottom:14px;flex-wrap:wrap;">
+          <span style="width:62px;height:62px;border-radius:16px;background:var(--accent,#2f63e6);display:flex;align-items:center;justify-content:center;font-family:'IBM Plex Mono',monospace;font-size:30px;font-weight:600;color:#fff;flex:none;box-shadow:0 3px 10px color-mix(in srgb, var(--accent,#2f63e6) 35%, transparent);">{{ currentBoxNum }}</span>
+          <div style="flex:1;min-width:180px;">
+            <h1 style="margin:0;font-size:23px;font-weight:600;letter-spacing:-0.02em;">{{ currentBoxLabel }}</h1>
+            <p style="margin:5px 0 0;font-size:14px;color:#6B7078;">{{ currentBoxMeta }}</p>
+          </div>
+          <span style="display:flex;align-items:center;gap:8px;padding:8px 13px;border-radius:11px;background:#fff;border:1px dashed rgba(20,24,30,0.2);">
+            <i class="ti ti-tag" style="font-size:16px;color:#8B9098;" aria-hidden="true"></i>
+            <span style="font-size:12.5px;color:#6B7078;">Märk lådan:</span>
+            <span style="font-family:'IBM Plex Mono',monospace;font-size:15px;font-weight:600;color:#16181C;">{{ currentBoxTag }}</span>
+          </span>
+        </div>
+
+        <div style="display:flex;align-items:center;gap:11px;margin:0 0 18px;flex-wrap:wrap;">
+          <span style="display:flex;align-items:center;gap:7px;font-size:13px;color:#6B7078;"><i class="ti ti-map-pin" style="font-size:16px;color:#8B9098;" aria-hidden="true"></i>Plats</span>
+          <div style="position:relative;display:flex;align-items:center;">
+            <select value="{{ currentBoxSpaceId }}" onChange="{{ onMoveBox }}" style="height:40px;padding:0 36px 0 13px;border:1px solid rgba(20,24,30,0.14);border-radius:10px;font-size:14px;font-weight:500;background:#fff;cursor:pointer;color:#16181C;">
+              <sc-for list="{{ moveSpaceOptions }}" as="o" hint-placeholder-count="3">
+                <option value="{{ o.id }}">{{ o.name }}</option>
+              </sc-for>
+            </select>
+            <i class="ti ti-chevron-down" style="position:absolute;right:12px;font-size:16px;color:#9AA0A8;pointer-events:none;" aria-hidden="true"></i>
+          </div>
+          <span style="display:flex;align-items:center;gap:5px;font-size:12px;color:#9AA0A8;"><i class="ti ti-info-circle" style="font-size:13px;" aria-hidden="true"></i>Numret #{{ currentBoxNum }} följer lådan om du flyttar den.</span>
+          <button onClick="{{ openLabelsForBox }}" style="margin-left:auto;flex:none;display:flex;align-items:center;gap:7px;height:40px;padding:0 14px;border-radius:10px;background:#fff;border:1px solid rgba(20,24,30,0.14);font-size:13.5px;font-weight:500;" style-hover="border-color:rgba(20,24,30,0.26);">
+            <i class="ti ti-printer" style="font-size:16px;color:#6B7078;" aria-hidden="true"></i>Etikett för denna låda
+          </button>
+        </div>
+
+        <sc-if value="{{ boxHasItems }}" hint-placeholder-val="{{ true }}">
+          <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(244px,1fr));gap:10px;margin-top:10px;">
+            <sc-for list="{{ items }}" as="it" hint-placeholder-count="4">
+              <div style="display:flex;align-items:flex-start;gap:12px;padding:11px;background:#fff;border:1px solid rgba(20,24,30,0.09);border-radius:12px;">
+                <sc-if value="{{ showItemPhotos }}" hint-placeholder-val="{{ true }}">
+                  <span style="width:46px;height:46px;border-radius:9px;flex:none;background-color:#EEF0F2;background-image:repeating-linear-gradient(45deg,rgba(20,24,30,0.05) 0 6px,transparent 6px 12px);display:flex;align-items:center;justify-content:center;color:#B7BCC2;"><i class="ti ti-photo" style="font-size:18px;" aria-hidden="true"></i></span>
+                </sc-if>
+                <span style="flex:1;min-width:0;display:flex;flex-direction:column;gap:5px;padding-top:2px;">
+                  <span style="font-size:14.5px;font-weight:500;line-height:1.2;">{{ it.name }}</span>
+                  <sc-if value="{{ it.hasTags }}" hint-placeholder-val="{{ false }}">
+                    <span style="display:flex;flex-wrap:wrap;gap:4px;">
+                      <sc-for list="{{ it.tags }}" as="t" hint-placeholder-count="3">
+                        <span style="font-size:10.5px;color:#8B9098;background:#F1F2F4;padding:2px 7px;border-radius:999px;">{{ t }}</span>
+                      </sc-for>
+                    </span>
+                  </sc-if>
+                </span>
+              </div>
+            </sc-for>
+          </div>
+        </sc-if>
+        <sc-if value="{{ boxEmpty }}" hint-placeholder-val="{{ false }}">
+          <div style="text-align:center;padding:50px 24px;margin-top:6px;background:#fff;border:1px solid rgba(20,24,30,0.08);border-radius:14px;">
+            <i class="ti ti-package" style="font-size:26px;color:#B7BCC2;" aria-hidden="true"></i>
+            <p style="margin:12px 0 3px;font-size:15px;font-weight:500;">Tom låda</p>
+            <p style="margin:0;font-size:13.5px;color:#6B7078;">Registrera det första du lägger i.</p>
+          </div>
+        </sc-if>
+
+        <button onClick="{{ openAddItem }}" style="margin-top:16px;display:flex;align-items:center;gap:9px;height:46px;padding:0 20px;border-radius:12px;background:var(--accent,#2f63e6);color:#fff;font-size:15px;font-weight:600;box-shadow:0 2px 8px color-mix(in srgb, var(--accent,#2f63e6) 28%, transparent);" style-hover="filter:brightness(1.07);">
+          <i class="ti ti-camera-plus" style="font-size:19px;" aria-hidden="true"></i>Lägg till en sak i lådan
+        </button>
+      </section>
+    </sc-if>
+
+    <!-- LABELS VIEW -->
+    <sc-if value="{{ showLabels }}" hint-placeholder-val="{{ false }}">
+      <section style="animation:sib-fade .18s ease;">
+        <div class="sib-noprint" style="display:flex;align-items:flex-end;justify-content:space-between;gap:16px;margin-bottom:22px;flex-wrap:wrap;">
+          <div>
+            <button onClick="{{ goHome }}" style="display:flex;align-items:center;gap:6px;font-size:13px;color:#6B7078;margin-bottom:8px;padding:0;" style-hover="color:#16181C;"><i class="ti ti-arrow-left" style="font-size:15px;" aria-hidden="true"></i>Mina utrymmen</button>
+            <h1 style="margin:0;font-size:24px;font-weight:600;letter-spacing:-0.02em;">Etiketter</h1>
+            <p style="margin:6px 0 0;font-size:14px;color:#6B7078;">Skriv ut, klipp längs den streckade kanten och tejpa på lådan. Numret är nyckeln till registret.</p>
+          </div>
+          <button onClick="{{ printLabels }}" style="display:flex;align-items:center;gap:8px;height:42px;padding:0 18px;border-radius:11px;background:var(--accent,#2f63e6);color:#fff;font-size:14.5px;font-weight:600;box-shadow:0 1px 2px rgba(0,0,0,0.18);" style-hover="filter:brightness(1.07);">
+            <i class="ti ti-printer" style="font-size:18px;" aria-hidden="true"></i>Skriv ut {{ labelPrintCount }}
+          </button>
+        </div>
+
+        <div class="sib-noprint" style="display:flex;align-items:center;gap:10px;margin-bottom:20px;flex-wrap:wrap;">
+          <span style="display:flex;align-items:center;gap:6px;font-size:12.5px;color:#6B7078;flex:none;"><i class="ti ti-filter" style="font-size:15px;color:#8B9098;" aria-hidden="true"></i>Filter</span>
+          <div style="display:flex;gap:7px;flex-wrap:wrap;">
+            <sc-for list="{{ labelFilters }}" as="f" hint-placeholder-count="4">
+              <button onClick="{{ f.onPick }}" style="display:flex;align-items:center;gap:6px;height:34px;padding:0 13px;border-radius:999px;border:1px solid {{ f.border }};background:{{ f.bg }};color:{{ f.color }};font-size:13px;font-weight:500;" style-hover="border-color:var(--accent,#2f63e6);">
+                <sc-if value="{{ f.hasIcon }}" hint-placeholder-val="{{ false }}"><i class="ti {{ f.icon }}" style="font-size:15px;" aria-hidden="true"></i></sc-if>{{ f.name }}
+                <span style="font-family:'IBM Plex Mono',monospace;font-size:11px;opacity:0.7;">{{ f.count }}</span>
+              </button>
+            </sc-for>
+          </div>
+          <sc-if value="{{ hasBoxFilter }}" hint-placeholder-val="{{ false }}">
+            <button onClick="{{ clearBoxFilter }}" style="display:flex;align-items:center;gap:6px;height:34px;padding:0 11px;border-radius:999px;border:1px solid color-mix(in srgb, var(--accent,#2f63e6) 30%, #fff);background:color-mix(in srgb, var(--accent,#2f63e6) 9%, #fff);color:var(--accent,#2f63e6);font-size:13px;font-weight:500;">
+              Endast {{ boxFilterLabel }}<i class="ti ti-x" style="font-size:14px;" aria-hidden="true"></i>
+            </button>
+          </sc-if>
+        </div>
+
+        <div class="sib-labels" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(248px,1fr));gap:14px;">
+          <sc-for list="{{ labelCards }}" as="L" hint-placeholder-count="6">
+            <div class="sib-label" style="background:#fff;border:1.5px dashed rgba(20,24,30,0.28);border-radius:12px;padding:18px;display:flex;flex-direction:column;gap:12px;min-height:188px;">
+              <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:10px;">
+                <div style="display:flex;flex-direction:column;gap:8px;">
+                  <span style="width:62px;height:62px;border-radius:13px;background:var(--accent,#2f63e6);display:flex;align-items:center;justify-content:center;font-family:'IBM Plex Mono',monospace;font-size:34px;font-weight:600;color:#fff;flex:none;">{{ L.num }}</span>
+                  <span style="font-family:'IBM Plex Mono',monospace;font-size:13px;font-weight:600;letter-spacing:0.06em;color:#16181C;">{{ L.code }}</span>
+                </div>
+                <span style="width:74px;height:74px;flex:none;border:1px solid rgba(20,24,30,0.1);border-radius:9px;padding:5px;background:#fff;display:flex;align-items:center;justify-content:center;">
+                  <sc-if value="{{ L.hasQr }}" hint-placeholder-val="{{ false }}">
+                    <img src="{{ L.qr }}" alt="QR-kod" width="64" height="64" style="display:block;width:64px;height:64px;image-rendering:pixelated;" />
+                  </sc-if>
+                  <sc-if value="{{ L.noQr }}" hint-placeholder-val="{{ true }}">
+                    <i class="ti ti-qrcode" style="font-size:34px;color:#D2D6DB;" aria-hidden="true"></i>
+                  </sc-if>
+                </span>
+              </div>
+              <div style="flex:1;display:flex;flex-direction:column;gap:6px;border-top:1px solid rgba(20,24,30,0.1);padding-top:11px;">
+                <div style="display:flex;align-items:baseline;justify-content:space-between;gap:8px;">
+                  <span style="font-size:15px;font-weight:600;letter-spacing:-0.01em;">{{ L.title }}</span>
+                  <span style="font-size:13px;color:#6B7078;flex:none;">{{ L.space }}</span>
+                </div>
+                <span style="font-size:12px;color:#6B7078;line-height:1.45;">{{ L.contents }}</span>
+              </div>
+              <div style="display:flex;align-items:center;justify-content:space-between;">
+                <span style="display:flex;align-items:center;gap:5px;font-family:'IBM Plex Mono',monospace;font-size:9px;letter-spacing:0.12em;text-transform:uppercase;color:#9AA0A8;"><i class="ti ti-qrcode" style="font-size:12px;" aria-hidden="true"></i>Skanna för att öppna i appen</span>
+                <span style="font-family:'IBM Plex Mono',monospace;font-size:10px;color:#9AA0A8;">{{ L.count }}</span>
+              </div>
+            </div>
+          </sc-for>
+        </div>
+      </section>
+    </sc-if>
+
+  </main>
+
+  <!-- ADD ITEM SHEET -->
+  <sc-if value="{{ addOpen }}" hint-placeholder-val="{{ false }}">
+    <div onClick="{{ closeAdd }}" style="position:fixed;inset:0;z-index:60;background:rgba(16,18,22,0.34);backdrop-filter:blur(3px);display:flex;align-items:flex-start;justify-content:center;padding:5vh 16px 24px;overflow-y:auto;animation:sib-fade .16s ease;">
+      <div onClick="{{ stop }}" style="width:100%;max-width:460px;background:#fff;border-radius:18px;box-shadow:0 18px 50px rgba(0,0,0,0.28);animation:sib-up .24s cubic-bezier(.2,.8,.2,1);max-height:90vh;overflow-y:auto;">
+        <div style="position:sticky;top:0;background:#fff;padding:18px 20px 12px;border-bottom:1px solid rgba(20,24,30,0.07);display:flex;align-items:center;justify-content:space-between;border-radius:18px 18px 0 0;">
+          <div>
+            <h2 style="margin:0;font-size:17px;font-weight:600;letter-spacing:-0.01em;">Lägg till en sak</h2>
+            <p style="margin:3px 0 0;font-size:12.5px;color:#9AA0A8;font-family:'IBM Plex Mono',monospace;">Snabbare än att strunta i det</p>
+          </div>
+          <button onClick="{{ closeAdd }}" aria-label="Stäng" style="width:34px;height:34px;border-radius:10px;background:#F1F2F4;display:flex;align-items:center;justify-content:center;color:#6B7078;"><i class="ti ti-x" style="font-size:18px;" aria-hidden="true"></i></button>
+        </div>
+
+        <div style="padding:20px;display:flex;flex-direction:column;gap:18px;">
+          <div style="display:flex;justify-content:center;">
+            <sc-if value="{{ photoIdle }}" hint-placeholder-val="{{ true }}">
+              <button onClick="{{ pickPhoto }}" style="width:100%;height:148px;border:1.5px dashed rgba(20,24,30,0.22);border-radius:14px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:9px;color:#6B7078;background:#FAFBFC;" style-hover="border-color:var(--accent,#2f63e6);color:var(--accent,#2f63e6);">
+                <i class="ti ti-camera" style="font-size:30px;" aria-hidden="true"></i>
+                <span style="font-size:14px;font-weight:600;">Ta ett foto</span>
+                <span style="font-size:12px;color:#9AA0A8;">Vi känner igen vad det är åt dig</span>
+              </button>
+            </sc-if>
+            <sc-if value="{{ photoAnalyzing }}" hint-placeholder-val="{{ false }}">
+              <div style="position:relative;width:100%;height:148px;border-radius:14px;overflow:hidden;background-color:#EEF0F2;background-image:repeating-linear-gradient(45deg,rgba(20,24,30,0.05) 0 7px,transparent 7px 14px);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:11px;">
+                <div style="position:absolute;left:6%;right:6%;height:2px;background:var(--accent,#2f63e6);box-shadow:0 0 14px 2px var(--accent,#2f63e6);animation:sib-scan 1.1s ease-in-out infinite;"></div>
+                <i class="ti ti-loader-2" style="font-size:26px;color:var(--accent,#2f63e6);animation:sib-spin .9s linear infinite;" aria-hidden="true"></i>
+                <span style="font-size:13px;font-weight:500;color:#16181C;">Analyserar bild…</span>
+              </div>
+            </sc-if>
+            <sc-if value="{{ photoDone }}" hint-placeholder-val="{{ false }}">
+              <div style="position:relative;width:100%;height:148px;border-radius:14px;overflow:hidden;background-color:#EAEFEA;background-image:repeating-linear-gradient(45deg,rgba(20,24,30,0.05) 0 7px,transparent 7px 14px);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;">
+                <span style="width:40px;height:40px;border-radius:50%;background:#27500A;display:flex;align-items:center;justify-content:center;color:#fff;"><i class="ti ti-check" style="font-size:22px;" aria-hidden="true"></i></span>
+                <span style="font-size:13px;font-weight:500;color:#16181C;">Igenkänt: <b>{{ suggested }}</b></span>
+                <button onClick="{{ pickPhoto }}" style="font-size:12px;color:#6B7078;text-decoration:underline;">Ta om</button>
+              </div>
+            </sc-if>
+          </div>
+
+          <label style="display:flex;flex-direction:column;gap:7px;">
+            <span style="font-family:'IBM Plex Mono',monospace;font-size:10.5px;letter-spacing:0.1em;text-transform:uppercase;color:#9AA0A8;">Vad är det?</span>
+            <input value="{{ addName }}" onInput="{{ onAddName }}" placeholder="Namn på saken" style="height:46px;padding:0 14px;border:1px solid rgba(20,24,30,0.14);border-radius:11px;font-size:16px;font-weight:500;" />
+            <span style="display:flex;align-items:center;gap:5px;font-size:11.5px;color:#9AA0A8;"><i class="ti ti-sparkles" style="font-size:13px;color:var(--accent,#2f63e6);" aria-hidden="true"></i>Taggas automatiskt med relaterade ord så den blir lätt att hitta</span>
+          </label>
+
+          <div style="display:flex;flex-direction:column;gap:7px;">
+            <span style="font-family:'IBM Plex Mono',monospace;font-size:10.5px;letter-spacing:0.1em;text-transform:uppercase;color:#9AA0A8;">Var lägger du den?</span>
+            <div style="display:flex;gap:9px;">
+              <div style="flex:1;position:relative;display:flex;align-items:center;">
+                <select value="{{ addSpaceId }}" onChange="{{ setAddSpace }}" style="width:100%;height:46px;padding:0 34px 0 13px;border:1px solid rgba(20,24,30,0.14);border-radius:11px;font-size:14.5px;background:#fff;cursor:pointer;">
+                  <sc-for list="{{ addSpaceOptions }}" as="o" hint-placeholder-count="3">
+                    <option value="{{ o.id }}">{{ o.name }}</option>
+                  </sc-for>
+                </select>
+                <i class="ti ti-chevron-down" style="position:absolute;right:12px;font-size:16px;color:#9AA0A8;pointer-events:none;" aria-hidden="true"></i>
+              </div>
+              <div style="flex:none;width:138px;position:relative;display:flex;align-items:center;">
+                <select value="{{ addBoxNum }}" onChange="{{ setAddBox }}" style="width:100%;height:46px;padding:0 34px 0 13px;border:1px solid rgba(20,24,30,0.14);border-radius:11px;font-size:14.5px;background:#fff;cursor:pointer;">
+                  <sc-for list="{{ addBoxOptions }}" as="o" hint-placeholder-count="3">
+                    <option value="{{ o.num }}">{{ o.label }}</option>
+                  </sc-for>
+                </select>
+                <i class="ti ti-chevron-down" style="position:absolute;right:12px;font-size:16px;color:#9AA0A8;pointer-events:none;" aria-hidden="true"></i>
+              </div>
+            </div>
+          </div>
+
+          <sc-if value="{{ hasRecent }}" hint-placeholder-val="{{ false }}">
+            <div style="display:flex;flex-direction:column;gap:8px;border-top:1px solid rgba(20,24,30,0.07);padding-top:14px;">
+              <span style="font-family:'IBM Plex Mono',monospace;font-size:10.5px;letter-spacing:0.1em;text-transform:uppercase;color:#27500A;">Tillagda nu</span>
+              <div style="display:flex;flex-wrap:wrap;gap:7px;">
+                <sc-for list="{{ recent }}" as="rc" hint-placeholder-count="2">
+                  <span style="display:inline-flex;align-items:center;gap:5px;font-size:12.5px;background:#EAF3DE;color:#27500A;padding:5px 11px;border-radius:999px;"><i class="ti ti-check" style="font-size:13px;" aria-hidden="true"></i>{{ rc }}</span>
+                </sc-for>
+              </div>
+            </div>
+          </sc-if>
+        </div>
+
+        <div style="position:sticky;bottom:0;background:#fff;border-top:1px solid rgba(20,24,30,0.07);padding:14px 20px;display:flex;gap:10px;">
+          <button onClick="{{ saveAndContinue }}" style="flex:1;height:48px;border-radius:12px;border:1px solid rgba(20,24,30,0.15);background:#fff;font-size:14.5px;font-weight:600;color:#16181C;" style-hover="background:#F4F5F6;">Spara &amp; nästa</button>
+          <button onClick="{{ saveAndClose }}" style="flex:1;height:48px;border-radius:12px;background:var(--accent,#2f63e6);color:#fff;font-size:14.5px;font-weight:600;box-shadow:0 2px 8px color-mix(in srgb, var(--accent,#2f63e6) 28%, transparent);" style-hover="filter:brightness(1.07);">Klart</button>
+        </div>
+      </div>
+    </div>
+  </sc-if>
+  </sc-if>
+
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{
+  &quot;$preview&quot;: {&quot;width&quot;: 1080, &quot;height&quot;: 760},
+  &quot;accent&quot;: {&quot;editor&quot;: &quot;color&quot;, &quot;default&quot;: &quot;#2f63e6&quot;, &quot;options&quot;: [&quot;#2f63e6&quot;, &quot;#1f8a5b&quot;, &quot;#b4530f&quot;, &quot;#6a4cff&quot;], &quot;tsType&quot;: &quot;string&quot;},
+  &quot;showCodes&quot;: {&quot;editor&quot;: &quot;boolean&quot;, &quot;default&quot;: true, &quot;tsType&quot;: &quot;boolean&quot;},
+  &quot;showItemPhotos&quot;: {&quot;editor&quot;: &quot;boolean&quot;, &quot;default&quot;: true, &quot;tsType&quot;: &quot;boolean&quot;}
+}">
+class Component extends DCLogic {
+  constructor(props){
+    super(props);
+    this.state = {
+      spaces: [
+        {id:1, name:'Garage', code:'GAR', icon:'ti-car', boxes:[
+          {num:1, label:'Verktyg', items:[
+            {name:'Skruvdragare', tags:['verktyg','el','skruv','borr','handverktyg']},
+            {name:'Hammare', tags:['verktyg','spik','slå','bygg','handverktyg']},
+            {name:'Tumstock', tags:['verktyg','mäta','mått','måttband','bygg']},
+            {name:'Skiftnyckel', tags:['verktyg','mutter','skruv','handverktyg']},
+            {name:'Vinkelhake', tags:['verktyg','mäta','vinkel','bygg']}
+          ]},
+          {num:2, label:'Elkablar och kontakter', items:[
+            {name:'Förlängningssladd 10m', tags:['el','sladd','kabel','ström']},
+            {name:'Grenuttag', tags:['el','uttag','kontakt','ström']},
+            {name:'Kabeltrumma', tags:['el','sladd','kabel','ström']}
+          ]},
+          {num:3, label:'Skidutrustning', items:[
+            {name:'Skidstavar', tags:['skidor','vinter','sport','utrustning']},
+            {name:'Skidskor stl 42', tags:['skidor','vinter','sport','skor','pjäxor']},
+            {name:'Skidglasögon', tags:['skidor','vinter','sport','glasögon','goggles']},
+            {name:'Vallaset', tags:['skidor','vinter','sport','valla']}
+          ]},
+          {num:4, label:'Julpynt', items:[
+            {name:'Ljusslinga 10m', tags:['jul','belysning','ljus','dekoration','el']},
+            {name:'Adventsstake', tags:['jul','belysning','ljus','advent','dekoration']},
+            {name:'Julgransbelysning', tags:['jul','belysning','ljus','gran','dekoration']},
+            {name:'Tomtefigurer 3 st', tags:['jul','dekoration','pynt','figurer']}
+          ]},
+          {num:5, label:'Cykeldelar', items:[
+            {name:'Cykelpump', tags:['cykel','pump','luft','däck']},
+            {name:'Reservslang', tags:['cykel','däck','slang','gummi']},
+            {name:'Sadel', tags:['cykel','sits','sadel']}
+          ]}
+        ]},
+        {id:2, name:'Vinden', code:'VIN', icon:'ti-stairs', boxes:[
+          {num:6, label:'Vinterkläder', items:[
+            {name:'Vinterjacka barn', tags:['kläder','vinter','jacka','barn','ytterkläder']},
+            {name:'Stövlar stl 36', tags:['kläder','skor','stövlar','barn','vinter']},
+            {name:'Mössor och vantar', tags:['kläder','vinter','mössa','vantar','barn']}
+          ]},
+          {num:7, label:'Böcker', items:[
+            {name:'Romaner, 12 st', tags:['böcker','läsning','romaner','litteratur']},
+            {name:'Kokböcker', tags:['böcker','mat','recept','matlagning','kök']}
+          ]},
+          {num:8, label:'Bebisutrustning', items:[
+            {name:'Babylift', tags:['bebis','baby','barn','transport']},
+            {name:'Filtar', tags:['textil','filt','täcke','sängkläder','värme']},
+            {name:'Napp och nappflaskor', tags:['bebis','baby','mata','flaska','napp']}
+          ]}
+        ]},
+        {id:3, name:'Förråd, källare', code:'FÖR', icon:'ti-door', boxes:[
+          {num:9, label:'Husgeråd', items:[
+            {name:'Extra glas', tags:['husgeråd','kök','glas','servis','dricka']},
+            {name:'Stearinljus', tags:['ljus','belysning','stearin','mys','dekoration']},
+            {name:'Servetter', tags:['husgeråd','kök','papper','dukning','servett']}
+          ]},
+          {num:10, label:'Verktyg, reserv', items:[
+            {name:'Limpistol', tags:['verktyg','lim','pyssel','hobby']},
+            {name:'Sandpapper', tags:['verktyg','slipa','papper','bygg','yta']}
+          ]}
+        ]}
+      ],
+      authed:false, authMode:'login', email:'', password:'', user:'',
+      view:'home', spaceId:null, boxNum:null, query:'', editingIcon:false,
+      addingSpace:false, newSpaceName:'', newSpaceIcon:'ti-box',
+      qr:{}, pendingBox:null, labelFilter:{spaceId:null, boxNum:null},
+      addOpen:false,
+      add:{photo:false, analyzing:false, name:'', suggested:'', spaceId:null, boxNum:null, recent:[]}
+    };
+    this._guesses = ['Borrmaskin','Vinterstövlar','Kokbok','Ljusslinga','Cykelpump','Skidglasögon','Babyfilt','Verktygsväska','Adventsstake','Reservslang','Tältpinnar','Julgranskula'];
+    this._icons = ['ti-box','ti-home','ti-car','ti-stairs','ti-door','ti-building-warehouse','ti-tools','ti-archive','ti-books','ti-fridge','ti-plant-2','ti-bike','ti-christmas-tree','ti-paint','ti-shirt','ti-ball-basketball'];
+  }
+
+  findSpace(id){ return this.state.spaces.find(s=>s.id===id); }
+  codeOf(name){ return name.replace(/[^A-Za-zÅÄÖåäö]/g,'').slice(0,3).toUpperCase(); }
+  tokenize(name){ return name.toLowerCase().split(/[\s,]+/).map(w=>w.replace(/[^a-zåäö0-9]/gi,'')).filter(w=>w.length>2); }
+  pad(n){ return String(n).padStart(2,'0'); }
+  pad3(n){ return String(n).padStart(3,'0'); }
+  boxLink(num){ return location.href.split('#')[0] + '#box=' + num; }
+  componentDidMount(){
+    const m = (location.hash||'').match(/box=(\d+)/);
+    if(m){ this.setState({pendingBox: parseInt(m[1],10)}); }
+    this.genQRs();
+  }
+  componentDidUpdate(){ this.genQRs(); }
+  genQRs(){
+    if(typeof window==='undefined' || !window.qrcode){
+      if(!this._qrPoll){ this._qrPoll=setInterval(()=>{ if(window.qrcode){ clearInterval(this._qrPoll); this._qrPoll=null; this.genQRs(); } }, 250); }
+      return;
+    }
+    const missing = this.allBoxes().map(b=>b.num).filter(n=>!this.state.qr[n]);
+    if(!missing.length) return;
+    const qr={...this.state.qr};
+    missing.forEach(n=>{
+      try{ const g=window.qrcode(0,'M'); g.addData(this.boxLink(n)); g.make(); qr[n]=g.createDataURL(4,0); }catch(e){}
+    });
+    this.setState({qr});
+  }
+  allBoxes(){ return this.state.spaces.reduce((a,s)=>a.concat(s.boxes),[]); }
+  nextNum(){ const ns=this.allBoxes().map(b=>b.num); return ns.length?Math.max.apply(null,ns)+1:1; }
+  spaceOfBox(num){ return this.state.spaces.find(s=>s.boxes.some(b=>b.num===num)); }
+  moveBox(num, toSpaceId){
+    const from=this.spaceOfBox(num); const to=this.findSpace(toSpaceId);
+    if(!from || !to || from.id===to.id) return;
+    const idx=from.boxes.findIndex(b=>b.num===num); if(idx<0) return;
+    const [box]=from.boxes.splice(idx,1); to.boxes.push(box);
+    this.setState(s=>({spaces:[...s.spaces], spaceId:toSpaceId}));
+  }
+  onMoveBox(e){ this.moveBox(this.state.boxNum, parseInt(e.target.value,10)); }
+
+  openSpace(id){ this.setState({view:'space', spaceId:id, boxNum:null, query:'', editingIcon:false}); }
+  openBox(num){ const sp=this.spaceOfBox(num); this.setState({view:'box', boxNum:num, spaceId: sp?sp.id:this.state.spaceId, query:''}); }
+  jumpTo(sid,num){ this.setState({view:'box', spaceId:sid, boxNum:num, query:''}); }
+  goHome(){ this.setState({view:'home', spaceId:null, boxNum:null, query:'', addingSpace:false}); }
+  openLabels(){ this.setState({view:'labels', query:'', labelFilter:{spaceId:null, boxNum:null}}); }
+  openLabelsForSpace(){ this.setState({view:'labels', query:'', labelFilter:{spaceId:this.state.spaceId, boxNum:null}}); }
+  openLabelsForBox(){ this.setState({view:'labels', query:'', labelFilter:{spaceId:this.state.spaceId, boxNum:this.state.boxNum}}); }
+  pickLabelSpace(id){ this.setState({labelFilter:{spaceId:id, boxNum:null}}); }
+  clearBoxFilter(){ this.setState(s=>({labelFilter:{spaceId:s.labelFilter.spaceId, boxNum:null}})); }
+  printLabels(){ window.print(); }
+  onSearch(e){ this.setState({query:e.target.value}); }
+  clearSearch(){ this.setState({query:''}); }
+  stop(e){ e.stopPropagation(); }
+
+  toggleAddSpace(){ this.setState(s=>({addingSpace:!s.addingSpace, newSpaceName:'', newSpaceIcon:'ti-box'})); }
+  onNewSpaceName(e){ this.setState({newSpaceName:e.target.value}); }
+  setNewSpaceIcon(icon){ this.setState({newSpaceIcon:icon}); }
+  toggleEditIcon(){ this.setState(s=>({editingIcon:!s.editingIcon})); }
+  setSpaceIcon(icon){
+    const sp=this.findSpace(this.state.spaceId); if(!sp) return;
+    sp.icon=icon;
+    this.setState(s=>({spaces:[...s.spaces], editingIcon:false}));
+  }
+  onNewSpaceKey(e){ if(e.key==='Enter') this.saveSpace(); if(e.key==='Escape') this.setState({addingSpace:false}); }
+  saveSpace(){
+    const n=(this.state.newSpaceName||'').trim();
+    if(!n) return;
+    const sp={id:Date.now(), name:n, code:this.codeOf(n)||'NYT', icon:this.state.newSpaceIcon||'ti-box', boxes:[]};
+    this.setState(s=>({spaces:[...s.spaces, sp], addingSpace:false, newSpaceName:'', newSpaceIcon:'ti-box'}));
+  }
+  addBox(){
+    const sp=this.findSpace(this.state.spaceId);
+    if(!sp) return;
+    const next = this.nextNum();
+    sp.boxes.push({num:next, label:'', items:[]});
+    this.setState(s=>({spaces:[...s.spaces], view:'box', boxNum:next}));
+  }
+
+  openAddItem(){
+    const s=this.state;
+    let spaceId = s.spaceId || (s.spaces[0] && s.spaces[0].id) || null;
+    const sp=this.findSpace(spaceId);
+    let boxNum = s.boxNum;
+    if((!boxNum || s.view!=='box') && sp && sp.boxes[0]) boxNum = sp.boxes[0].num;
+    this.setState({addOpen:true, add:{photo:false, analyzing:false, name:'', suggested:'', spaceId, boxNum, recent:[]}});
+  }
+  closeAdd(){ this.setState({addOpen:false}); }
+  pickPhoto(){
+    if(this.state.add.analyzing) return;
+    this.setState(s=>({add:{...s.add, analyzing:true, photo:false}}));
+    clearTimeout(this._scanT);
+    this._scanT = setTimeout(()=>{
+      const g=this._guesses[Math.floor(Math.random()*this._guesses.length)];
+      this.setState(s=>({add:{...s.add, analyzing:false, photo:true, suggested:g, name:(s.add.name && s.add.name.trim()) ? s.add.name : g}}));
+    }, 1050);
+  }
+  onAddName(e){ const v=e.target.value; this.setState(s=>({add:{...s.add, name:v}})); }
+  setAddSpace(e){
+    const id=parseInt(e.target.value,10);
+    const sp=this.findSpace(id);
+    const boxNum = sp && sp.boxes[0] ? sp.boxes[0].num : null;
+    this.setState(s=>({add:{...s.add, spaceId:id, boxNum}}));
+  }
+  setAddBox(e){ const n=parseInt(e.target.value,10); this.setState(s=>({add:{...s.add, boxNum:n}})); }
+
+  async enrichTags(name, spaceId, boxNum){
+    try{
+      const prompt = 'Du taggar föremål för ett sökbart förvaringsregister på svenska. Ge 4–7 breda söktaggar (synonymer, överkategori, material, användning) för föremålet "'+name+'". Svara ENDAST med en JSON-array av korta gemena svenska ord. Exempel för "babyfilt": ["filt","täcke","textil","bebis","sängkläder","värme"].';
+      const txt = await window.claude.complete(prompt);
+      const m = txt && txt.match(/\[[\s\S]*\]/);
+      if(!m) return;
+      let tags = JSON.parse(m[0]);
+      tags = (tags||[]).filter(t=>typeof t==='string').map(t=>t.toLowerCase().trim()).filter(Boolean).slice(0,8);
+      if(!tags.length) return;
+      const sp=this.findSpace(spaceId); if(!sp) return;
+      const box=sp.boxes.find(b=>b.num===boxNum); if(!box) return;
+      for(let i=box.items.length-1;i>=0;i--){ if(box.items[i].name===name){ box.items[i].tags=tags; break; } }
+      this.setState(s=>({spaces:[...s.spaces]}));
+    }catch(e){ /* fallback tags from name already attached */ }
+  }
+
+  doSave(keepOpen){
+    const a=this.state.add;
+    const name=(a.name||'').trim();
+    if(!name || !a.spaceId || !a.boxNum) return;
+    const sp=this.findSpace(a.spaceId);
+    const box=sp && sp.boxes.find(b=>b.num===a.boxNum);
+    if(!box) return;
+    box.items.push({name, tags:this.tokenize(name)});
+    this.enrichTags(name, a.spaceId, a.boxNum);
+    if(keepOpen){
+      this.setState(s=>({spaces:[...s.spaces], add:{...s.add, name:'', photo:false, analyzing:false, suggested:'', recent:[name, ...s.add.recent].slice(0,8)}}));
+    } else {
+      this.setState(s=>({spaces:[...s.spaces], addOpen:false}));
+    }
+  }
+
+  onEmail(e){ this.setState({email:e.target.value}); }
+  onPassword(e){ this.setState({password:e.target.value}); }
+  toggleAuthMode(){ this.setState(s=>({authMode: s.authMode==='login'?'signup':'login'})); }
+  noop(e){ if(e && e.preventDefault) e.preventDefault(); }
+  authenticate(user){ const p=this.state.pendingBox; this.setState({authed:true, user:user||'du@stuffinabox.se', password:''}); if(p){ setTimeout(()=>{ this.openBox(p); this.setState({pendingBox:null}); },50); } }
+  submitAuth(e){ if(e && e.preventDefault) e.preventDefault(); this.authenticate((this.state.email||'').trim()); }
+  googleLogin(){ this.authenticate((this.state.email||'').trim() || 'du@gmail.com'); }
+  appleLogin(){ this.authenticate((this.state.email||'').trim() || 'du@icloud.com'); }
+  logout(){ this.setState({authed:false, view:'home', spaceId:null, boxNum:null, query:'', addOpen:false, password:''}); }
+
+  renderVals(){
+    const S=this.state;
+    const accentVar = this.props.accent || '#2f63e6';
+    const showCodes = this.props.showCodes !== false;
+    const showItemPhotos = this.props.showItemPhotos !== false;
+
+    const norm = s => (s||'').toLowerCase();
+    const q=norm(S.query).trim();
+    const searchActive = q.length>0;
+    const cur = this.findSpace(S.spaceId);
+    const curBox = cur ? cur.boxes.find(b=>b.num===S.boxNum) : null;
+
+    const totalSpaces = S.spaces.length;
+    const totalBoxes = S.spaces.reduce((a,s)=>a+s.boxes.length,0);
+    const totalItems = S.spaces.reduce((a,s)=>a+s.boxes.reduce((x,b)=>x+b.items.length,0),0);
+
+    const spaceCards = S.spaces.map(s=>{
+      const items=s.boxes.reduce((x,b)=>x+b.items.length,0);
+      return {id:s.id, name:s.name, code:s.code, icon:s.icon, meta:s.boxes.length+' lådor · '+items+' föremål', onOpen:()=>this.openSpace(s.id)};
+    });
+
+    const boxCards = cur ? cur.boxes.map(b=>({
+      num:b.num, code: 'BOX-'+this.pad3(b.num),
+      label: b.label || 'Namnlös låda',
+      itemMeta: b.items.length+' föremål',
+      onOpen:()=>this.openBox(b.num)
+    })) : [];
+
+    const items = curBox ? curBox.items.map(it=>{
+      const tags=(it.tags||[]).slice(0,4);
+      return {name:it.name, tags, hasTags:tags.length>0};
+    }) : [];
+
+    let gSpaces=[], gBoxes=[], gItems=[];
+    if(searchActive){
+      S.spaces.forEach(s=>{
+        if(norm(s.name).includes(q)) gSpaces.push({name:s.name, code:s.code, icon:s.icon, sub:s.boxes.length+' lådor', onOpen:()=>this.openSpace(s.id)});
+        s.boxes.forEach(b=>{
+          const code=s.code+'-'+this.pad(b.num);
+          const labelHit = norm(b.label).includes(q);
+          let containName=null;
+          if(!labelHit){
+            const it=b.items.find(it=> norm(it.name).includes(q) || (it.tags||[]).some(t=>norm(t).includes(q)));
+            if(it) containName=it.name;
+          }
+          if(labelHit || containName){
+            gBoxes.push({num:b.num, code, title:(b.label||('Box #'+b.num)), sub:s.name+' · Box #'+b.num, reason: containName?('Innehåller '+containName):'', hasReason:!!containName, onOpen:()=>this.jumpTo(s.id,b.num)});
+          }
+          b.items.forEach(it=>{
+            const nameHit=norm(it.name).includes(q);
+            let term=null;
+            if(!nameHit){ const tg=(it.tags||[]).find(t=>norm(t).includes(q)); if(tg) term=tg; }
+            if(nameHit||term){
+              gItems.push({title:it.name, sub:s.name+(b.label?' · '+b.label:'')+' · Box #'+b.num, via:!!term, term:term||'', boxNum:b.num, onOpen:()=>this.jumpTo(s.id,b.num)});
+            }
+          });
+        });
+      });
+    }
+    const total=gSpaces.length+gBoxes.length+gItems.length;
+
+    const lf = S.labelFilter || {spaceId:null, boxNum:null};
+    const labelCards=[];
+    S.spaces.forEach(s=>{
+      if(lf.spaceId && s.id!==lf.spaceId) return;
+      s.boxes.forEach(b=>{
+        if(lf.boxNum && b.num!==lf.boxNum) return;
+        labelCards.push({num:b.num, code:'#'+b.num, space:s.name, title:(b.label||('Box #'+b.num)), contents: b.items.length? b.items.slice(0,6).map(i=>i.name).join(' · ') : 'Tom låda', count:b.items.length+' föremål', qr: S.qr[b.num] || '', hasQr: !!S.qr[b.num], noQr: !S.qr[b.num]});
+      });
+    });
+    const totalLabelBoxes = S.spaces.reduce((a,s)=>a+s.boxes.length,0);
+    const labelFilters = [{spaceId:null, name:'Alla', icon:'', hasIcon:false, count:totalLabelBoxes}].concat(
+      S.spaces.map(s=>({spaceId:s.id, name:s.name, icon:s.icon, hasIcon:true, count:s.boxes.length}))
+    ).map(f=>{ const sel=(lf.spaceId||null)===(f.spaceId||null); return {name:f.name, icon:f.icon, hasIcon:f.hasIcon, count:f.count, onPick:()=>this.pickLabelSpace(f.spaceId), border: sel?'var(--accent,#2f63e6)':'rgba(20,24,30,0.14)', bg: sel?'color-mix(in srgb, var(--accent,#2f63e6) 9%, #fff)':'#fff', color: sel?'var(--accent,#2f63e6)':'#3C4048'}; });
+
+    const a=S.add;
+    const addSpace=this.findSpace(a.spaceId);
+    const addSpaceOptions = S.spaces.map(s=>({id:s.id, name:s.name}));
+    const addBoxOptions = addSpace ? addSpace.boxes.map(b=>({num:b.num, label:'Box #'+b.num+(b.label?' · '+b.label:'')})) : [];
+
+    const isLogin = S.authMode==='login';
+    const initial = ((S.user||S.email||'').trim()[0] || 'U').toUpperCase();
+
+    return {
+      accentVar, showCodes, showItemPhotos,
+
+      authed:S.authed, notAuthed:!S.authed,
+      isLogin, isSignup:!isLogin,
+      authTitle: isLogin ? 'Logga in' : 'Skapa konto',
+      authSubtitle: isLogin ? 'Välkommen tillbaka till ditt register.' : 'Börja hålla reda på var allt finns.',
+      authCta: isLogin ? 'Logga in' : 'Skapa konto',
+      switchPrompt: isLogin ? 'Har du inget konto?' : 'Har du redan ett konto?',
+      switchAction: isLogin ? 'Skapa konto' : 'Logga in',
+      email:S.email, password:S.password,
+      onEmail:(e)=>this.onEmail(e), onPassword:(e)=>this.onPassword(e),
+      submitAuth:(e)=>this.submitAuth(e), googleLogin:()=>this.googleLogin(), appleLogin:()=>this.appleLogin(),
+      toggleAuthMode:()=>this.toggleAuthMode(), noop:(e)=>this.noop(e),
+      logout:()=>this.logout(), userInitial:initial,
+      query:S.query, hasQuery:S.query.length>0, onSearch:(e)=>this.onSearch(e), clearSearch:()=>this.clearSearch(),
+
+      showSearch: searchActive,
+      showHome: !searchActive && S.view==='home',
+      showSpace: !searchActive && S.view==='space',
+      showBox: !searchActive && S.view==='box',
+      showLabels: !searchActive && S.view==='labels',
+
+      goHome:()=>this.goHome(), openCurrentSpace:()=> cur && this.openSpace(cur.id), openAddItem:()=>this.openAddItem(),
+      openLabels:()=>this.openLabels(), printLabels:()=>this.printLabels(),
+      openLabelsForSpace:()=>this.openLabelsForSpace(), openLabelsForBox:()=>this.openLabelsForBox(),
+      labelFilters, hasBoxFilter: !!lf.boxNum, boxFilterLabel: lf.boxNum?('Box #'+lf.boxNum):'',
+      clearBoxFilter:()=>this.clearBoxFilter(),
+      labelPrintCount: '('+labelCards.length+')',
+
+      showCrumb: !searchActive && (S.view==='space' || S.view==='box'),
+      crumbSpaceName: cur ? cur.name : '',
+      crumbSpaceColor: S.view==='box' ? '#6B7078' : '#16181C',
+      crumbBoxName: curBox ? ('Box #'+curBox.num) : '',
+
+      searchSpaces:gSpaces, hasSearchSpaces:gSpaces.length>0,
+      searchBoxes:gBoxes, hasSearchBoxes:gBoxes.length>0,
+      searchItems:gItems, hasSearchItems:gItems.length>0,
+      anyResults: total>0, noResults: total===0,
+      resultCount: total+(total===1?' träff':' träffar'),
+
+      totalsLine: totalSpaces+' utrymmen · '+totalBoxes+' lådor · '+totalItems+' föremål i registret',
+      spaceCards,
+      addingSpace:S.addingSpace, newSpaceName:S.newSpaceName, newSpaceIcon:S.newSpaceIcon,
+      iconChoices: this._icons.map(ic=>{ const sel=ic===S.newSpaceIcon; return {icon:ic, onPick:()=>this.setNewSpaceIcon(ic), border: sel?'var(--accent,#2f63e6)':'rgba(20,24,30,0.12)', bg: sel?'color-mix(in srgb, var(--accent,#2f63e6) 10%, #fff)':'#fff', color: sel?'var(--accent,#2f63e6)':'#6B7078'}; }),
+      toggleAddSpace:()=>this.toggleAddSpace(), onNewSpaceName:(e)=>this.onNewSpaceName(e), onNewSpaceKey:(e)=>this.onNewSpaceKey(e), saveSpace:()=>this.saveSpace(),
+
+      currentSpaceName: cur ? cur.name : '',
+      currentSpaceCode: cur ? cur.code : '',
+      currentSpaceIcon: cur ? cur.icon : 'ti-box',
+      editingIcon: S.editingIcon,
+      toggleEditIcon:()=>this.toggleEditIcon(),
+      spaceIconChoices: this._icons.map(ic=>{ const sel=cur && ic===cur.icon; return {icon:ic, onPick:()=>this.setSpaceIcon(ic), border: sel?'var(--accent,#2f63e6)':'rgba(20,24,30,0.12)', bg: sel?'color-mix(in srgb, var(--accent,#2f63e6) 10%, #fff)':'#fff', color: sel?'var(--accent,#2f63e6)':'#6B7078'}; }),
+      currentSpaceMeta: cur ? (cur.boxes.length+' lådor · '+cur.boxes.reduce((x,b)=>x+b.items.length,0)+' föremål') : '',
+      boxCards, addBox:()=>this.addBox(),
+
+      currentBoxNum: curBox ? curBox.num : '',
+      currentBoxLabel: curBox ? (curBox.label || 'Box #'+curBox.num) : '',
+      currentBoxMeta: curBox ? (curBox.items.length+' föremål') : '',
+      currentBoxTag: curBox ? ('#'+curBox.num) : '',
+      currentBoxSpaceId: cur ? cur.id : null,
+      moveSpaceOptions: S.spaces.map(s=>({id:s.id, name:s.name})),
+      onMoveBox:(e)=>this.onMoveBox(e),
+      items, boxHasItems: items.length>0, boxEmpty: items.length===0,
+
+      labelCards,
+
+      addOpen:S.addOpen, stop:(e)=>this.stop(e), closeAdd:()=>this.closeAdd(),
+      photoIdle: !a.photo && !a.analyzing, photoAnalyzing: a.analyzing, photoDone: a.photo && !a.analyzing,
+      suggested:a.suggested, pickPhoto:()=>this.pickPhoto(),
+      addName:a.name, onAddName:(e)=>this.onAddName(e),
+      addSpaceId:a.spaceId, addBoxNum:a.boxNum, addSpaceOptions, addBoxOptions,
+      setAddSpace:(e)=>this.setAddSpace(e), setAddBox:(e)=>this.setAddBox(e),
+      hasRecent:a.recent.length>0, recent:a.recent,
+      saveAndContinue:()=>this.doSave(true), saveAndClose:()=>this.doSave(false)
+    };
+  }
+}
+</script>
+</body>
+</html>
