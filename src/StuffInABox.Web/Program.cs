@@ -139,6 +139,7 @@ app.MapOAuthEndpoints();
 app.MapSpaceEndpoints();
 app.MapBoxEndpoints();
 app.MapItemEndpoints();
+app.MapRecognitionEndpoints();
 app.MapSearchEndpoints();
 app.MapLabelEndpoints();
 

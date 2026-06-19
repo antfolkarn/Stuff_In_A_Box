@@ -215,6 +215,7 @@ i databasen. Att flytta en låda ändrar bara `SpaceId`. `SpaceCode` härleds fr
 | **Databas-swap** | `Infrastructure/DependencyInjection.cs` | `Database:Provider`-switch; entitetskonfig undviker provider-specifika typer. |
 | **Bildlagring** | `IStorageService` | Lokal disk nu; byts mot t.ex. Azure Blob utan schemaändring (nyckel, inte URL, lagras). |
 | **Taggning** | `ITaggingService` | Tokenizer default; Claude API bakom `Tagging:Provider`-flagga. |
+| **Bildigenkänning** | `IImageRecognitionService` | No-op default; lokal Ollama-vision-modell bakom `ImageRecognition:Provider`-flagga. Anropas av `POST /api/recognize` när ett foto väljs, för att för-ifylla namnet. Kastar aldrig. |
 | **Bakgrundsjobb** | `TagEnrichmentWorker` | In-process `Channel<T>` + `IHostedService`; kastar aldrig, blockerar aldrig sparet. |
 | **Tema** | `ClientApp` `themeStore` | Ljust/mörkt via CSS-variabler och `data-theme`, persisterat i `localStorage`. Flimmerfritt: en liten inline-init i `index.html` sätter temat före första paint, tillåten av CSP via sin SHA-256-hash (ingen `'unsafe-inline'` för skript). Ändras skriptet måste hashen i `SecurityHeadersMiddleware` räknas om. |
 

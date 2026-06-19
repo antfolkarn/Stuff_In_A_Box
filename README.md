@@ -104,10 +104,26 @@ Alla värden ligger i `src/StuffInABox.Web/appsettings.json` (hemligheter hör h
 | `Storage:LocalPath` | Mapp för uppladdade bilder (tom = `wwwroot/uploads`). |
 | `Tagging:Provider` | `tokenizer` (default) eller `claude`. |
 | `Tagging:Claude:ApiKey` / `:Model` | Claude API-nyckel och modell (default `claude-haiku-4-5-20251001`). |
+| `ImageRecognition:Provider` | `none` (default) eller `ollama` (lokal vision-modell som för-ifyller föremålsnamn). |
+| `ImageRecognition:Ollama:BaseUrl` / `:Model` | Ollama-server (default `http://localhost:11434`) och modell (default `llava`). |
 | `OAuth:Google:*` / `OAuth:Apple:*` | Client-id m.m. Tomt = knapparna ger ett vänligt felmeddelande. |
 | `Cors:Origins` | Tillåtna origins för SPA:n. |
 | `Logging:File:Path` | Sökväg för loggfil (default `logs/stuffinabox-.log`, roteras dagligen). |
 | `RateLimiting:AuthPermitLimit` | Tillåtna `/auth/*`-anrop per minut och IP (default 10). |
+
+### Lokal bildigenkänning (valfritt)
+
+När du lägger till ett föremål kan ett foto automatiskt för-ifylla namnet. Som standard är detta avstängt (`ImageRecognition:Provider = none`). För att köra en **lokal** vision-modell:
+
+```bash
+# 1. Installera Ollama (https://ollama.com) och hämta en vision-modell
+ollama pull llava            # eller t.ex. qwen2.5vl, llama3.2-vision, moondream
+
+# 2. Slå på providern (appsettings.json eller miljövariabel)
+#    ImageRecognition:Provider = ollama
+```
+
+Backenden POSTar då fotot till Ollama (`http://localhost:11434`) med en svensk prompt och får tillbaka ett kort substantiv. Allt sker lokalt, utan styckkostnad. Tjänsten följer "kastar aldrig"-kontraktet: om Ollama inte körs får du bara inget namnförslag — flödet fungerar ändå.
 
 ---
 

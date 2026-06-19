@@ -4,12 +4,10 @@ import { IconX, IconCamera, IconLoader2, IconCheck, IconSparkles } from '@tabler
 import { getSpaces } from '../../api/spaces'
 import { getBoxesBySpace } from '../../api/boxes'
 import { addItem, uploadItemPhoto } from '../../api/items'
+import { recognizeImage } from '../../api/recognize'
 import { useUiStore } from '../../store/uiStore'
 
 type PhotoState = 'idle' | 'analyzing' | 'done'
-
-// Plausible Swedish guesses, mirrors the prototype's simulated recognition
-const GUESSES = ['Skruvdragare', 'Vinterjacka', 'Julpynt', 'Tältpinnar', 'Filtar', 'Kabelnystan']
 
 export default function AddItemSheet() {
   const qc = useQueryClient()
@@ -78,14 +76,23 @@ export default function AddItemSheet() {
       if (prev) URL.revokeObjectURL(prev)
       return URL.createObjectURL(file)
     })
-    // Simulated recognition (a real image-recognition service would go here)
+    // Ask the server's recognition service for a name suggestion. Returns null
+    // when no provider is configured (or it fails) — then we just keep the photo.
     setPhoto('analyzing')
-    const picked = GUESSES[Math.floor(Math.random() * GUESSES.length)]
-    setTimeout(() => {
-      setGuess(picked)
-      setPhoto('done')
-      setName((n) => n || picked)
-    }, 1050)
+    recognizeImage(file)
+      .then((suggested) => {
+        setPhoto('done')
+        if (suggested) {
+          setGuess(suggested)
+          setName((n) => n || suggested)
+        } else {
+          setGuess('')
+        }
+      })
+      .catch(() => {
+        setPhoto('done')
+        setGuess('')
+      })
   }
 
   function resetItemFields() {
@@ -257,7 +264,7 @@ export default function AddItemSheet() {
                   <IconCheck size={22} color="#fff" />
                 </div>
                 <div style={{ fontSize: 14, color: 'var(--success-text)', position: 'relative' }}>
-                  Igenkänt: <strong>{guess}</strong>
+                  {guess ? <>Igenkänt: <strong>{guess}</strong></> : 'Foto tillagt'}
                 </div>
                 <button
                   onClick={(e) => { e.stopPropagation(); fileInputRef.current?.click() }}
