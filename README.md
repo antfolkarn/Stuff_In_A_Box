@@ -32,7 +32,8 @@ Gränssnittet är på svenska.
 | Loggning | Serilog → konsol **och** roterande dagsfil |
 | Frontend | React 18 + TypeScript + Vite, React Query + Zustand |
 | Tema | Ljust/mörkt läge (persisterat, respekterar OS-inställning) |
-| Tester | xUnit + Moq (backend), WebApplicationFactory (integration) — **71 tester** |
+| Tester | xUnit + Moq (backend), WebApplicationFactory (integration) — **78 tester** |
+| Drift | Dockerfile (multi-stage) + docker-compose, health checks, GitHub Actions CI |
 
 ---
 
@@ -88,6 +89,17 @@ cd .. && dotnet run
 
 ASP.NET serverar då både API:t och den byggda SPA:n från samma origin (`MapFallbackToFile`).
 
+### Kör med Docker
+
+```bash
+# Sätt en riktig Jwt-secret i docker-compose.yml först (min 32 tecken)
+docker compose up --build
+```
+
+Appen körs då på http://localhost:8080. Data, uppladdningar och loggar persisteras i volymen `sib-data`. `docker-compose.yml` innehåller även en valfri (utkommenterad) `ollama`-tjänst för lokal bildigenkänning.
+
+**Health checks:** `GET /health` (liveness) och `GET /health/ready` (readiness, kollar databasen) — för load balancers / container-orkestrering.
+
 ---
 
 ## Konfiguration
@@ -130,15 +142,15 @@ Backenden POSTar då fotot till Ollama (`http://localhost:11434`) med en svensk 
 ## Testning
 
 ```bash
-dotnet test StuffInABox.slnx          # alla 71 backend-tester
+dotnet test StuffInABox.slnx          # alla 78 backend-tester
 ```
 
 | Lager | Antal | Vad testas |
 |-------|------:|------------|
 | Domain | 27 | Entitetsinvarianter, value object-validering |
 | Application | 19 | Handler-logik, auth, validering, service-orkestrering |
-| Infrastructure | 11 | Repository-SQL, EF-config, bildbehandling, Claude-taggning |
-| Web | 14 | JWT, refresh-flöde, OAuth-start, rate limiting, bilduppladdning, fel-mappning |
+| Infrastructure | 16 | Repository-SQL, EF-config, bildbehandling, Claude-taggning, Ollama-igenkänning |
+| Web | 16 | JWT, refresh-flöde, OAuth-start, rate limiting, bilduppladdning, health checks, fel-mappning |
 
 Utvecklat test-drivet: testet skrivs före implementationen.
 

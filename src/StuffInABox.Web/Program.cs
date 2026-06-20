@@ -96,6 +96,13 @@ builder.Services.AddCors(options =>
               .AllowCredentials());
 });
 
+// Health checks — liveness (/health) and readiness (/health/ready, checks the DB)
+builder.Services.AddHealthChecks()
+    .AddTypeActivatedCheck<StuffInABox.Web.HealthChecks.DatabaseHealthCheck>(
+        "database",
+        failureStatus: Microsoft.Extensions.Diagnostics.HealthChecks.HealthStatus.Unhealthy,
+        tags: ["ready"]);
+
 // Exception handler
 builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
 builder.Services.AddProblemDetails();
@@ -142,6 +149,16 @@ app.MapItemEndpoints();
 app.MapRecognitionEndpoints();
 app.MapSearchEndpoints();
 app.MapLabelEndpoints();
+
+// Health endpoints
+app.MapHealthChecks("/health", new Microsoft.AspNetCore.Diagnostics.HealthChecks.HealthCheckOptions
+{
+    Predicate = _ => false, // liveness: app is responding, run no checks
+});
+app.MapHealthChecks("/health/ready", new Microsoft.AspNetCore.Diagnostics.HealthChecks.HealthCheckOptions
+{
+    Predicate = check => check.Tags.Contains("ready"),
+});
 
 // SPA fallback — serve index.html for any non-API route (state-driven client routing)
 app.MapFallbackToFile("index.html");

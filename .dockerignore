@@ -1,0 +1,12 @@
+**/bin/
+**/obj/
+**/node_modules/
+**/wwwroot/
+**/dist/
+**/*.db
+**/*.db-shm
+**/*.db-wal
+**/logs/
+.git/
+.vs/
+.github/

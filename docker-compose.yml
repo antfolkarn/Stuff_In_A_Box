@@ -1,0 +1,33 @@
+services:
+  app:
+    build: .
+    ports:
+      - "8080:8080"
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Production
+      # Required: set a real secret (min 32 chars) before deploying
+      - Jwt__Secret=change-me-to-a-real-secret-min-32-characters
+      # Persist data, uploads and logs on the mounted volume
+      - ConnectionStrings__Default=Data Source=/data/stuffinabox.db
+      - Storage__LocalPath=/data/uploads
+      - Logging__File__Path=/data/logs/stuffinabox-.log
+      # Optional: enable local photo recognition via the ollama service below
+      # - ImageRecognition__Provider=ollama
+      # - ImageRecognition__Ollama__BaseUrl=http://ollama:11434
+    volumes:
+      - sib-data:/data
+    restart: unless-stopped
+
+  # Optional local vision model for photo recognition.
+  # Uncomment, then run:  docker compose exec ollama ollama pull llava
+  # ollama:
+  #   image: ollama/ollama
+  #   ports:
+  #     - "11434:11434"
+  #   volumes:
+  #     - ollama:/root/.ollama
+  #   restart: unless-stopped
+
+volumes:
+  sib-data:
+  # ollama:

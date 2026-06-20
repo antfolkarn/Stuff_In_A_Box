@@ -218,6 +218,8 @@ i databasen. Att flytta en låda ändrar bara `SpaceId`. `SpaceCode` härleds fr
 | **Bildigenkänning** | `IImageRecognitionService` | No-op default; lokal Ollama-vision-modell bakom `ImageRecognition:Provider`-flagga. Anropas av `POST /api/recognize` när ett foto väljs, för att för-ifylla namnet. Kastar aldrig. |
 | **Bakgrundsjobb** | `TagEnrichmentWorker` | In-process `Channel<T>` + `IHostedService`; kastar aldrig, blockerar aldrig sparet. |
 | **Tema** | `ClientApp` `themeStore` | Ljust/mörkt via CSS-variabler och `data-theme`, persisterat i `localStorage`. Flimmerfritt: en liten inline-init i `index.html` sätter temat före första paint, tillåten av CSP via sin SHA-256-hash (ingen `'unsafe-inline'` för skript). Ändras skriptet måste hashen i `SecurityHeadersMiddleware` räknas om. |
+| **Health checks** | `Program.cs` + `DatabaseHealthCheck` | `/health` (liveness) och `/health/ready` (readiness, kollar DB) för orkestrering. |
+| **Drift** | `Dockerfile`, `docker-compose.yml`, `.github/workflows/ci.yml` | Multi-stage-bygge (SPA + .NET → Linux-runtime), CI som bygger och testar. SkiaSharp Linux-native-assets ingår så bildbehandling fungerar i container. |
 
 ---
 
