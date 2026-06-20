@@ -249,6 +249,9 @@ function ItemCard({ item, boxNumber }: { item: ItemDto; boxNumber: number }) {
   const openLightbox = useLightbox((s) => s.open)
   const [editing, setEditing] = useState(false)
   const [draft, setDraft] = useState(item.name)
+  const [imgBroken, setImgBroken] = useState(false)
+
+  const hasPhoto = !!item.photoUrl && !imgBroken
 
   const renameMut = useMutation({
     mutationFn: (name: string) => updateItem(boxNumber, item.id, { name }),
@@ -277,16 +280,21 @@ function ItemCard({ item, boxNumber }: { item: ItemDto; boxNumber: number }) {
       {/* Photo — click to enlarge when present */}
       <div
         className="hatch-bg"
-        onClick={() => item.photoUrl && openLightbox(item.photoUrl)}
-        title={item.photoUrl ? 'Visa större' : undefined}
+        onClick={() => hasPhoto && openLightbox(item.photoUrl!)}
+        title={hasPhoto ? 'Visa större' : undefined}
         style={{
           width: 54, height: 54, borderRadius: 9, flexShrink: 0,
           display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden',
-          cursor: item.photoUrl ? 'zoom-in' : 'default',
+          cursor: hasPhoto ? 'zoom-in' : 'default',
         }}
       >
-        {item.photoUrl ? (
-          <img src={item.photoUrl} alt={item.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+        {hasPhoto ? (
+          <img
+            src={item.photoUrl!}
+            alt={item.name}
+            onError={() => setImgBroken(true)}
+            style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+          />
         ) : (
           <IconPhoto size={18} style={{ color: 'var(--text-5)' }} />
         )}

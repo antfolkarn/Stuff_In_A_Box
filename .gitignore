@@ -15,6 +15,7 @@ src/StuffInABox.Web/wwwroot/
 *.db-shm
 *.db-wal
 logs/
+uploads/
 
 # OS / editor
 .DS_Store

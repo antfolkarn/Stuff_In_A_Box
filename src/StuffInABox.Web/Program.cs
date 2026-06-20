@@ -31,6 +31,17 @@ builder.Host.UseSerilog((context, loggerConfig) => loggerConfig
         retainedFileCountLimit: 14,
         outputTemplate: "{Timestamp:yyyy-MM-dd HH:mm:ss.fff zzz} [{Level:u3}] {Message:lj}{NewLine}{Exception}"));
 
+// Resolve the uploads directory and keep it OUTSIDE wwwroot — otherwise an SPA
+// rebuild (Vite empties wwwroot) would delete user photos. The resolved absolute
+// path is written back to config so the storage service and the static-file
+// middleware below use exactly the same location.
+var uploadsPath = builder.Configuration["Storage:LocalPath"];
+if (string.IsNullOrWhiteSpace(uploadsPath))
+{
+    uploadsPath = Path.Combine(builder.Environment.ContentRootPath, "uploads");
+    builder.Configuration["Storage:LocalPath"] = uploadsPath;
+}
+
 // MediatR + FluentValidation
 builder.Services.AddMediatR(cfg =>
 {
@@ -135,6 +146,15 @@ else
 app.UseHttpsRedirection();
 app.UseDefaultFiles();
 app.UseStaticFiles();
+
+// Serve uploaded photos from the external uploads directory at /uploads
+Directory.CreateDirectory(uploadsPath);
+app.UseStaticFiles(new StaticFileOptions
+{
+    FileProvider = new Microsoft.Extensions.FileProviders.PhysicalFileProvider(uploadsPath),
+    RequestPath = "/uploads",
+});
+
 app.UseCors();
 app.UseRateLimiter();
 app.UseAuthentication();

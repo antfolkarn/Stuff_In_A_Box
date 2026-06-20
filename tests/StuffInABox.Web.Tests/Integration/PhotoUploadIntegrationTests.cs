@@ -81,6 +81,12 @@ public class PhotoUploadIntegrationTests : IClassFixture<WebApplicationFactory<P
         // The item now reports a photo URL
         var items = await client.GetFromJsonAsync<JsonElement>($"/api/boxes/{boxNumber}/items");
         Assert.False(string.IsNullOrEmpty(items[0].GetProperty("photoUrl").GetString()));
+
+        // And the photo is actually served (regression guard: uploads must live
+        // outside wwwroot so they survive SPA rebuilds)
+        var photo = await client.GetAsync(url);
+        Assert.Equal(HttpStatusCode.OK, photo.StatusCode);
+        Assert.StartsWith("image/", photo.Content.Headers.ContentType?.MediaType);
     }
 
     [Fact]

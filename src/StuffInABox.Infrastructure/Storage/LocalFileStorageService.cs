@@ -12,8 +12,9 @@ public class LocalFileStorageService(IConfiguration config) : IStorageService
         get
         {
             var configured = config["Storage:LocalPath"];
+            // Default outside wwwroot so SPA rebuilds don't wipe uploads.
             return string.IsNullOrWhiteSpace(configured)
-                ? Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "uploads")
+                ? Path.Combine(Directory.GetCurrentDirectory(), "uploads")
                 : configured;
         }
     }
