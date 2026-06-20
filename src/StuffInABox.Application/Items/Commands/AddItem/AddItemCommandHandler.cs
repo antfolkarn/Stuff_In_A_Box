@@ -28,6 +28,10 @@ public sealed class AddItemCommandHandler(
         var quickTags = Tokenize(request.Name);
         item.ReplaceTags(quickTags);
 
+        // Merge in tags detected from the photo (objects, colours, material, …)
+        if (request.Tags is { Count: > 0 })
+            item.MergeTags(request.Tags);
+
         await itemRepo.AddAsync(item, ct);
 
         // Fire-and-forget async enrichment (LLM/tagging service)

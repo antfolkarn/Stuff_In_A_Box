@@ -123,19 +123,29 @@ Alla värden ligger i `src/StuffInABox.Web/appsettings.json` (hemligheter hör h
 | `Logging:File:Path` | Sökväg för loggfil (default `logs/stuffinabox-.log`, roteras dagligen). |
 | `RateLimiting:AuthPermitLimit` | Tillåtna `/auth/*`-anrop per minut och IP (default 10). |
 
-### Lokal bildigenkänning (valfritt)
+### Lokal bildigenkänning
 
-När du lägger till ett föremål kan ett foto automatiskt för-ifylla namnet. Som standard är detta avstängt (`ImageRecognition:Provider = none`). För att köra en **lokal** vision-modell:
+När du lägger till ett föremål analyseras fotot och **namn + taggar** (föremål, färger, material, boktitlar) för-ifylls. Detta drivs av en lokal vision-modell via Ollama.
 
 ```bash
-# 1. Installera Ollama (https://ollama.com) och hämta en vision-modell
+# Installera Ollama (https://ollama.com) och hämta en vision-modell
 ollama pull llava            # eller t.ex. qwen2.5vl, llama3.2-vision, moondream
-
-# 2. Slå på providern (appsettings.json eller miljövariabel)
-#    ImageRecognition:Provider = ollama
 ```
 
-Backenden POSTar då fotot till Ollama (`http://localhost:11434`) med en svensk prompt och får tillbaka ett kort substantiv. Allt sker lokalt, utan styckkostnad. Tjänsten följer "kastar aldrig"-kontraktet: om Ollama inte körs får du bara inget namnförslag — flödet fungerar ändå.
+**På/av (toggle):**
+
+| Läge | Standard | Slå av | Slå på |
+|------|----------|--------|--------|
+| `dotnet run` (Development) | **på** (`appsettings.Development.json` → `ImageRecognition:Provider = ollama`) | sätt `ImageRecognition__Provider=none` (miljövariabel) eller ändra dev-konfigen | — |
+| Produktion (`appsettings.json`) | av (`none`) | — | sätt `ImageRecognition:Provider = ollama` |
+
+```bash
+# Tillfälligt av för en körning
+ImageRecognition__Provider=none dotnet run        # bash
+$env:ImageRecognition__Provider='none'; dotnet run  # PowerShell
+```
+
+Backenden POSTar fotot till Ollama (`http://localhost:11434`, modell via `ImageRecognition:Ollama:Model`) med en strikt svensk JSON-prompt. Allt sker lokalt, utan styckkostnad. Tjänsten följer "kastar aldrig"-kontraktet: om Ollama inte körs får du bara inga förslag — flödet fungerar ändå.
 
 ---
 

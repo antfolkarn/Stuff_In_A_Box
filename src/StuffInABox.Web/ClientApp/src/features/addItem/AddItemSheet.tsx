@@ -21,6 +21,7 @@ export default function AddItemSheet() {
   const [recent, setRecent] = useState<string[]>([])
   const [photoFile, setPhotoFile] = useState<File | null>(null)
   const [previewUrl, setPreviewUrl] = useState<string | null>(null)
+  const [detectedTags, setDetectedTags] = useState<string[]>([])
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   const { data: spaces = [] } = useQuery({ queryKey: ['spaces'], queryFn: getSpaces })
@@ -51,7 +52,8 @@ export default function AddItemSheet() {
 
   const saveMut = useMutation({
     mutationFn: async () => {
-      const result = await addItem(selectedBox!, name.trim())
+      // Pass the photo-derived tags so they're stored and searchable
+      const result = await addItem(selectedBox!, name.trim(), detectedTags)
       // Attach the photo (if any) to the freshly created item
       if (photoFile) {
         try {
@@ -76,22 +78,20 @@ export default function AddItemSheet() {
       if (prev) URL.revokeObjectURL(prev)
       return URL.createObjectURL(file)
     })
-    // Ask the server's recognition service for a name suggestion. Returns null
-    // when no provider is configured (or it fails) — then we just keep the photo.
+    // Ask the server's recognition service for a name + tags. Returns empty when
+    // no provider is configured (or it fails) — then we just keep the photo.
     setPhoto('analyzing')
     recognizeImage(file)
-      .then((suggested) => {
+      .then((result) => {
         setPhoto('done')
-        if (suggested) {
-          setGuess(suggested)
-          setName((n) => n || suggested)
-        } else {
-          setGuess('')
-        }
+        setGuess(result.name ?? '')
+        setDetectedTags(result.tags)
+        if (result.name) setName((n) => n || result.name!)
       })
       .catch(() => {
         setPhoto('done')
         setGuess('')
+        setDetectedTags([])
       })
   }
 
@@ -99,6 +99,7 @@ export default function AddItemSheet() {
     setName('')
     setPhoto('idle')
     setGuess('')
+    setDetectedTags([])
     setPhotoFile(null)
     setPreviewUrl((prev) => {
       if (prev) URL.revokeObjectURL(prev)
@@ -299,12 +300,47 @@ export default function AddItemSheet() {
               <IconSparkles size={14} />
               Taggas automatiskt med relaterade ord så den blir lätt att hitta
             </div>
+
+            {/* Detected tags from the photo (objects, colours, material, …) */}
+            {detectedTags.length > 0 && (
+              <div style={{ marginTop: 10 }}>
+                <div className="mono" style={{ fontSize: 10, color: 'var(--text-4)', letterSpacing: '0.08em', marginBottom: 6 }}>
+                  IGENKÄNDA TAGGAR
+                </div>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                  {detectedTags.map((tag) => (
+                    <span
+                      key={tag}
+                      style={{
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: 4,
+                        padding: '3px 6px 3px 10px',
+                        borderRadius: 999,
+                        background: 'var(--accent-9)',
+                        color: 'var(--accent)',
+                        fontSize: 12.5,
+                      }}
+                    >
+                      {tag}
+                      <button
+                        onClick={() => setDetectedTags((t) => t.filter((x) => x !== tag))}
+                        aria-label={`Ta bort taggen ${tag}`}
+                        style={{ display: 'flex', color: 'inherit', opacity: 0.7 }}
+                      >
+                        <IconX size={13} />
+                      </button>
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Destination */}
           <div style={{ marginBottom: 18 }}>
             <div className="field-label">VAR LÄGGER DU DEN?</div>
-            <div style={{ display: 'flex', gap: 8 }}>
+            <div className="stack-mobile" style={{ display: 'flex', gap: 8 }}>
               <select
                 className="select"
                 style={{ flex: 1 }}

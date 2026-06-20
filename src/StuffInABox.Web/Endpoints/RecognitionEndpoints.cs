@@ -9,14 +9,18 @@ public static class RecognitionEndpoints
 {
     public static IEndpointRouteBuilder MapRecognitionEndpoints(this IEndpointRouteBuilder app)
     {
-        // Called when a photo is chosen in the add-item sheet, to pre-fill the name.
-        // Returns { name: null } when no recognition provider is configured.
+        // Called when a photo is chosen in the add-item sheet, to pre-fill the name
+        // and suggest tags. Returns { name: null, tags: [] } when no provider is configured.
         app.MapPost("/api/recognize", async (IFormFile file, IImageRecognitionService recognizer, CancellationToken ct) =>
         {
             using var ms = new MemoryStream();
             await file.CopyToAsync(ms, ct);
-            var name = await recognizer.RecognizeAsync(ms.ToArray(), ct);
-            return Results.Ok(new { name });
+            var result = await recognizer.RecognizeAsync(ms.ToArray(), ct);
+            return Results.Ok(new
+            {
+                name = result?.Name,
+                tags = result?.Tags ?? [],
+            });
         })
         .RequireAuthorization()
         .DisableAntiforgery()

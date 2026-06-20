@@ -41,6 +41,26 @@ public class AddItemHandlerTests
     }
 
     [Fact]
+    public async Task Handle_MergesPhotoTags_WithTokenizerTags()
+    {
+        Item? saved = null;
+        _itemRepo.Setup(r => r.AddAsync(It.IsAny<Item>(), It.IsAny<CancellationToken>()))
+                 .Callback<Item, CancellationToken>((i, _) => saved = i)
+                 .Returns(Task.CompletedTask);
+
+        var handler = new AddItemCommandHandler(_itemRepo.Object, _boxRepo.Object, _user.Object, _queue.Object);
+        var result = await handler.Handle(
+            new AddItemCommand(3, "Röd jacka", new[] { "jacka", "röd", "ytterkläder" }), default);
+
+        // Tokenizer tags from the name plus the photo-derived tags, de-duplicated
+        Assert.Contains("röd", result.Tags);
+        Assert.Contains("jacka", result.Tags);
+        Assert.Contains("ytterkläder", result.Tags);
+        Assert.Equal(result.Tags.Count, result.Tags.Distinct().Count());
+        Assert.NotNull(saved);
+    }
+
+    [Fact]
     public async Task Handle_EnqueuesEnrichment()
     {
         _itemRepo.Setup(r => r.AddAsync(It.IsAny<Item>(), It.IsAny<CancellationToken>()))

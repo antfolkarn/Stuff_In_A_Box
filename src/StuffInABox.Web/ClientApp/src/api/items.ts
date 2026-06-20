@@ -4,8 +4,8 @@ import type { ItemDto, AddItemResult } from './types'
 export const getItemsByBox = (boxNumber: number) =>
   api.get<ItemDto[]>(`/boxes/${boxNumber}/items`).then((r) => r.data)
 
-export const addItem = (boxNumber: number, name: string) =>
-  api.post<AddItemResult>(`/boxes/${boxNumber}/items`, { name }).then((r) => r.data)
+export const addItem = (boxNumber: number, name: string, tags?: string[]) =>
+  api.post<AddItemResult>(`/boxes/${boxNumber}/items`, { name, tags }).then((r) => r.data)
 
 export const updateItem = (
   boxNumber: number,
