@@ -8,6 +8,7 @@ import { getBoxDetail, moveBox, updateBoxLabel, deleteBox } from '../../api/boxe
 import { getItemsByBox, deleteItem, updateItem } from '../../api/items'
 import { getSpaces } from '../../api/spaces'
 import { useUiStore } from '../../store/uiStore'
+import { useLightbox } from '../../store/lightboxStore'
 import type { ItemDto } from '../../api/types'
 
 export default function BoxView() {
@@ -172,6 +173,7 @@ export default function BoxView() {
 
       {/* Location row */}
       <div
+        className="location-row"
         style={{
           background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 12,
           padding: '12px 16px', display: 'flex', alignItems: 'center', gap: 12, marginBottom: 20, flexWrap: 'wrap',
@@ -193,7 +195,7 @@ export default function BoxView() {
           Numret #{box.number} följer lådan om du flyttar den.
         </span>
         <button
-          className="btn btn-outline btn-sm"
+          className="btn btn-outline btn-sm location-print"
           onClick={() => goLabels({ boxNumber: boxNum })}
           style={{ marginLeft: 'auto', flexShrink: 0 }}
         >
@@ -244,6 +246,7 @@ export default function BoxView() {
 
 function ItemCard({ item, boxNumber }: { item: ItemDto; boxNumber: number }) {
   const qc = useQueryClient()
+  const openLightbox = useLightbox((s) => s.open)
   const [editing, setEditing] = useState(false)
   const [draft, setDraft] = useState(item.name)
 
@@ -271,12 +274,15 @@ function ItemCard({ item, boxNumber }: { item: ItemDto; boxNumber: number }) {
         padding: 11, display: 'flex', gap: 10, alignItems: 'flex-start',
       }}
     >
-      {/* Photo */}
+      {/* Photo — click to enlarge when present */}
       <div
         className="hatch-bg"
+        onClick={() => item.photoUrl && openLightbox(item.photoUrl)}
+        title={item.photoUrl ? 'Visa större' : undefined}
         style={{
-          width: 46, height: 46, borderRadius: 9, flexShrink: 0,
+          width: 54, height: 54, borderRadius: 9, flexShrink: 0,
           display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden',
+          cursor: item.photoUrl ? 'zoom-in' : 'default',
         }}
       >
         {item.photoUrl ? (

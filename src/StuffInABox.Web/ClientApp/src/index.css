@@ -327,6 +327,42 @@ a:hover {
   border: 1.5px dashed var(--border-2);
 }
 
+/* Mobile */
+@media (max-width: 640px) {
+  .app-header-inner {
+    padding: 10px 14px;
+    gap: 10px;
+  }
+  /* Search drops to its own full-width row; brand + actions stay on top */
+  .header-search {
+    order: 3;
+    flex-basis: 100%;
+    max-width: none !important;
+  }
+  .header-actions {
+    order: 2;
+    margin-left: auto;
+  }
+  .brand-eyebrow { display: none; }
+  /* Make the header action buttons icon-only so they don't overflow */
+  .app-header .btn-label { display: none; }
+  .app-header .btn { padding: 0 12px; }
+
+  .main-content { padding: 20px 14px 72px; }
+
+  /* 16px prevents iOS Safari from auto-zooming on focus, and reads better */
+  .input, .select { font-size: 16px; }
+
+  /* Stack side-by-side selects so they don't get cramped */
+  .stack-mobile { flex-direction: column !important; }
+  .stack-mobile > .select,
+  .stack-mobile > .input { width: 100% !important; }
+
+  /* Box location controls stack vertically */
+  .location-row { align-items: stretch !important; }
+  .location-print { margin-left: 0 !important; width: 100%; }
+}
+
 /* Print */
 @media print {
   .no-print { display: none !important; }

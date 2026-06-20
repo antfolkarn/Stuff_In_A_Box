@@ -10,6 +10,7 @@ import BoxView from './features/box/BoxView'
 import SearchView from './features/search/SearchView'
 import LabelsView from './features/labels/LabelsView'
 import AddItemSheet from './features/addItem/AddItemSheet'
+import ImageLightbox from './shared/components/ImageLightbox'
 
 export default function App() {
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated)
@@ -53,6 +54,7 @@ export default function App() {
         )}
       </main>
       {addOpen && <AddItemSheet />}
+      <ImageLightbox />
     </div>
   )
 }

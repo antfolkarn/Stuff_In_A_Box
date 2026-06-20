@@ -31,6 +31,7 @@ export default function AppHeader() {
       <div className="app-header-inner">
         {/* Brand */}
         <button
+          className="header-brand"
           onClick={goHome}
           style={{
             display: 'flex',
@@ -53,7 +54,7 @@ export default function AppHeader() {
               StuffInABox
             </div>
             <div
-              className="mono"
+              className="mono brand-eyebrow"
               style={{
                 fontSize: 9,
                 letterSpacing: '0.14em',
@@ -69,6 +70,7 @@ export default function AppHeader() {
 
         {/* Search */}
         <div
+          className="header-search"
           style={{
             flex: 1,
             maxWidth: 540,
@@ -109,45 +111,44 @@ export default function AppHeader() {
           )}
         </div>
 
-        {/* Theme toggle */}
-        <button
-          className="btn btn-outline"
-          onClick={toggleTheme}
-          title={theme === 'dark' ? 'Ljust läge' : 'Mörkt läge'}
-          aria-label="Växla färgtema"
-          style={{ width: 42, padding: 0 }}
-        >
-          {theme === 'dark' ? <IconSun size={18} /> : <IconMoon size={18} />}
-        </button>
-
-        {/* Add button */}
-        <button className="btn btn-accent" onClick={() => openAdd()}>
-          <IconPlus size={17} />
-          Lägg till
-        </button>
-
-        {/* Logout */}
-        <button
-          className="btn btn-outline"
-          onClick={handleLogout}
-          style={{ gap: 8, paddingLeft: 4 }}
-        >
-          <div
-            className="icon-tile icon-tile-neutral"
-            style={{ width: 32, height: 32, borderRadius: 8, flexShrink: 0 }}
+        {/* Actions */}
+        <div className="header-actions" style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          {/* Theme toggle */}
+          <button
+            className="btn btn-outline"
+            onClick={toggleTheme}
+            title={theme === 'dark' ? 'Ljust läge' : 'Mörkt läge'}
+            aria-label="Växla färgtema"
+            style={{ width: 42, padding: 0, flexShrink: 0 }}
           >
-            <span
-              className="mono"
-              style={{ fontSize: 14, fontWeight: 600 }}
+            {theme === 'dark' ? <IconSun size={18} /> : <IconMoon size={18} />}
+          </button>
+
+          {/* Add button */}
+          <button className="btn btn-accent" onClick={() => openAdd()} aria-label="Lägg till" style={{ flexShrink: 0 }}>
+            <IconPlus size={17} />
+            <span className="btn-label">Lägg till</span>
+          </button>
+
+          {/* Logout */}
+          <button
+            className="btn btn-outline"
+            onClick={handleLogout}
+            aria-label="Logga ut"
+            style={{ gap: 8, paddingLeft: 4, flexShrink: 0 }}
+          >
+            <div
+              className="icon-tile icon-tile-neutral"
+              style={{ width: 32, height: 32, borderRadius: 8, flexShrink: 0 }}
             >
-              A
-            </span>
-          </div>
-          <span style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
-            Logga ut
+              <span className="mono" style={{ fontSize: 14, fontWeight: 600 }}>
+                A
+              </span>
+            </div>
+            <span className="btn-label">Logga ut</span>
             <IconLogout size={16} />
-          </span>
-        </button>
+          </button>
+        </div>
       </div>
     </header>
   )
