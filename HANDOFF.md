@@ -48,6 +48,7 @@ Referensprototyper: `design_handoff_stuffinabox/StuffInABox - Atelier.dc.html` o
 - **`.slnx`**, inte `.sln`. `dotnet new sln` skapar `.slnx` som default på denna SDK.
 - **SkiaSharp Linux-assets** finns med (annars kraschar bilduppladdning i container/CI).
 - **Windows PowerShell 5.1** manglar icke-ASCII i `Invoke-RestMethod -Body` och `curl -F` (multipart) ger HTTP 000 — använd .NET `HttpClient` eller integrationstest för svenska/multipart.
+- **NU1903 (SQLite, CVE-2025-6965):** `SQLitePCLRaw.lib.e_sqlite3 2.1.11` (transitivt via EF Core Sqlite) flaggas som high. **Ingen patchad version finns ännu** (advisory: `patched: None`, `<= 2.1.11`, 2.1.11 är senaste). Faktisk risk låg: appen kör enbart parametriserad EF Core/LINQ, ingen rå SQL; CI failar inte på varningen. **Beslut: vänta på uppström** — bumpa så fort SQLitePCLRaw släpper en fix.
 
 ## Var saker ligger (nytt sen design-arbetet)
 - Inställningar backend: `src/StuffInABox.Application/Settings/`, `…Domain/Entities/UserSettings.cs`, `…Web/Endpoints/SettingsEndpoints.cs`.
