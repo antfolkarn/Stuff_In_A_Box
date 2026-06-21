@@ -21,3 +21,6 @@ uploads/
 .DS_Store
 Thumbs.db
 .vs/
+
+# Temp-uppackning av design-zip (referensfilerna ligger i design_handoff_stuffinabox/)
+design/extracted/
