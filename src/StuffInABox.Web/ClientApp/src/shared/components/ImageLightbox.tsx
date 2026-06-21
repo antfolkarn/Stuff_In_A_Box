@@ -44,7 +44,7 @@ export default function ImageLightbox() {
           right: 16,
           width: 42,
           height: 42,
-          borderRadius: 11,
+          borderRadius: 'var(--r-md)',
           background: 'rgba(255,255,255,0.14)',
           color: '#fff',
           display: 'flex',
@@ -62,7 +62,7 @@ export default function ImageLightbox() {
           maxWidth: '92vw',
           maxHeight: '88vh',
           objectFit: 'contain',
-          borderRadius: 12,
+          borderRadius: 'var(--r-md)',
           boxShadow: '0 18px 50px rgba(0,0,0,0.5)',
         }}
       />

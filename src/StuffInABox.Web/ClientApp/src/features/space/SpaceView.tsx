@@ -97,8 +97,8 @@ export default function SpaceView() {
                 width: 54,
                 height: 54,
                 background: 'var(--surface)',
-                border: '1px solid var(--border)',
-                borderRadius: 14,
+                border: 'var(--bw) solid var(--border)',
+                borderRadius: 'var(--r-lg)',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
@@ -138,7 +138,7 @@ export default function SpaceView() {
                   color: 'var(--text-4)',
                   background: 'var(--tile)',
                   padding: '3px 8px',
-                  borderRadius: 6,
+                  borderRadius: 'var(--r-sm)',
                 }}
               >
                 {space.code}
@@ -164,8 +164,8 @@ export default function SpaceView() {
         <div
           style={{
             background: 'var(--surface)',
-            border: '1px solid var(--border)',
-            borderRadius: 13,
+            border: 'var(--bw) solid var(--border)',
+            borderRadius: 'var(--r-lg)',
             padding: 16,
             marginBottom: 24,
             marginTop: 16,
@@ -202,7 +202,7 @@ export default function SpaceView() {
               style={{
                 background: 'var(--surface)',
                 border: '1.5px solid var(--accent)',
-                borderRadius: 14,
+                borderRadius: 'var(--r-lg)',
                 padding: 15,
                 display: 'flex',
                 flexDirection: 'column',
@@ -245,7 +245,7 @@ export default function SpaceView() {
               onClick={() => setAddingBox(true)}
               style={{
                 background: 'transparent',
-                borderRadius: 14,
+                borderRadius: 'var(--r-lg)',
                 minHeight: 128,
                 display: 'flex',
                 flexDirection: 'column',
@@ -273,13 +273,13 @@ function BoxCard({ box, onClick }: { box: BoxDto; onClick: () => void }) {
   return (
     <div
       className="card"
-      style={{ padding: 15, cursor: 'pointer', borderRadius: 14, minHeight: 128 }}
+      style={{ padding: 15, cursor: 'pointer', borderRadius: 'var(--r-lg)', minHeight: 128 }}
       onClick={onClick}
     >
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
         <div
           className="icon-tile icon-tile-accent-tint"
-          style={{ width: 38, height: 38, borderRadius: 10 }}
+          style={{ width: 38, height: 38, borderRadius: 'var(--r-sm)' }}
         >
           <span
             className="mono"

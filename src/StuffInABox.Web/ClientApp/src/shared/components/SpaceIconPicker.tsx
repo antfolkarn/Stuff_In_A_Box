@@ -32,10 +32,10 @@ export default function SpaceIconPicker({ value, onChange, label }: Props) {
               style={{
                 width: 40,
                 height: 40,
-                borderRadius: 10,
+                borderRadius: 'var(--r-sm)',
                 border: active
                   ? `2px solid var(--accent)`
-                  : '1px solid var(--border)',
+                  : 'var(--bw) solid var(--border)',
                 background: active ? 'var(--accent-9)' : 'var(--surface)',
                 color: active ? 'var(--accent)' : 'var(--text-2)',
                 display: 'flex',

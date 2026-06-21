@@ -96,7 +96,7 @@ export default function BoxView() {
         {/* Number tile */}
         <div
           style={{
-            width: 62, height: 62, background: 'var(--accent)', borderRadius: 16,
+            width: 62, height: 62, background: 'var(--accent)', borderRadius: 'var(--r-lg)',
             display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
             boxShadow: '0 3px 10px color-mix(in srgb, var(--accent) 35%, transparent)',
           }}
@@ -122,14 +122,14 @@ export default function BoxView() {
               />
               <button
                 className="icon-tile icon-tile-accent"
-                style={{ width: 34, height: 34, borderRadius: 9 }}
+                style={{ width: 34, height: 34, borderRadius: 'var(--r-sm)' }}
                 onClick={() => labelDraft.trim() && renameMut.mutate(labelDraft.trim())}
               >
                 <IconCheck size={17} />
               </button>
               <button
                 className="icon-tile icon-tile-neutral"
-                style={{ width: 34, height: 34, borderRadius: 9 }}
+                style={{ width: 34, height: 34, borderRadius: 'var(--r-sm)' }}
                 onClick={() => setEditingLabel(false)}
               >
                 <IconX size={17} />
@@ -162,7 +162,7 @@ export default function BoxView() {
         {/* Print label pill */}
         <button
           className="btn btn-outline"
-          style={{ border: '1.5px dashed var(--border-2)', gap: 8, fontSize: 13.5 }}
+          style={{ border: 'var(--bw) dashed var(--border-2)', gap: 8, fontSize: 13.5 }}
           onClick={() => goLabels({ boxNumber: boxNum })}
         >
           <IconTag size={15} />
@@ -175,7 +175,7 @@ export default function BoxView() {
       <div
         className="location-row"
         style={{
-          background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 12,
+          background: 'var(--surface)', border: 'var(--bw) solid var(--border)', borderRadius: 'var(--r-md)',
           padding: '12px 16px', display: 'flex', alignItems: 'center', gap: 12, marginBottom: 20, flexWrap: 'wrap',
         }}
       >
@@ -208,7 +208,7 @@ export default function BoxView() {
       {items.length === 0 ? (
         <div
           style={{
-            background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 12,
+            background: 'var(--surface)', border: 'var(--bw) solid var(--border)', borderRadius: 'var(--r-md)',
             padding: '40px 20px', textAlign: 'center', marginBottom: 16,
           }}
         >
@@ -234,7 +234,7 @@ export default function BoxView() {
       {/* Add item button */}
       <button
         className="btn btn-accent"
-        style={{ width: '100%', height: 46, borderRadius: 12, fontSize: 15 }}
+        style={{ width: '100%', height: 46, borderRadius: 'var(--r-md)', fontSize: 15 }}
         onClick={() => openAdd(boxNum)}
       >
         <IconCameraPlus size={18} />
@@ -273,7 +273,7 @@ function ItemCard({ item, boxNumber }: { item: ItemDto; boxNumber: number }) {
   return (
     <div
       style={{
-        background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 12,
+        background: 'var(--surface)', border: 'var(--bw) solid var(--border)', borderRadius: 'var(--r-md)',
         padding: 11, display: 'flex', gap: 10, alignItems: 'flex-start',
       }}
     >
@@ -283,7 +283,7 @@ function ItemCard({ item, boxNumber }: { item: ItemDto; boxNumber: number }) {
         onClick={() => hasPhoto && openLightbox(item.photoUrl!)}
         title={hasPhoto ? 'Visa större' : undefined}
         style={{
-          width: 54, height: 54, borderRadius: 9, flexShrink: 0,
+          width: 54, height: 54, borderRadius: 'var(--r-sm)', flexShrink: 0,
           display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden',
           cursor: hasPhoto ? 'zoom-in' : 'default',
         }}

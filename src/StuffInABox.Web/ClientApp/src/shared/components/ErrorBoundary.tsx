@@ -48,8 +48,8 @@ export default class ErrorBoundary extends Component<Props, State> {
             maxWidth: 420,
             textAlign: 'center',
             background: 'var(--surface)',
-            border: '1px solid var(--border)',
-            borderRadius: 16,
+            border: 'var(--bw) solid var(--border)',
+            borderRadius: 'var(--r-lg)',
             padding: 32,
           }}
         >

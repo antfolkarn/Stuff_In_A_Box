@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { IconSun, IconMoon, IconStack2Filled, IconBrandGoogle, IconBrandAppleFilled } from '@tabler/icons-react'
 import { useAuthStore } from '../../store/authStore'
 import { useUiStore } from '../../store/uiStore'
-import { useThemeStore } from '../../store/themeStore'
+import { useSettingsStore, resolveTheme } from '../../store/settingsStore'
 import { login, register } from '../../api/auth'
 
 type Mode = 'login' | 'signup'
@@ -27,8 +27,9 @@ export default function LoginView() {
   const [loading, setLoading] = useState(false)
   const { setToken } = useAuthStore()
   const { pendingBox, goBox, setPendingBox } = useUiStore()
-  const themeMode = useThemeStore((s) => s.theme)
-  const toggleTheme = useThemeStore((s) => s.toggle)
+  const themeMode = useSettingsStore((s) => s.theme)
+  const toggleTheme = useSettingsStore((s) => s.toggleTheme)
+  const isDark = resolveTheme(themeMode) === 'dark'
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -70,11 +71,11 @@ export default function LoginView() {
       <button
         className="btn btn-outline"
         onClick={toggleTheme}
-        title={themeMode === 'dark' ? 'Ljust läge' : 'Mörkt läge'}
+        title={isDark ? 'Ljust läge' : 'Mörkt läge'}
         aria-label="Växla färgtema"
         style={{ position: 'absolute', top: 20, right: 20, width: 42, padding: 0 }}
       >
-        {themeMode === 'dark' ? <IconSun size={18} /> : <IconMoon size={18} />}
+        {isDark ? <IconSun size={18} /> : <IconMoon size={18} />}
       </button>
 
       <div style={{ width: '100%', maxWidth: 392 }}>
@@ -82,7 +83,7 @@ export default function LoginView() {
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10, marginBottom: 28 }}>
           <div
             className="icon-tile icon-tile-accent"
-            style={{ width: 48, height: 48, borderRadius: 13, fontSize: 26 }}
+            style={{ width: 48, height: 48, borderRadius: 'var(--r-lg)', fontSize: 26 }}
           >
             <IconStack2Filled size={26} color="#fff" />
           </div>
@@ -108,7 +109,7 @@ export default function LoginView() {
           style={{
             background: 'var(--surface)',
             border: '1px solid rgba(20,24,30,0.10)',
-            borderRadius: 18,
+            borderRadius: 'var(--r-xl)',
             boxShadow: '0 8px 30px rgba(20,24,30,0.07)',
             padding: 28,
           }}
@@ -128,7 +129,7 @@ export default function LoginView() {
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 20 }}>
             <button
               className="btn btn-outline"
-              style={{ width: '100%', height: 46, borderRadius: 11 }}
+              style={{ width: '100%', height: 46, borderRadius: 'var(--r-md)' }}
               onClick={() => { window.location.href = '/api/auth/google/start' }}
             >
               <IconBrandGoogle size={18} />
@@ -138,7 +139,7 @@ export default function LoginView() {
               style={{
                 width: '100%',
                 height: 46,
-                borderRadius: 11,
+                borderRadius: 'var(--r-md)',
                 background: 'var(--apple-bg)',
                 color: '#fff',
                 border: 'none',
@@ -229,7 +230,7 @@ export default function LoginView() {
                   padding: '10px 14px',
                   background: '#FEF2F2',
                   border: '1px solid #FECACA',
-                  borderRadius: 10,
+                  borderRadius: 'var(--r-sm)',
                   fontSize: 13.5,
                   color: '#991B1B',
                 }}
@@ -242,7 +243,7 @@ export default function LoginView() {
               type="submit"
               className="btn btn-accent"
               disabled={loading}
-              style={{ width: '100%', height: 48, borderRadius: 12, fontSize: 15.5 }}
+              style={{ width: '100%', height: 48, borderRadius: 'var(--r-md)', fontSize: 15.5 }}
             >
               {loading ? 'Vänta…' : mode === 'login' ? 'Logga in' : 'Skapa konto'}
             </button>

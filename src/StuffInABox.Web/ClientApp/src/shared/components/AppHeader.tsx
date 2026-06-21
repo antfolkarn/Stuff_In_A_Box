@@ -7,17 +7,19 @@ import {
   IconLogout,
   IconSun,
   IconMoon,
+  IconSettings,
 } from '@tabler/icons-react'
 import { useAuthStore } from '../../store/authStore'
 import { useUiStore } from '../../store/uiStore'
-import { useThemeStore } from '../../store/themeStore'
+import { useSettingsStore, resolveTheme } from '../../store/settingsStore'
 import { useQueryClient } from '@tanstack/react-query'
 
 export default function AppHeader() {
   const { logout } = useAuthStore()
-  const { query, setQuery, goHome, openAdd } = useUiStore()
-  const theme = useThemeStore((s) => s.theme)
-  const toggleTheme = useThemeStore((s) => s.toggle)
+  const { query, setQuery, goHome, openAdd, goSettings } = useUiStore()
+  const theme = useSettingsStore((s) => s.theme)
+  const toggleTheme = useSettingsStore((s) => s.toggleTheme)
+  const isDark = resolveTheme(theme) === 'dark'
   const qc = useQueryClient()
   const inputRef = useRef<HTMLInputElement>(null)
 
@@ -45,7 +47,7 @@ export default function AppHeader() {
         >
           <div
             className="icon-tile icon-tile-accent"
-            style={{ width: 32, height: 32, borderRadius: 9, flexShrink: 0 }}
+            style={{ width: 32, height: 32, borderRadius: 'var(--r-sm)', flexShrink: 0 }}
           >
             <IconStack2Filled size={18} />
           </div>
@@ -117,11 +119,22 @@ export default function AppHeader() {
           <button
             className="btn btn-outline"
             onClick={toggleTheme}
-            title={theme === 'dark' ? 'Ljust läge' : 'Mörkt läge'}
+            title={isDark ? 'Ljust läge' : 'Mörkt läge'}
             aria-label="Växla färgtema"
             style={{ width: 42, padding: 0, flexShrink: 0 }}
           >
-            {theme === 'dark' ? <IconSun size={18} /> : <IconMoon size={18} />}
+            {isDark ? <IconSun size={18} /> : <IconMoon size={18} />}
+          </button>
+
+          {/* Settings */}
+          <button
+            className="btn btn-outline"
+            onClick={goSettings}
+            title="Inställningar"
+            aria-label="Inställningar"
+            style={{ width: 42, padding: 0, flexShrink: 0 }}
+          >
+            <IconSettings size={18} />
           </button>
 
           {/* Add button */}
@@ -139,7 +152,7 @@ export default function AppHeader() {
           >
             <div
               className="icon-tile icon-tile-neutral"
-              style={{ width: 32, height: 32, borderRadius: 8, flexShrink: 0 }}
+              style={{ width: 32, height: 32, borderRadius: 'var(--r-sm)', flexShrink: 0 }}
             >
               <span className="mono" style={{ fontSize: 14, fontWeight: 600 }}>
                 A

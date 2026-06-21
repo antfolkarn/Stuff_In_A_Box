@@ -77,7 +77,7 @@ export default function HomeView() {
           style={{
             background: 'var(--surface)',
             border: `1.5px solid var(--accent)`,
-            borderRadius: 13,
+            borderRadius: 'var(--r-lg)',
             padding: 14,
             marginBottom: 20,
           }}
@@ -85,7 +85,7 @@ export default function HomeView() {
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14 }}>
             <div
               className="icon-tile icon-tile-accent-tint"
-              style={{ width: 38, height: 38, borderRadius: 10, flexShrink: 0 }}
+              style={{ width: 38, height: 38, borderRadius: 'var(--r-sm)', flexShrink: 0 }}
             >
               <Icon name={newIcon} size={20} color="var(--accent)" />
             </div>
@@ -114,7 +114,7 @@ export default function HomeView() {
               <IconX size={18} />
             </button>
           </div>
-          <div style={{ borderTop: '1px solid var(--border)', paddingTop: 12 }}>
+          <div style={{ borderTop: 'var(--bw) solid var(--border)', paddingTop: 12 }}>
             <SpaceIconPicker value={newIcon} onChange={setNewIcon} label="VÄLJ IKON" />
           </div>
         </div>
@@ -166,13 +166,13 @@ function SpaceCard({
   return (
     <div
       className="card"
-      style={{ padding: 18, cursor: 'pointer', borderRadius: 16 }}
+      style={{ padding: 18, cursor: 'pointer', borderRadius: 'var(--r-lg)' }}
       onClick={onClick}
     >
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
         <div
           className="icon-tile icon-tile-neutral"
-          style={{ width: 42, height: 42, borderRadius: 11, fontSize: 21 }}
+          style={{ width: 42, height: 42, borderRadius: 'var(--r-md)', fontSize: 21 }}
         >
           <Icon name={space.icon} size={21} color="var(--text-2)" />
         </div>
@@ -184,7 +184,7 @@ function SpaceCard({
             color: 'var(--text-4)',
             background: 'var(--tile)',
             padding: '3px 8px',
-            borderRadius: 6,
+            borderRadius: 'var(--r-sm)',
           }}
         >
           {space.code}

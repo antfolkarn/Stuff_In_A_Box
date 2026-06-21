@@ -146,7 +146,7 @@ export default function AddItemSheet() {
           background: 'var(--surface)',
           maxWidth: 460,
           width: '100%',
-          borderRadius: 18,
+          borderRadius: 'var(--r-xl)',
           boxShadow: 'var(--shadow-modal)',
           maxHeight: '90vh',
           overflowY: 'auto',
@@ -165,7 +165,7 @@ export default function AddItemSheet() {
             display: 'flex',
             alignItems: 'flex-start',
             justifyContent: 'space-between',
-            borderBottom: '1px solid var(--border)',
+            borderBottom: 'var(--bw) solid var(--border)',
             zIndex: 1,
           }}
         >
@@ -178,7 +178,7 @@ export default function AddItemSheet() {
           <button
             onClick={closeAdd}
             className="icon-tile icon-tile-neutral"
-            style={{ width: 34, height: 34, borderRadius: 9, cursor: 'pointer' }}
+            style={{ width: 34, height: 34, borderRadius: 'var(--r-sm)', cursor: 'pointer' }}
           >
             <IconX size={18} />
           </button>
@@ -199,7 +199,7 @@ export default function AddItemSheet() {
             className={photo === 'idle' ? 'dashed-tile' : 'hatch-bg'}
             style={{
               height: 148,
-              borderRadius: 14,
+              borderRadius: 'var(--r-lg)',
               display: 'flex',
               flexDirection: 'column',
               alignItems: 'center',
@@ -316,7 +316,7 @@ export default function AddItemSheet() {
                         alignItems: 'center',
                         gap: 4,
                         padding: '3px 6px 3px 10px',
-                        borderRadius: 999,
+                        borderRadius: 'var(--r-chip)',
                         background: 'var(--accent-9)',
                         color: 'var(--accent)',
                         fontSize: 12.5,
@@ -385,7 +385,7 @@ export default function AddItemSheet() {
                       alignItems: 'center',
                       gap: 4,
                       padding: '4px 10px',
-                      borderRadius: 999,
+                      borderRadius: 'var(--r-chip)',
                       background: 'var(--success-bg)',
                       color: 'var(--success-text)',
                       fontSize: 12.5,
@@ -408,7 +408,7 @@ export default function AddItemSheet() {
             bottom: 0,
             background: 'var(--surface)',
             padding: '14px 20px',
-            borderTop: '1px solid var(--border)',
+            borderTop: 'var(--bw) solid var(--border)',
             display: 'flex',
             gap: 10,
           }}

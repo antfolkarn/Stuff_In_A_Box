@@ -37,8 +37,8 @@ export default function SearchView() {
         <div
           style={{
             background: 'var(--surface)',
-            border: '1px solid var(--border)',
-            borderRadius: 13,
+            border: 'var(--bw) solid var(--border)',
+            borderRadius: 'var(--r-lg)',
             padding: '50px 20px',
             textAlign: 'center',
           }}
@@ -58,7 +58,7 @@ export default function SearchView() {
                 <ResultRow key={s.id} onClick={() => goSpace(s.id)}>
                   <div
                     className="icon-tile icon-tile-neutral"
-                    style={{ width: 38, height: 38, borderRadius: 10 }}
+                    style={{ width: 38, height: 38, borderRadius: 'var(--r-sm)' }}
                   >
                     <Icon name={s.icon} size={19} color="var(--text-2)" />
                   </div>
@@ -81,7 +81,7 @@ export default function SearchView() {
                 <ResultRow key={b.number} onClick={() => goBox(b.number)}>
                   <div
                     className="icon-tile icon-tile-accent-tint"
-                    style={{ width: 38, height: 38, borderRadius: 10 }}
+                    style={{ width: 38, height: 38, borderRadius: 'var(--r-sm)' }}
                   >
                     <span className="mono" style={{ fontSize: 16, fontWeight: 600, color: 'var(--accent)' }}>
                       {b.number}
@@ -111,7 +111,7 @@ export default function SearchView() {
                 <ResultRow key={it.id} onClick={() => goBox(it.boxNumber)}>
                   <div
                     className="icon-tile icon-tile-neutral"
-                    style={{ width: 38, height: 38, borderRadius: 10 }}
+                    style={{ width: 38, height: 38, borderRadius: 'var(--r-sm)' }}
                   >
                     <IconPhoto size={17} style={{ color: 'var(--text-4)' }} />
                   </div>
@@ -125,7 +125,7 @@ export default function SearchView() {
                           gap: 4,
                           marginTop: 3,
                           padding: '2px 8px',
-                          borderRadius: 999,
+                          borderRadius: 'var(--r-chip)',
                           background: 'var(--accent-9)',
                           color: 'var(--accent)',
                           fontSize: 11.5,
@@ -142,7 +142,7 @@ export default function SearchView() {
                       flexDirection: 'column',
                       alignItems: 'center',
                       background: 'var(--accent-9)',
-                      borderRadius: 9,
+                      borderRadius: 'var(--r-sm)',
                       padding: '4px 10px',
                     }}
                   >
@@ -181,7 +181,7 @@ function ResultRow({ children, onClick }: { children: React.ReactNode; onClick: 
       className="card"
       style={{
         padding: '13px 14px',
-        borderRadius: 13,
+        borderRadius: 'var(--r-lg)',
         display: 'flex',
         alignItems: 'center',
         gap: 12,

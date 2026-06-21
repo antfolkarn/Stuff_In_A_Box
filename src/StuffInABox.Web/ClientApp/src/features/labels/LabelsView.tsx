@@ -124,7 +124,7 @@ export default function LabelsView() {
                 alignItems: 'center',
                 gap: 6,
                 padding: '6px 12px',
-                borderRadius: 999,
+                borderRadius: 'var(--r-chip)',
                 border: `1.5px solid var(--accent)`,
                 background: 'var(--accent-9)',
                 color: 'var(--accent)',
@@ -180,8 +180,8 @@ function FilterPill({
         alignItems: 'center',
         gap: 6,
         padding: '6px 12px',
-        borderRadius: 999,
-        border: active ? `1.5px solid var(--accent)` : '1px solid var(--border-2)',
+        borderRadius: 'var(--r-chip)',
+        border: active ? `1.5px solid var(--accent)` : 'var(--bw) solid var(--border-2)',
         background: active ? 'var(--accent-9)' : 'var(--surface)',
         color: active ? 'var(--accent)' : 'var(--text-2)',
         fontSize: 13,
@@ -203,8 +203,8 @@ function LabelCard({ label, qr }: { label: LabelDto; qr: string }) {
       className="label-card"
       style={{
         background: 'var(--surface)',
-        border: '1.5px dashed var(--border-2)',
-        borderRadius: 12,
+        border: 'var(--bw) dashed var(--border-2)',
+        borderRadius: 'var(--r-md)',
         padding: 18,
         minHeight: 188,
         display: 'flex',
@@ -220,7 +220,7 @@ function LabelCard({ label, qr }: { label: LabelDto; qr: string }) {
               width: 62,
               height: 62,
               background: 'var(--accent)',
-              borderRadius: 12,
+              borderRadius: 'var(--r-md)',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
@@ -240,8 +240,8 @@ function LabelCard({ label, qr }: { label: LabelDto; qr: string }) {
             width: 74,
             height: 74,
             background: '#fff',
-            border: '1px solid var(--border)',
-            borderRadius: 9,
+            border: 'var(--bw) solid var(--border)',
+            borderRadius: 'var(--r-sm)',
             padding: 5,
             display: 'flex',
             alignItems: 'center',
@@ -263,7 +263,7 @@ function LabelCard({ label, qr }: { label: LabelDto; qr: string }) {
       </div>
 
       {/* Middle */}
-      <div style={{ borderTop: '1px solid var(--border)', paddingTop: 10 }}>
+      <div style={{ borderTop: 'var(--bw) solid var(--border)', paddingTop: 10 }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 8 }}>
           <span style={{ fontSize: 15, fontWeight: 600 }}>{label.boxLabel}</span>
           <span style={{ fontSize: 13, color: 'var(--text-2)', flexShrink: 0 }}>{label.spaceName}</span>

@@ -1,6 +1,6 @@
 import { create } from 'zustand'
 
-type View = 'home' | 'space' | 'box' | 'labels'
+type View = 'home' | 'space' | 'box' | 'labels' | 'settings'
 
 interface LabelFilter {
   spaceId?: string
@@ -20,6 +20,7 @@ interface UiState {
   goSpace: (spaceId: string) => void
   goBox: (boxNum: number) => void
   goLabels: (filter?: LabelFilter) => void
+  goSettings: () => void
   setQuery: (q: string) => void
   openAdd: (boxNum?: number) => void
   closeAdd: () => void
@@ -49,6 +50,8 @@ export const useUiStore = create<UiState>((set) => ({
   goBox: (boxNum) => set({ view: 'box', boxNum, query: '' }),
 
   goLabels: (filter = {}) => set({ view: 'labels', labelFilter: filter, query: '' }),
+
+  goSettings: () => set({ view: 'settings', query: '' }),
 
   setQuery: (q) => set({ query: q }),
 
