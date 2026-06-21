@@ -14,7 +14,7 @@ public static class OAuthEndpoints
 
     public static IEndpointRouteBuilder MapOAuthEndpoints(this IEndpointRouteBuilder app)
     {
-        var group = app.MapGroup("/api/auth").WithTags("Auth (OAuth)").RequireRateLimiting("auth");
+        var group = app.MapGroup(ApiRoutes.Auth).WithTags("Auth (OAuth)").RequireRateLimiting("auth");
 
         group.MapGet("/{provider}/start", StartAsync).AllowAnonymous()
             .WithSummary("Starta OAuth-inloggning (Google/Apple)");
@@ -43,7 +43,7 @@ public static class OAuthEndpoints
             HttpOnly = true,
             Secure = ctx.Request.IsHttps,
             SameSite = SameSiteMode.Lax, // allows the cookie on the external top-level redirect back
-            Path = "/api/auth",
+            Path = ApiRoutes.Auth,
             Expires = DateTimeOffset.UtcNow.AddMinutes(10),
         });
 
@@ -69,7 +69,7 @@ public static class OAuthEndpoints
 
         // Always clear the one-time OAuth cookie
         var cookie = ctx.Request.Cookies[OAuthCookie];
-        ctx.Response.Cookies.Delete(OAuthCookie, new CookieOptions { Path = "/api/auth" });
+        ctx.Response.Cookies.Delete(OAuthCookie, new CookieOptions { Path = ApiRoutes.Auth });
 
         if (!string.IsNullOrEmpty(error) || string.IsNullOrEmpty(code) || string.IsNullOrEmpty(state))
             return Results.Redirect($"{redirect}#error=oauth_failed");
@@ -93,7 +93,8 @@ public static class OAuthEndpoints
             await userRepo.AddAsync(identity, ct);
         }
 
-        var accessToken = await TokenIssuer.IssueAsync(identity.GetUserId(), jwt, refreshRepo, ctx, ct);
+        // OAuth is a browser redirect flow → refresh stays in the cookie (raw ignored).
+        var (accessToken, _) = await TokenIssuer.IssueAsync(identity.GetUserId(), jwt, refreshRepo, ctx, ct);
 
         // Hand the access token to the SPA via the URL fragment (never logged server-side).
         return Results.Redirect($"{redirect}#token={Uri.EscapeDataString(accessToken)}");

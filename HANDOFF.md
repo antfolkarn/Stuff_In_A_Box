@@ -27,9 +27,10 @@ cd src/StuffInABox.Web/ClientApp && npm install && npm run dev
 - Auth: JWT + roterande refresh-token (HttpOnly-cookie) + Google/Apple OAuth (PKCE, kräver konfig).
 - Bilduppladdning (magic-byte + EXIF-strip via SkiaSharp). **Uppladdningar lagras utanför `wwwroot`** (annars raderas de av SPA-bygget).
 - **Bildigenkänning (Ollama, lokal):** foto → `{ namn, taggar }` (föremål, färger, material, boktitlar). På som default i dev (`ImageRecognition:Provider=ollama`). Se "Ollama" nedan.
-- **Inställningar i databasen (cross-device):** `UserSettings`-tabell + `GET/PUT /api/settings`. Tema (ljus/mörk/system) + design sparas på kontot och följer användaren. Inställningssida via kugghjuls­ikonen i headern. `localStorage` används som cache; flimmerfri init i `index.html`.
+- **Inställningar i databasen (cross-device):** `UserSettings`-tabell + `GET/PUT /api/v1/settings`. Tema (ljus/mörk/system) + design sparas på kontot och följer användaren. Inställningssida via kugghjuls­ikonen i headern. `localStorage` används som cache; flimmerfri init i `index.html`.
 - **Tre designs (token-nivå):** Standard, Atelier (varmt papper, Manrope/Spectral, skarpa hörn), Pop (lila, Plus Jakarta/Bricolage, runda 20px hörn + 2px-kanter). Växlas via `data-design` + `data-theme` på `<html>`. Form-språk tokeniserat: `--bw`, `--r-xl/lg/md/sm/chip` per design i `src/StuffInABox.Web/ClientApp/src/index.css`.
 - Drift: Dockerfile + docker-compose, GitHub Actions CI, health checks (`/health`, `/health/ready`), Serilog (konsol + roterande fil).
+- **Mobil-förberett:** API:t är versionerat (`/api/v1`, prefix i `ApiRoutes.cs`), fel returnerar maskinläsbara `code` i `ProblemDetails`, och auth stöder native-klienter — `X-Client: mobile` ger refresh-token i body (webben behåller HttpOnly-cookien). OAuth native-flöde/universal links/push är medvetet inte byggt än. Se [docs/PRODUKTION.md](docs/PRODUKTION.md).
 
 ## Design-trohet — alternativ 2 gjort (utrymmes-korten)
 Designerna byter **färg, typsnitt och form** men matchade tidigare **inte** prototyperna fullt ut, för prototyperna har **design-specifikt komponentutförande** som de delade komponenterna inte återskapar.
@@ -48,6 +49,7 @@ Referensprototyper: `design_handoff_stuffinabox/StuffInABox - Atelier.dc.html` o
 ## Gotchas (viktigt)
 - **CSP-hash för tema-skriptet:** inline-skriptet i `ClientApp/index.html` sätter tema+design före paint och tillåts av CSP via en SHA-256-hash i `src/StuffInABox.Web/Middleware/SecurityHeadersMiddleware.cs`. **Nuvarande hash: `sha256-44oUjcpwRxvRj5LHU+Rw2hWiyR5rFJQOISEkuLZAE4U=`.** Ändras skriptet: bygg SPA, ta SHA-256 (base64) av exakt texten mellan `<script>`/`</script>` i `wwwroot/index.html`, och uppdatera konstanten — annars blockerar CSP:n skriptet (flimmer/fel tema).
 - **`.slnx`**, inte `.sln`. `dotnet new sln` skapar `.slnx` som default på denna SDK.
+- **API-bas är `/api/v1`** (`ApiRoutes.cs`) — frontend `client.ts` har `baseURL: '/api/v1'`; refresh-cookiens Path och OAuth-redirect-URIs är också `/api/v1/auth`. Lägger du en endpoint, använd `ApiRoutes.V1`.
 - **SkiaSharp Linux-assets** finns med (annars kraschar bilduppladdning i container/CI).
 - **Windows PowerShell 5.1** manglar icke-ASCII i `Invoke-RestMethod -Body` och `curl -F` (multipart) ger HTTP 000 — använd .NET `HttpClient` eller integrationstest för svenska/multipart.
 - **NU1903 (SQLite, CVE-2025-6965):** `SQLitePCLRaw.lib.e_sqlite3 2.1.11` (transitivt via EF Core Sqlite) flaggas som high. **Ingen patchad version finns ännu** (advisory: `patched: None`, `<= 2.1.11`, 2.1.11 är senaste). Faktisk risk låg: appen kör enbart parametriserad EF Core/LINQ, ingen rå SQL; CI failar inte på varningen. **Beslut: vänta på uppström** — bumpa så fort SQLitePCLRaw släpper en fix.

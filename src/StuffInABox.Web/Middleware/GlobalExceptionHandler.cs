@@ -12,14 +12,16 @@ public class GlobalExceptionHandler : IExceptionHandler
 {
     public async ValueTask<bool> TryHandleAsync(HttpContext ctx, Exception ex, CancellationToken ct)
     {
-        var (status, title) = ex switch
+        // `code` is a stable, machine-readable identifier that clients (web + mobile)
+        // map to their own localized text. `title` stays human-readable for tooling.
+        var (status, title, code) = ex switch
         {
-            ValidationException => (HttpStatusCode.BadRequest, "Valideringsfel"),
-            InvalidImageException => (HttpStatusCode.BadRequest, "Ogiltig bild"),
-            NotFoundException => (HttpStatusCode.NotFound, "Hittades inte"),
-            ForbiddenException => (HttpStatusCode.Forbidden, "Åtkomst nekad"),
-            UnauthorizedAccessException => (HttpStatusCode.Unauthorized, "Ej autentiserad"),
-            _ => (HttpStatusCode.InternalServerError, "Serverfel")
+            ValidationException => (HttpStatusCode.BadRequest, "Valideringsfel", "validation_error"),
+            InvalidImageException => (HttpStatusCode.BadRequest, "Ogiltig bild", "invalid_image"),
+            NotFoundException => (HttpStatusCode.NotFound, "Hittades inte", "not_found"),
+            ForbiddenException => (HttpStatusCode.Forbidden, "Åtkomst nekad", "forbidden"),
+            UnauthorizedAccessException => (HttpStatusCode.Unauthorized, "Ej autentiserad", "unauthorized"),
+            _ => (HttpStatusCode.InternalServerError, "Serverfel", "server_error")
         };
 
         ctx.Response.StatusCode = (int)status;
@@ -27,7 +29,8 @@ public class GlobalExceptionHandler : IExceptionHandler
         {
             Status = (int)status,
             Title = title,
-            Detail = ex.Message
+            Detail = ex.Message,
+            Extensions = { ["code"] = code }
         };
 
         await ctx.Response.WriteAsJsonAsync(problem, ct);

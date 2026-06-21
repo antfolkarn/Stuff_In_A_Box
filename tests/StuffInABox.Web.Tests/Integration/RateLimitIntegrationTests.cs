@@ -25,13 +25,13 @@ public class RateLimitIntegrationTests : IClassFixture<WebApplicationFactory<Pro
         // First 3 login attempts are allowed (they fail auth → 401, but pass the limiter)
         for (var i = 0; i < 3; i++)
         {
-            var ok = await client.PostAsJsonAsync("/api/auth/login",
+            var ok = await client.PostAsJsonAsync("/api/v1/auth/login",
                 new { email = $"nobody{i}@test.se", password = "wrongpass" });
             Assert.Equal(HttpStatusCode.Unauthorized, ok.StatusCode);
         }
 
         // The 4th within the window is rejected by the limiter
-        var limited = await client.PostAsJsonAsync("/api/auth/login",
+        var limited = await client.PostAsJsonAsync("/api/v1/auth/login",
             new { email = "nobody@test.se", password = "wrongpass" });
         Assert.Equal(HttpStatusCode.TooManyRequests, limited.StatusCode);
     }

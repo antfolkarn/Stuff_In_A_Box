@@ -46,7 +46,7 @@ public class OAuthServiceTests
         var svc = Create(new()
         {
             ["OAuth:Google:ClientId"] = "cid",
-            ["OAuth:Google:RedirectUri"] = "https://app/api/auth/google/callback",
+            ["OAuth:Google:RedirectUri"] = "https://app/api/v1/auth/google/callback",
         });
 
         var url = svc.BuildAuthorizationUrl("google", "state123", "challenge123");
@@ -65,7 +65,7 @@ public class OAuthServiceTests
         var svc = Create(new()
         {
             ["OAuth:Apple:ClientId"] = "com.example.app",
-            ["OAuth:Apple:RedirectUri"] = "https://app/api/auth/apple/callback",
+            ["OAuth:Apple:RedirectUri"] = "https://app/api/v1/auth/apple/callback",
         });
 
         var url = svc.BuildAuthorizationUrl("apple", "s", "c");

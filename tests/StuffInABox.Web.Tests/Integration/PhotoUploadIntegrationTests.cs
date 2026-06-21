@@ -44,18 +44,18 @@ public class PhotoUploadIntegrationTests : IClassFixture<WebApplicationFactory<P
     private async Task<(HttpClient client, string spaceId, int boxNumber, string itemId)> SetupItemAsync()
     {
         var client = _factory.CreateClient();
-        var reg = await client.PostAsJsonAsync("/api/auth/register",
+        var reg = await client.PostAsJsonAsync("/api/v1/auth/register",
             new { email = "photo-int@test.se", password = "password123" });
         var token = (await reg.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("token").GetString();
         client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
 
-        var sp = await client.PostAsJsonAsync("/api/spaces", new { name = "Garage", icon = "ti-car" });
+        var sp = await client.PostAsJsonAsync("/api/v1/spaces", new { name = "Garage", icon = "ti-car" });
         var spaceId = (await sp.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("spaceId").GetString();
 
-        var bx = await client.PostAsJsonAsync("/api/boxes", new { spaceId, label = "Tools" });
+        var bx = await client.PostAsJsonAsync("/api/v1/boxes", new { spaceId, label = "Tools" });
         var boxNumber = (await bx.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("boxNumber").GetInt32();
 
-        var it = await client.PostAsJsonAsync($"/api/boxes/{boxNumber}/items", new { spaceId, name = "Hammer" });
+        var it = await client.PostAsJsonAsync($"/api/v1/boxes/{boxNumber}/items", new { spaceId, name = "Hammer" });
         var itemId = (await it.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("itemId").GetString();
 
         return (client, spaceId!, boxNumber, itemId!);
@@ -71,7 +71,7 @@ public class PhotoUploadIntegrationTests : IClassFixture<WebApplicationFactory<P
         file.Headers.ContentType = new MediaTypeHeaderValue("image/png");
         content.Add(file, "file", "photo.png");
 
-        var resp = await client.PostAsync($"/api/boxes/{boxNumber}/items/{itemId}/photo", content);
+        var resp = await client.PostAsync($"/api/v1/boxes/{boxNumber}/items/{itemId}/photo", content);
 
         Assert.Equal(HttpStatusCode.OK, resp.StatusCode);
         var body = await resp.Content.ReadFromJsonAsync<JsonElement>();
@@ -79,7 +79,7 @@ public class PhotoUploadIntegrationTests : IClassFixture<WebApplicationFactory<P
         Assert.StartsWith("/uploads/", url);
 
         // The item now reports a photo URL
-        var items = await client.GetFromJsonAsync<JsonElement>($"/api/boxes/{boxNumber}/items?spaceId={spaceId}");
+        var items = await client.GetFromJsonAsync<JsonElement>($"/api/v1/boxes/{boxNumber}/items?spaceId={spaceId}");
         Assert.False(string.IsNullOrEmpty(items[0].GetProperty("photoUrl").GetString()));
 
         // And the photo is actually served (regression guard: uploads must live
@@ -99,7 +99,7 @@ public class PhotoUploadIntegrationTests : IClassFixture<WebApplicationFactory<P
         file.Headers.ContentType = new MediaTypeHeaderValue("image/png");
         content.Add(file, "file", "fake.png");
 
-        var resp = await client.PostAsync($"/api/boxes/{boxNumber}/items/{itemId}/photo", content);
+        var resp = await client.PostAsync($"/api/v1/boxes/{boxNumber}/items/{itemId}/photo", content);
 
         Assert.Equal(HttpStatusCode.BadRequest, resp.StatusCode);
     }

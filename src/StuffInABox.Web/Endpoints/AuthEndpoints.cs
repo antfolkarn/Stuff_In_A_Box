@@ -12,11 +12,9 @@ namespace StuffInABox.Web.Endpoints;
 
 public static class AuthEndpoints
 {
-    private const string RefreshCookie = TokenIssuer.RefreshCookie;
-
     public static IEndpointRouteBuilder MapAuthEndpoints(this IEndpointRouteBuilder app)
     {
-        var group = app.MapGroup("/api/auth").WithTags("Auth").RequireRateLimiting("auth");
+        var group = app.MapGroup(ApiRoutes.Auth).WithTags("Auth").RequireRateLimiting("auth");
 
         group.MapPost("/register", RegisterAsync)
             .AllowAnonymous()
@@ -48,14 +46,14 @@ public static class AuthEndpoints
         var externalId = HashEmail(req.Email);
         var existing = await repo.FindAsync("email", externalId, ct);
         if (existing is not null)
-            return Results.Conflict(new { error = "E-postadress redan registrerad." });
+            return Results.Conflict(new { code = "email_taken", error = "E-postadress redan registrerad." });
 
         var passwordHash = BCrypt.Net.BCrypt.HashPassword(req.Password);
         var identity = UserIdentity.CreateEmail(externalId, passwordHash);
         await repo.AddAsync(identity, ct);
 
-        var token = await TokenIssuer.IssueAsync(identity.GetUserId(), jwt, refreshRepo, ctx, ct);
-        return Results.Ok(new { token });
+        var (token, rawRefresh) = await TokenIssuer.IssueAsync(identity.GetUserId(), jwt, refreshRepo, ctx, ct);
+        return TokenResult(ctx, token, rawRefresh);
     }
 
     private static async Task<IResult> LoginAsync(
@@ -73,8 +71,8 @@ public static class AuthEndpoints
             || !BCrypt.Net.BCrypt.Verify(req.Password, identity.PasswordHash))
             return Results.Unauthorized();
 
-        var token = await TokenIssuer.IssueAsync(identity.GetUserId(), jwt, refreshRepo, ctx, ct);
-        return Results.Ok(new { token });
+        var (token, rawRefresh) = await TokenIssuer.IssueAsync(identity.GetUserId(), jwt, refreshRepo, ctx, ct);
+        return TokenResult(ctx, token, rawRefresh);
     }
 
     private static async Task<IResult> RefreshAsync(
@@ -83,7 +81,9 @@ public static class AuthEndpoints
         HttpContext ctx,
         CancellationToken ct)
     {
-        var raw = ctx.Request.Cookies[RefreshCookie];
+        // Browsers present the refresh token via the HttpOnly cookie; native clients
+        // via the X-Refresh-Token header.
+        var raw = TokenIssuer.ReadPresentedRefresh(ctx);
         if (string.IsNullOrEmpty(raw))
             return Results.Unauthorized();
 
@@ -101,8 +101,8 @@ public static class AuthEndpoints
         await refreshRepo.UpdateAsync(stored, ct);
 
         var userId = new UserId(stored.UserId);
-        var token = await TokenIssuer.IssueAsync(userId, jwt, refreshRepo, ctx, ct);
-        return Results.Ok(new { token });
+        var (token, rawRefresh) = await TokenIssuer.IssueAsync(userId, jwt, refreshRepo, ctx, ct);
+        return TokenResult(ctx, token, rawRefresh);
     }
 
     private static async Task<IResult> LogoutAsync(
@@ -110,7 +110,7 @@ public static class AuthEndpoints
         HttpContext ctx,
         CancellationToken ct)
     {
-        var raw = ctx.Request.Cookies[RefreshCookie];
+        var raw = TokenIssuer.ReadPresentedRefresh(ctx);
         if (!string.IsNullOrEmpty(raw))
         {
             var stored = await refreshRepo.FindByHashAsync(JwtTokenService.HashRefreshToken(raw), ct);
@@ -123,6 +123,13 @@ public static class AuthEndpoints
         TokenIssuer.ClearRefreshCookie(ctx);
         return Results.Ok();
     }
+
+    // Browsers get the access token only (refresh stays in the HttpOnly cookie);
+    // native clients additionally get the refresh token in the body to store securely.
+    private static IResult TokenResult(HttpContext ctx, string accessToken, string rawRefresh) =>
+        TokenIssuer.WantsTokenInBody(ctx)
+            ? Results.Ok(new { token = accessToken, refreshToken = rawRefresh })
+            : Results.Ok(new { token = accessToken });
 
     private static string HashEmail(string email) =>
         Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(email.Trim().ToLowerInvariant())));

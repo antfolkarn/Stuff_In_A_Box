@@ -19,7 +19,7 @@ public static class SpaceEndpoints
 {
     public static IEndpointRouteBuilder MapSpaceEndpoints(this IEndpointRouteBuilder app)
     {
-        var group = app.MapGroup("/api/spaces").WithTags("Spaces").RequireAuthorization();
+        var group = app.MapGroup(ApiRoutes.V1 + "/spaces").WithTags("Spaces").RequireAuthorization();
 
         group.MapGet("/", async (IMediator mediator, CancellationToken ct) =>
         {

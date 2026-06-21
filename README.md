@@ -26,6 +26,7 @@ Gränssnittet finns på **svenska och engelska** och väljs automatiskt efter we
 | Del | Val |
 |-----|-----|
 | Backend | ASP.NET Core Minimal API (.NET 10), Clean Architecture |
+| API | Versionerat under `/api/v1`; maskinläsbara felkoder; mobilvänlig auth (token i body via `X-Client: mobile`) |
 | CQRS | MediatR 14 (Commands/Queries) + FluentValidation pipeline |
 | Databas | EF Core 10 + SQLite (provider-switch för Postgres/SQL Server) |
 | Auth | JWT (15 min) + refresh-token (HttpOnly-cookie, 7 dagar) + Google/Apple OAuth (PKCE) |
@@ -36,7 +37,7 @@ Gränssnittet finns på **svenska och engelska** och väljs automatiskt efter we
 | Tema & design | Ljust/mörkt läge + tre designer (persisterat, följer kontot), respekterar OS-inställning |
 | Språk | Svenska + engelska, webbläsardetektering (lätt egen i18n, inga beroenden) |
 | Delning | Delningslänkar per utrymme + medlemskap (ägare-eller-medlem-auktorisering) |
-| Tester | xUnit + Moq (backend), WebApplicationFactory (integration) — **90 tester** |
+| Tester | xUnit + Moq (backend), WebApplicationFactory (integration) — **91 tester** |
 | Drift | Dockerfile (multi-stage) + docker-compose, health checks, GitHub Actions CI |
 
 ---
@@ -156,7 +157,7 @@ Backenden POSTar fotot till Ollama (`http://localhost:11434`, modell via `ImageR
 ## Testning
 
 ```bash
-dotnet test StuffInABox.slnx          # alla 90 backend-tester
+dotnet test StuffInABox.slnx          # alla 91 backend-tester
 ```
 
 | Lager | Antal | Vad testas |
@@ -164,7 +165,7 @@ dotnet test StuffInABox.slnx          # alla 90 backend-tester
 | Domain | 27 | Entitetsinvarianter, value object-validering |
 | Application | 27 | Handler-logik, space-access-auktorisering, validering, service-orkestrering |
 | Infrastructure | 18 | Repository-SQL, EF-config, bildbehandling, Claude-taggning, Ollama-igenkänning |
-| Web | 18 | JWT, refresh-flöde, OAuth-start, rate limiting, bilduppladdning, **delning (åtkomstgräns)**, health checks, fel-mappning |
+| Web | 19 | JWT, refresh-flöde (cookie + mobil-header), OAuth-start, rate limiting, bilduppladdning, **delning (åtkomstgräns)**, health checks, fel-mappning |
 
 Utvecklat test-drivet: testet skrivs före implementationen.
 

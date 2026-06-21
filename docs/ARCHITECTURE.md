@@ -64,7 +64,7 @@ Infrastructure och kopplas in via dependency injection i `Program.cs` /
 
 ## 2. Request-flöde (command via MediatR)
 
-Exempel: lägg till ett föremål (`POST /api/boxes/{n}/items`).
+Exempel: lägg till ett föremål (`POST /api/v1/boxes/{n}/items`).
 
 ```mermaid
 sequenceDiagram
@@ -77,7 +77,7 @@ sequenceDiagram
     participant Q as IEnrichmentQueue
     participant W as TagEnrichmentWorker
 
-    U->>EP: POST /api/boxes/8/items { name }
+    U->>EP: POST /api/v1/boxes/8/items { name }
     Note over EP: JWT valideras, CurrentUserService ger UserId
     EP->>M: Send(AddItemCommand)
     M->>V: pipeline
@@ -116,7 +116,7 @@ sequenceDiagram
     participant TR as IRefreshTokenRepository
     participant J as JwtTokenService
 
-    U->>A: POST /api/auth/login { email, password }
+    U->>A: POST /api/v1/auth/login { email, password }
     A->>UR: FindAsync("email", SHA256(email))
     A->>A: BCrypt.Verify(password, hash)
     A->>J: GenerateAccessToken(userId)  (15 min)
@@ -124,7 +124,7 @@ sequenceDiagram
     A-->>U: { token } + Set-Cookie sib_refresh (HttpOnly, Strict)
 
     Note over U: 15 min senare → access-token utgånget
-    U->>A: POST /api/auth/refresh  (cookie skickas)
+    U->>A: POST /api/v1/auth/refresh  (cookie skickas)
     A->>TR: slå upp hash, kontrollera aktiv
     A->>TR: revoke gammal + spara ny (rotation)
     A-->>U: { nytt token } + ny cookie
@@ -132,6 +132,12 @@ sequenceDiagram
 
 Frontendens axios-interceptor fångar 401, anropar `/refresh` en gång och kör om
 det ursprungliga anropet. Vid sidladdning återställs sessionen tyst från cookien.
+
+**Native-klienter (mobil):** browsern håller refresh-token i HttpOnly-cookien (aldrig
+i JavaScript). Native-appar utan cookie-hantering signalerar istället med headern
+`X-Client: mobile` och får refresh-token **i svarsbody** att lagra säkert
+(Keychain/Keystore), och förnyar via headern `X-Refresh-Token`. All trafik ligger
+under det versionerade prefixet `/api/v1` (`ApiRoutes.cs`).
 
 ### 3b. OAuth (Google / Apple, Authorization Code + PKCE)
 
@@ -142,11 +148,11 @@ sequenceDiagram
     participant P as Leverantör (Google/Apple)
     participant UR as IUserIdentityRepository
 
-    U->>O: GET /api/auth/google/start
+    U->>O: GET /api/v1/auth/google/start
     O->>O: skapa state + PKCE verifier/challenge
     O-->>U: 302 → leverantörens authorize-URL<br/>(cookie sib_oauth = state:verifier)
     U->>P: loggar in & godkänner
-    P-->>U: 302 → /api/auth/google/callback?code&state
+    P-->>U: 302 → /api/v1/auth/google/callback?code&state
     U->>O: callback (cookie följer med)
     O->>O: validera state, byt code+verifier mot id_token
     O->>O: läs `sub` ur id_token (ingen PII)
@@ -263,7 +269,7 @@ medlemmar behåller åtkomst tills de tas bort eller lämnar.
 | **Databas-swap** | `Infrastructure/DependencyInjection.cs` | `Database:Provider`-switch; entitetskonfig undviker provider-specifika typer. |
 | **Bildlagring** | `IStorageService` | Lokal disk nu; byts mot t.ex. Azure Blob utan schemaändring (nyckel, inte URL, lagras). |
 | **Taggning** | `ITaggingService` | Tokenizer default; Claude API bakom `Tagging:Provider`-flagga. |
-| **Bildigenkänning** | `IImageRecognitionService` | No-op default; lokal Ollama-vision-modell bakom `ImageRecognition:Provider`-flagga. Returnerar `{ namn, taggar }` (föremål, färger, material, boktitlar; flera föremål → blandad rubrik men alla som taggar). Anropas av `POST /api/recognize` när ett foto väljs; taggarna mergas in på föremålet via `AddItemCommand`. Strikta guardrails (JSON-only-prompt + normalisering); kastar aldrig. |
+| **Bildigenkänning** | `IImageRecognitionService` | No-op default; lokal Ollama-vision-modell bakom `ImageRecognition:Provider`-flagga. Returnerar `{ namn, taggar }` (föremål, färger, material, boktitlar; flera föremål → blandad rubrik men alla som taggar). Anropas av `POST /api/v1/recognize` när ett foto väljs; taggarna mergas in på föremålet via `AddItemCommand`. Strikta guardrails (JSON-only-prompt + normalisering); kastar aldrig. |
 | **Bakgrundsjobb** | `TagEnrichmentWorker` | In-process `Channel<T>` + `IHostedService`; kastar aldrig, blockerar aldrig sparet. |
 | **Tema** | `ClientApp` `themeStore` | Ljust/mörkt via CSS-variabler och `data-theme`, persisterat i `localStorage`. Flimmerfritt: en liten inline-init i `index.html` sätter temat före första paint, tillåten av CSP via sin SHA-256-hash (ingen `'unsafe-inline'` för skript). Ändras skriptet måste hashen i `SecurityHeadersMiddleware` räknas om. |
 | **Health checks** | `Program.cs` + `DatabaseHealthCheck` | `/health` (liveness) och `/health/ready` (readiness, kollar DB) för orkestrering. |

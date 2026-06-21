@@ -13,7 +13,7 @@ public static class ItemEndpoints
 {
     public static IEndpointRouteBuilder MapItemEndpoints(this IEndpointRouteBuilder app)
     {
-        var group = app.MapGroup("/api/boxes/{boxNumber:int}/items").WithTags("Items").RequireAuthorization();
+        var group = app.MapGroup(ApiRoutes.V1 + "/boxes/{boxNumber:int}/items").WithTags("Items").RequireAuthorization();
 
         group.MapGet("/", async (int boxNumber, Guid spaceId, IMediator mediator, CancellationToken ct) =>
         {

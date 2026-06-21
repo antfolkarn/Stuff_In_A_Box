@@ -11,7 +11,7 @@ public static class SettingsEndpoints
 {
     public static IEndpointRouteBuilder MapSettingsEndpoints(this IEndpointRouteBuilder app)
     {
-        var group = app.MapGroup("/api/settings").WithTags("Settings").RequireAuthorization();
+        var group = app.MapGroup(ApiRoutes.V1 + "/settings").WithTags("Settings").RequireAuthorization();
 
         group.MapGet("/", async (IMediator mediator, CancellationToken ct) =>
         {

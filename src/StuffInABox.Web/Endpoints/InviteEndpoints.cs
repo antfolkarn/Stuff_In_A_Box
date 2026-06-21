@@ -12,7 +12,7 @@ public static class InviteEndpoints
     public static IEndpointRouteBuilder MapInviteEndpoints(this IEndpointRouteBuilder app)
     {
         // Any signed-in user can preview/accept a share link they were given.
-        var group = app.MapGroup("/api/invites").WithTags("Invites").RequireAuthorization();
+        var group = app.MapGroup(ApiRoutes.V1 + "/invites").WithTags("Invites").RequireAuthorization();
 
         group.MapGet("/{token}", async (string token, IMediator mediator, CancellationToken ct) =>
         {

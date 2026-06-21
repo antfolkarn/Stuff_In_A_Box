@@ -127,7 +127,7 @@ export default function LoginView() {
             <button
               className="btn btn-outline"
               style={{ width: '100%', height: 46, borderRadius: 'var(--r-md)' }}
-              onClick={() => { window.location.href = '/api/auth/google/start' }}
+              onClick={() => { window.location.href = '/api/v1/auth/google/start' }}
             >
               <IconBrandGoogle size={18} />
               {t('login.continueGoogle')}
@@ -149,7 +149,7 @@ export default function LoginView() {
                 cursor: 'pointer',
                 fontFamily: 'inherit',
               }}
-              onClick={() => { window.location.href = '/api/auth/apple/start' }}
+              onClick={() => { window.location.href = '/api/v1/auth/apple/start' }}
             >
               <IconBrandAppleFilled size={18} />
               {t('login.continueApple')}

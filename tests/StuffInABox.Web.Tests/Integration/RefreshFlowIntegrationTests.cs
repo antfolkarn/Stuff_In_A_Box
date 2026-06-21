@@ -41,23 +41,28 @@ public class RefreshFlowIntegrationTests : IClassFixture<WebApplicationFactory<P
         // Cookie-aware client (HandleCookies defaults to true)
         var client = _factory.CreateClient();
 
-        var register = await client.PostAsJsonAsync("/api/auth/register",
+        var register = await client.PostAsJsonAsync("/api/v1/auth/register",
             new { email = "refresh@test.se", password = "password123" });
         register.EnsureSuccessStatusCode();
         Assert.Contains(register.Headers, h => h.Key == "Set-Cookie" && h.Value.Any(v => v.Contains("sib_refresh")));
 
+        // Browser flow: the refresh token must NOT leak into the response body (it lives
+        // only in the HttpOnly cookie, out of reach of JavaScript).
+        var regBody = await register.Content.ReadFromJsonAsync<JsonElement>();
+        Assert.False(regBody.TryGetProperty("refreshToken", out _));
+
         // Refresh using the cookie — should succeed with a fresh token
-        var refresh = await client.PostAsync("/api/auth/refresh", null);
+        var refresh = await client.PostAsync("/api/v1/auth/refresh", null);
         Assert.Equal(HttpStatusCode.OK, refresh.StatusCode);
         var body = await refresh.Content.ReadFromJsonAsync<JsonElement>();
         Assert.False(string.IsNullOrEmpty(body.GetProperty("token").GetString()));
 
         // Logout revokes the (rotated) refresh token
-        var logout = await client.PostAsync("/api/auth/logout", null);
+        var logout = await client.PostAsync("/api/v1/auth/logout", null);
         Assert.Equal(HttpStatusCode.OK, logout.StatusCode);
 
         // Subsequent refresh is rejected
-        var afterLogout = await client.PostAsync("/api/auth/refresh", null);
+        var afterLogout = await client.PostAsync("/api/v1/auth/refresh", null);
         Assert.Equal(HttpStatusCode.Unauthorized, afterLogout.StatusCode);
     }
 
@@ -65,7 +70,32 @@ public class RefreshFlowIntegrationTests : IClassFixture<WebApplicationFactory<P
     public async Task Refresh_WithoutCookie_Returns401()
     {
         var client = _factory.CreateClient(new WebApplicationFactoryClientOptions { HandleCookies = false });
-        var response = await client.PostAsync("/api/auth/refresh", null);
+        var response = await client.PostAsync("/api/v1/auth/refresh", null);
         Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task MobileClient_GetsRefreshTokenInBody_AndRefreshesViaHeader()
+    {
+        // Native clients have no cookie jar: opt in with X-Client: mobile and refresh
+        // by presenting the token in the X-Refresh-Token header.
+        var client = _factory.CreateClient(new WebApplicationFactoryClientOptions { HandleCookies = false });
+        client.DefaultRequestHeaders.Add("X-Client", "mobile");
+
+        var register = await client.PostAsJsonAsync("/api/v1/auth/register",
+            new { email = "mobile@test.se", password = "password123" });
+        register.EnsureSuccessStatusCode();
+        var regBody = await register.Content.ReadFromJsonAsync<JsonElement>();
+        var refreshToken = regBody.GetProperty("refreshToken").GetString();
+        Assert.False(string.IsNullOrEmpty(refreshToken));
+
+        var req = new HttpRequestMessage(HttpMethod.Post, "/api/v1/auth/refresh");
+        req.Headers.Add("X-Refresh-Token", refreshToken);
+        var refresh = await client.SendAsync(req);
+
+        Assert.Equal(HttpStatusCode.OK, refresh.StatusCode);
+        var body = await refresh.Content.ReadFromJsonAsync<JsonElement>();
+        Assert.False(string.IsNullOrEmpty(body.GetProperty("token").GetString()));
+        Assert.False(string.IsNullOrEmpty(body.GetProperty("refreshToken").GetString())); // rotated
     }
 }

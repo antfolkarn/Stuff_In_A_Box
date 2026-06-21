@@ -15,7 +15,7 @@ public static class BoxEndpoints
 {
     public static IEndpointRouteBuilder MapBoxEndpoints(this IEndpointRouteBuilder app)
     {
-        var group = app.MapGroup("/api/boxes").WithTags("Boxes").RequireAuthorization();
+        var group = app.MapGroup(ApiRoutes.V1 + "/boxes").WithTags("Boxes").RequireAuthorization();
 
         group.MapGet("/space/{spaceId:guid}", async (Guid spaceId, IMediator mediator, CancellationToken ct) =>
         {

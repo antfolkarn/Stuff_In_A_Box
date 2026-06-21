@@ -39,7 +39,7 @@ public class SpaceIntegrationTests : IClassFixture<WebApplicationFactory<Program
 
     private async Task<string> GetTokenAsync(HttpClient client)
     {
-        var registerResp = await client.PostAsJsonAsync("/api/auth/register",
+        var registerResp = await client.PostAsJsonAsync("/api/v1/auth/register",
             new { email = "test@example.com", password = "password123" });
         registerResp.EnsureSuccessStatusCode();
         var body = await registerResp.Content.ReadFromJsonAsync<JsonElement>();
@@ -54,7 +54,7 @@ public class SpaceIntegrationTests : IClassFixture<WebApplicationFactory<Program
         client.DefaultRequestHeaders.Authorization =
             new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", token);
 
-        var response = await client.PostAsJsonAsync("/api/spaces",
+        var response = await client.PostAsJsonAsync("/api/v1/spaces",
             new { name = "Garage", icon = "ti-car" });
 
         Assert.Equal(HttpStatusCode.Created, response.StatusCode);
@@ -64,7 +64,7 @@ public class SpaceIntegrationTests : IClassFixture<WebApplicationFactory<Program
     public async Task GetSpaces_WithoutToken_Returns401()
     {
         var client = _factory.CreateClient();
-        var response = await client.GetAsync("/api/spaces");
+        var response = await client.GetAsync("/api/v1/spaces");
         Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
     }
 }

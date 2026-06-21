@@ -20,7 +20,7 @@ public class OAuthStartIntegrationTests : IClassFixture<WebApplicationFactory<Pr
     public async Task GoogleStart_WhenUnconfigured_RedirectsWithError()
     {
         var client = _factory.CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
-        var resp = await client.GetAsync("/api/auth/google/start");
+        var resp = await client.GetAsync("/api/v1/auth/google/start");
 
         Assert.Equal(HttpStatusCode.Redirect, resp.StatusCode);
         Assert.Contains("error=oauth_not_configured", resp.Headers.Location!.ToString());
@@ -30,7 +30,7 @@ public class OAuthStartIntegrationTests : IClassFixture<WebApplicationFactory<Pr
     public async Task UnknownProvider_Returns404()
     {
         var client = _factory.CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
-        var resp = await client.GetAsync("/api/auth/facebook/start");
+        var resp = await client.GetAsync("/api/v1/auth/facebook/start");
         Assert.Equal(HttpStatusCode.NotFound, resp.StatusCode);
     }
 }

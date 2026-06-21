@@ -70,6 +70,32 @@ ger nu):
 
 ---
 
+## 📱 Flera klienter (Android / iOS mot samma backend)
+
+Kärnan är redan mobilvänlig — ett rent REST/JSON-API som native-appar kan prata med
+direkt. CORS spelar ingen roll för native-klienter. Följande **förberedelser är
+gjorda** så att en mobilstart blir smidig utan att försämra webben:
+
+- **API-versionering** — allt ligger nu under `/api/v1/...` (prefix centraliserat i
+  `ApiRoutes.cs`). En framtida `v2` blir en avgränsad ändring utan att bryta webben.
+- **Felkoder** — `GlobalExceptionHandler` returnerar ett stabilt, maskinläsbart
+  `code` (`not_found`, `forbidden`, `validation_error`, …) i `ProblemDetails`, så varje
+  klient översätter felen själv. Registreringskonflikt returnerar `code: "email_taken"`.
+- **Token-baserad refresh** — webben använder fortfarande HttpOnly-cookien (refresh-token
+  läcker aldrig till JavaScript). Native-klienter signalerar med headern `X-Client: mobile`
+  och får då refresh-token **i svarsbody** (login/register/refresh) att lagra i
+  Keychain/Keystore, och förnyar via headern `X-Refresh-Token`. Säkrat med test.
+
+**Medvetet INTE byggt i förväg** (görs tillsammans med appen, kräver en riktig klient):
+
+- **OAuth native-flöde** (behöver appens redirect-schema / universal link).
+- **Universal Links / App Links** så delningslänkar (`/#invite=<token>`) öppnar appen —
+  kräver appens bundle-id:n + att backend serverar `apple-app-site-association` /
+  `assetlinks.json`.
+- **Push-notiser** (APNs/FCM) — ny backend-infra, bara om det önskas.
+
+---
+
 ## Rekommenderad ordning
 
 1. **Config-blockerarna** (Jwt-secret, CORS/redirect, OAuth, backup) — krävs, snabbt.

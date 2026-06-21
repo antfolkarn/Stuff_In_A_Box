@@ -1,7 +1,7 @@
 import axios, { AxiosError, type InternalAxiosRequestConfig } from 'axios'
 
 export const api = axios.create({
-  baseURL: '/api',
+  baseURL: '/api/v1',
   headers: { 'Content-Type': 'application/json' },
   withCredentials: true, // send/receive the HttpOnly refresh cookie
 })
@@ -19,7 +19,7 @@ let refreshPromise: Promise<string | null> | null = null
 function doRefresh(): Promise<string | null> {
   if (!refreshPromise) {
     refreshPromise = axios
-      .post<{ token: string }>('/api/auth/refresh', null, { withCredentials: true })
+      .post<{ token: string }>('/api/v1/auth/refresh', null, { withCredentials: true })
       .then((r) => {
         sessionStorage.setItem('sib_token', r.data.token)
         return r.data.token
