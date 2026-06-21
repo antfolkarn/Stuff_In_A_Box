@@ -1,6 +1,7 @@
 import { IconArrowLeft, IconCheck, IconDeviceLaptop, IconSun, IconMoon } from '@tabler/icons-react'
 import { useUiStore } from '../../store/uiStore'
 import { useSettingsStore, THEMES, DESIGNS, type Theme, type Design } from '../../store/settingsStore'
+import { useT, useI18nStore, LANGS } from '../../i18n'
 
 // Accent swatch shown per design (mirrors the CSS in index.css)
 const DESIGN_ACCENT: Record<Design, string> = {
@@ -17,10 +18,13 @@ const THEME_ICON: Record<Theme, typeof IconSun> = {
 
 export default function SettingsView() {
   const { goHome } = useUiStore()
+  const t = useT()
   const theme = useSettingsStore((s) => s.theme)
   const design = useSettingsStore((s) => s.design)
   const setTheme = useSettingsStore((s) => s.setTheme)
   const setDesign = useSettingsStore((s) => s.setDesign)
+  const lang = useI18nStore((s) => s.lang)
+  const setLang = useI18nStore((s) => s.setLang)
 
   return (
     <div style={{ maxWidth: 640 }}>
@@ -32,31 +36,31 @@ export default function SettingsView() {
         }}
       >
         <IconArrowLeft size={15} />
-        Mina utrymmen
+        {t('settings.back')}
       </button>
 
       <h1 style={{ fontSize: 24, fontWeight: 600, letterSpacing: '-0.02em', margin: 0 }}>
-        Mina inställningar
+        {t('settings.title')}
       </h1>
       <div style={{ fontSize: 14, color: 'var(--text-2)', marginTop: 4, marginBottom: 28 }}>
-        Sparas på ditt konto och gäller på alla enheter du loggar in på.
+        {t('settings.subtitle')}
       </div>
 
       {/* Theme */}
       <section style={{ marginBottom: 32 }}>
-        <div className="field-label" style={{ marginBottom: 10 }}>FÄRGLÄGE</div>
+        <div className="field-label" style={{ marginBottom: 10 }}>{t('settings.theme')}</div>
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10 }}>
-          {THEMES.map((t) => {
-            const Icon = THEME_ICON[t.id]
-            const active = theme === t.id
+          {THEMES.map((id) => {
+            const Icon = THEME_ICON[id]
+            const active = theme === id
             return (
               <button
-                key={t.id}
-                onClick={() => setTheme(t.id)}
+                key={id}
+                onClick={() => setTheme(id)}
                 style={optionStyle(active)}
               >
                 <Icon size={18} />
-                {t.label}
+                {t(`theme.${id}`)}
                 {active && <IconCheck size={16} style={{ marginLeft: 'auto' }} />}
               </button>
             )
@@ -65,8 +69,8 @@ export default function SettingsView() {
       </section>
 
       {/* Design */}
-      <section>
-        <div className="field-label" style={{ marginBottom: 10 }}>DESIGN</div>
+      <section style={{ marginBottom: 32 }}>
+        <div className="field-label" style={{ marginBottom: 10 }}>{t('settings.design')}</div>
         <div
           style={{
             display: 'grid',
@@ -74,12 +78,12 @@ export default function SettingsView() {
             gap: 10,
           }}
         >
-          {DESIGNS.map((d) => {
-            const active = design === d.id
+          {DESIGNS.map((id) => {
+            const active = design === id
             return (
               <button
-                key={d.id}
-                onClick={() => setDesign(d.id)}
+                key={id}
+                onClick={() => setDesign(id)}
                 style={{
                   ...cardStyle(active),
                   flexDirection: 'column',
@@ -91,20 +95,43 @@ export default function SettingsView() {
                   <span
                     style={{
                       width: 22, height: 22, borderRadius: 'var(--r-sm)', flexShrink: 0,
-                      background: DESIGN_ACCENT[d.id],
+                      background: DESIGN_ACCENT[id],
                       boxShadow: 'inset 0 0 0 1px rgba(0,0,0,0.08)',
                     }}
                   />
-                  <span style={{ fontSize: 15, fontWeight: 500 }}>{d.label}</span>
+                  <span style={{ fontSize: 15, fontWeight: 500 }}>{t(`design.${id}.label`)}</span>
                   {active && <IconCheck size={16} style={{ marginLeft: 'auto', color: 'var(--accent)' }} />}
                 </div>
-                <span style={{ fontSize: 12.5, color: 'var(--text-3)' }}>{d.description}</span>
+                <span style={{ fontSize: 12.5, color: 'var(--text-3)' }}>{t(`design.${id}.desc`)}</span>
               </button>
             )
           })}
         </div>
         <div style={{ fontSize: 12.5, color: 'var(--text-4)', marginTop: 12 }}>
-          Varje design byter färger och typsnitt. Ljust/mörkt läge gäller fortfarande ovanpå.
+          {t('settings.designNote')}
+        </div>
+      </section>
+
+      {/* Language */}
+      <section>
+        <div className="field-label" style={{ marginBottom: 10 }}>{t('settings.language')}</div>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10 }}>
+          {LANGS.map((l) => {
+            const active = lang === l.id
+            return (
+              <button
+                key={l.id}
+                onClick={() => setLang(l.id)}
+                style={optionStyle(active)}
+              >
+                {l.label}
+                {active && <IconCheck size={16} style={{ marginLeft: 'auto' }} />}
+              </button>
+            )
+          })}
+        </div>
+        <div style={{ fontSize: 12.5, color: 'var(--text-4)', marginTop: 12 }}>
+          {t('settings.languageNote')}
         </div>
       </section>
     </div>

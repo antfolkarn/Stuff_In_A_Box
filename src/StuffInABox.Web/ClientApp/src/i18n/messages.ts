@@ -1,0 +1,344 @@
+// All user-facing strings, keyed by a flat semantic name. Swedish is the source
+// language; English mirrors the same keys. Placeholders use {name} syntax and are
+// filled by the translate() helper. Add a new language by adding another dictionary
+// with the same keys (TypeScript enforces full coverage via the Record<MessageKey>).
+
+export type Lang = 'sv' | 'en'
+
+// Native language names (shown in the language switcher regardless of active lang).
+export const LANGS: { id: Lang; label: string }[] = [
+  { id: 'sv', label: 'Svenska' },
+  { id: 'en', label: 'English' },
+]
+
+const sv = {
+  // Generic
+  'common.loading': 'Laddar…',
+
+  // Header
+  'header.eyebrow': 'INDEX FÖR FYSISK FÖRVARING',
+  'header.searchPlaceholder': 'Sök – t.ex. täcke, verktyg, vinter…',
+  'header.lightMode': 'Ljust läge',
+  'header.darkMode': 'Mörkt läge',
+  'header.toggleTheme': 'Växla färgtema',
+  'header.settings': 'Inställningar',
+  'header.add': 'Lägg till',
+  'header.logout': 'Logga ut',
+
+  // Home
+  'home.title': 'Mina utrymmen',
+  'home.summary': '{spaces} utrymmen · {boxes} lådor · {items} föremål i registret',
+  'home.labels': 'Etiketter',
+  'home.newSpace': 'Nytt utrymme',
+  'home.namePlaceholder': 'Namn, t.ex. Vinden eller Förråd',
+  'home.save': 'Spara',
+  'home.chooseIcon': 'VÄLJ IKON',
+  'home.emptyTitle': 'Inga utrymmen ännu',
+  'home.emptyBody': 'Klicka på "Nytt utrymme" för att komma igång.',
+
+  // Space
+  'space.back': 'Mina utrymmen',
+  'space.boxesItems': '{boxes} lådor · {items} föremål',
+  'space.notFound': 'Utrymme hittades inte.',
+  'space.changeIcon': 'Ändra ikon',
+  'space.chooseIconFor': 'VÄLJ IKON FÖR {name}',
+  'space.loadingBoxes': 'Laddar lådor…',
+  'space.boxLabelPlaceholder': 'Etikett för lådan',
+  'space.create': 'Skapa',
+  'space.cancel': 'Avbryt',
+  'space.newBox': 'Ny låda',
+  'space.items': '{count} föremål',
+  'space.labels': 'Etiketter',
+
+  // Box
+  'box.loading': 'Laddar låda…',
+  'box.confirmDelete': 'Ta bort låda #{number} och alla dess föremål?',
+  'box.rename': 'Byt namn',
+  'box.deleteBox': 'Ta bort lådan',
+  'box.items': '{count} föremål',
+  'box.markBox': 'Märk lådan:',
+  'box.location': 'Plats',
+  'box.numberFollows': 'Numret #{number} följer lådan om du flyttar den.',
+  'box.labelForThis': 'Etikett för denna låda',
+  'box.emptyTitle': 'Tom låda',
+  'box.emptyBody': 'Registrera det första du lägger i.',
+  'box.addItem': 'Lägg till en sak i lådan',
+  'box.itemRemove': 'Ta bort',
+  'box.confirmDeleteItem': 'Ta bort "{name}"?',
+  'box.viewLarger': 'Visa större',
+
+  // Add item
+  'addItem.title': 'Lägg till en sak',
+  'addItem.subtitle': 'Snabbare än att strunta i det',
+  'addItem.previewAlt': 'Förhandsvisning',
+  'addItem.takePhoto': 'Ta ett foto',
+  'addItem.recognizeHint': 'Vi känner igen vad det är åt dig',
+  'addItem.analyzing': 'Analyserar bild…',
+  'addItem.recognized': 'Igenkänt:',
+  'addItem.photoAdded': 'Foto tillagt',
+  'addItem.retake': 'Ta om',
+  'addItem.whatIsIt': 'VAD ÄR DET?',
+  'addItem.namePlaceholder': 't.ex. Vinterjacka',
+  'addItem.autoTagHint': 'Taggas automatiskt med relaterade ord så den blir lätt att hitta',
+  'addItem.detectedTags': 'IGENKÄNDA TAGGAR',
+  'addItem.removeTag': 'Ta bort taggen {tag}',
+  'addItem.destination': 'VAR LÄGGER DU DEN?',
+  'addItem.noBox': 'Ingen låda',
+  'addItem.boxOption': 'Box #{number} · {label}',
+  'addItem.addedNow': 'TILLAGDA NU',
+  'addItem.saveNext': 'Spara & nästa',
+  'addItem.done': 'Klart',
+
+  // Search
+  'search.title': 'Sökresultat',
+  'search.hits': '{count} träffar',
+  'search.subtitle': 'Söker även på relaterade ord – var sakerna finns, utan att öppna en låda.',
+  'search.searching': 'Söker…',
+  'search.noHitsTitle': 'Inga träffar',
+  'search.noHitsBody': 'Inget i registret matchar ”{q}”.',
+  'search.groupSpaces': 'UTRYMMEN',
+  'search.groupBoxes': 'LÅDOR',
+  'search.groupItems': 'FÖREMÅL',
+  'search.spaceMeta': 'Utrymme · {count} lådor',
+  'search.boxMeta': '{space} · Box #{number}',
+  'search.contains': 'Innehåller {reason}',
+  'search.boxTag': 'LÅDA',
+
+  // Labels
+  'labels.back': 'Mina utrymmen',
+  'labels.title': 'Etiketter',
+  'labels.subtitle': 'Skriv ut, klipp längs den streckade kanten och tejpa på lådan. Numret är nyckeln till registret.',
+  'labels.print': 'Skriv ut ({count})',
+  'labels.filter': 'Filter',
+  'labels.all': 'Alla',
+  'labels.onlyBox': 'Endast Box #{number}',
+  'labels.loading': 'Laddar etiketter…',
+  'labels.emptyBox': 'Tom låda',
+  'labels.qrCaption': 'SKANNA FÖR ATT ÖPPNA I APPEN',
+  'labels.items': '{count} föremål',
+  'labels.qrAlt': 'QR för låda {number}',
+
+  // Login
+  'login.loginTitle': 'Logga in',
+  'login.signupTitle': 'Skapa konto',
+  'login.loginSubtitle': 'Välkommen tillbaka till ditt register.',
+  'login.signupSubtitle': 'Börja hålla reda på var allt finns.',
+  'login.continueGoogle': 'Fortsätt med Google',
+  'login.continueApple': 'Fortsätt med Apple',
+  'login.orEmail': 'eller med e-post',
+  'login.email': 'E-post',
+  'login.emailPlaceholder': 'din@epost.se',
+  'login.password': 'Lösenord',
+  'login.forgot': 'Glömt?',
+  'login.waiting': 'Vänta…',
+  'login.noAccount': 'Har du inget konto?',
+  'login.haveAccount': 'Har du redan ett konto?',
+  'login.legal': 'Genom att fortsätta godkänner du våra villkor och vår integritetspolicy.',
+  'login.errLogin': 'Fel e-post eller lösenord.',
+  'login.errSignup': 'Kunde inte skapa konto. Prova en annan e-post.',
+  'login.oauthNotConfigured': 'Inloggning via leverantör är inte konfigurerad.',
+  'login.oauthFailed': 'Inloggningen avbröts.',
+  'login.oauthState': 'Säkerhetskontrollen misslyckades. Försök igen.',
+  'login.oauthExchange': 'Kunde inte verifiera inloggningen. Försök igen.',
+  'login.oauthGeneric': 'Inloggningen misslyckades.',
+
+  // Settings
+  'settings.back': 'Mina utrymmen',
+  'settings.title': 'Mina inställningar',
+  'settings.subtitle': 'Sparas på ditt konto och gäller på alla enheter du loggar in på.',
+  'settings.theme': 'FÄRGLÄGE',
+  'settings.design': 'DESIGN',
+  'settings.designNote': 'Varje design byter färger och typsnitt. Ljust/mörkt läge gäller fortfarande ovanpå.',
+  'settings.language': 'SPRÅK',
+  'settings.languageNote': 'Väljs automatiskt efter din webbläsare. Engelska används om svenska inte är förstaspråk.',
+
+  // Themes
+  'theme.light': 'Ljust',
+  'theme.dark': 'Mörkt',
+  'theme.system': 'System',
+
+  // Designs
+  'design.standard.label': 'Standard',
+  'design.standard.desc': 'Det blå originalet',
+  'design.atelier.label': 'Atelier',
+  'design.atelier.desc': 'Varmt papper, dämpat',
+  'design.pop.label': 'Pop',
+  'design.pop.desc': 'Lekfullt och färgstarkt',
+
+  // Error boundary
+  'error.title': 'Något gick fel',
+  'error.body': 'Ett oväntat fel inträffade. Försök ladda om sidan.',
+  'error.reload': 'Ladda om',
+
+  // Image lightbox
+  'lightbox.close': 'Stäng',
+  'lightbox.alt': 'Föremålsbild',
+} as const
+
+export type MessageKey = keyof typeof sv
+
+const en: Record<MessageKey, string> = {
+  // Generic
+  'common.loading': 'Loading…',
+
+  // Header
+  'header.eyebrow': 'INDEX FOR PHYSICAL STORAGE',
+  'header.searchPlaceholder': 'Search – e.g. duvet, tools, winter…',
+  'header.lightMode': 'Light mode',
+  'header.darkMode': 'Dark mode',
+  'header.toggleTheme': 'Toggle colour theme',
+  'header.settings': 'Settings',
+  'header.add': 'Add',
+  'header.logout': 'Log out',
+
+  // Home
+  'home.title': 'My spaces',
+  'home.summary': '{spaces} spaces · {boxes} boxes · {items} items in the index',
+  'home.labels': 'Labels',
+  'home.newSpace': 'New space',
+  'home.namePlaceholder': 'Name, e.g. Attic or Storage',
+  'home.save': 'Save',
+  'home.chooseIcon': 'CHOOSE ICON',
+  'home.emptyTitle': 'No spaces yet',
+  'home.emptyBody': 'Click "New space" to get started.',
+
+  // Space
+  'space.back': 'My spaces',
+  'space.boxesItems': '{boxes} boxes · {items} items',
+  'space.notFound': 'Space not found.',
+  'space.changeIcon': 'Change icon',
+  'space.chooseIconFor': 'CHOOSE ICON FOR {name}',
+  'space.loadingBoxes': 'Loading boxes…',
+  'space.boxLabelPlaceholder': 'Label for the box',
+  'space.create': 'Create',
+  'space.cancel': 'Cancel',
+  'space.newBox': 'New box',
+  'space.items': '{count} items',
+  'space.labels': 'Labels',
+
+  // Box
+  'box.loading': 'Loading box…',
+  'box.confirmDelete': 'Delete box #{number} and all its items?',
+  'box.rename': 'Rename',
+  'box.deleteBox': 'Delete box',
+  'box.items': '{count} items',
+  'box.markBox': 'Label box:',
+  'box.location': 'Location',
+  'box.numberFollows': 'Number #{number} stays with the box if you move it.',
+  'box.labelForThis': 'Label for this box',
+  'box.emptyTitle': 'Empty box',
+  'box.emptyBody': 'Register the first thing you put in.',
+  'box.addItem': 'Add an item to the box',
+  'box.itemRemove': 'Remove',
+  'box.confirmDeleteItem': 'Remove "{name}"?',
+  'box.viewLarger': 'View larger',
+
+  // Add item
+  'addItem.title': 'Add an item',
+  'addItem.subtitle': 'Faster than not bothering',
+  'addItem.previewAlt': 'Preview',
+  'addItem.takePhoto': 'Take a photo',
+  'addItem.recognizeHint': "We'll recognise what it is for you",
+  'addItem.analyzing': 'Analysing image…',
+  'addItem.recognized': 'Recognised:',
+  'addItem.photoAdded': 'Photo added',
+  'addItem.retake': 'Retake',
+  'addItem.whatIsIt': 'WHAT IS IT?',
+  'addItem.namePlaceholder': 'e.g. Winter jacket',
+  'addItem.autoTagHint': "Automatically tagged with related words so it's easy to find",
+  'addItem.detectedTags': 'DETECTED TAGS',
+  'addItem.removeTag': 'Remove tag {tag}',
+  'addItem.destination': 'WHERE ARE YOU PUTTING IT?',
+  'addItem.noBox': 'No box',
+  'addItem.boxOption': 'Box #{number} · {label}',
+  'addItem.addedNow': 'ADDED JUST NOW',
+  'addItem.saveNext': 'Save & next',
+  'addItem.done': 'Done',
+
+  // Search
+  'search.title': 'Search results',
+  'search.hits': '{count} hits',
+  'search.subtitle': 'Also searches related words – where things are, without opening a box.',
+  'search.searching': 'Searching…',
+  'search.noHitsTitle': 'No hits',
+  'search.noHitsBody': 'Nothing in the index matches “{q}”.',
+  'search.groupSpaces': 'SPACES',
+  'search.groupBoxes': 'BOXES',
+  'search.groupItems': 'ITEMS',
+  'search.spaceMeta': 'Space · {count} boxes',
+  'search.boxMeta': '{space} · Box #{number}',
+  'search.contains': 'Contains {reason}',
+  'search.boxTag': 'BOX',
+
+  // Labels
+  'labels.back': 'My spaces',
+  'labels.title': 'Labels',
+  'labels.subtitle': 'Print, cut along the dashed edge and tape it to the box. The number is the key to the index.',
+  'labels.print': 'Print ({count})',
+  'labels.filter': 'Filter',
+  'labels.all': 'All',
+  'labels.onlyBox': 'Only box #{number}',
+  'labels.loading': 'Loading labels…',
+  'labels.emptyBox': 'Empty box',
+  'labels.qrCaption': 'SCAN TO OPEN IN THE APP',
+  'labels.items': '{count} items',
+  'labels.qrAlt': 'QR for box {number}',
+
+  // Login
+  'login.loginTitle': 'Log in',
+  'login.signupTitle': 'Create account',
+  'login.loginSubtitle': 'Welcome back to your index.',
+  'login.signupSubtitle': 'Start keeping track of where everything is.',
+  'login.continueGoogle': 'Continue with Google',
+  'login.continueApple': 'Continue with Apple',
+  'login.orEmail': 'or with email',
+  'login.email': 'Email',
+  'login.emailPlaceholder': 'you@email.com',
+  'login.password': 'Password',
+  'login.forgot': 'Forgot?',
+  'login.waiting': 'Please wait…',
+  'login.noAccount': "Don't have an account?",
+  'login.haveAccount': 'Already have an account?',
+  'login.legal': 'By continuing you agree to our terms and privacy policy.',
+  'login.errLogin': 'Wrong email or password.',
+  'login.errSignup': "Couldn't create account. Try a different email.",
+  'login.oauthNotConfigured': 'Provider sign-in is not configured.',
+  'login.oauthFailed': 'Sign-in was cancelled.',
+  'login.oauthState': 'Security check failed. Please try again.',
+  'login.oauthExchange': "Couldn't verify the sign-in. Please try again.",
+  'login.oauthGeneric': 'Sign-in failed.',
+
+  // Settings
+  'settings.back': 'My spaces',
+  'settings.title': 'My settings',
+  'settings.subtitle': 'Saved to your account and applied on every device you sign in on.',
+  'settings.theme': 'COLOUR MODE',
+  'settings.design': 'DESIGN',
+  'settings.designNote': 'Each design changes colours and fonts. Light/dark mode still applies on top.',
+  'settings.language': 'LANGUAGE',
+  'settings.languageNote': "Chosen automatically from your browser. English is used when Swedish isn't your primary language.",
+
+  // Themes
+  'theme.light': 'Light',
+  'theme.dark': 'Dark',
+  'theme.system': 'System',
+
+  // Designs
+  'design.standard.label': 'Standard',
+  'design.standard.desc': 'The blue original',
+  'design.atelier.label': 'Atelier',
+  'design.atelier.desc': 'Warm paper, muted',
+  'design.pop.label': 'Pop',
+  'design.pop.desc': 'Playful and colourful',
+
+  // Error boundary
+  'error.title': 'Something went wrong',
+  'error.body': 'An unexpected error occurred. Try reloading the page.',
+  'error.reload': 'Reload',
+
+  // Image lightbox
+  'lightbox.close': 'Close',
+  'lightbox.alt': 'Item photo',
+}
+
+export const messages: Record<Lang, Record<MessageKey, string>> = { sv, en }

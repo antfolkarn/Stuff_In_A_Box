@@ -5,11 +5,13 @@ import { getSpaces } from '../../api/spaces'
 import { useUiStore } from '../../store/uiStore'
 import { useQrCache } from '../../shared/components/useQrCode'
 import { Icon } from '../../shared/components/Icon'
+import { useT } from '../../i18n'
 import type { LabelDto } from '../../api/types'
 
 export default function LabelsView() {
   const { labelFilter, goLabels, goHome } = useUiStore()
   const getQr = useQrCache()
+  const t = useT()
 
   const { data: spaces = [] } = useQuery({ queryKey: ['spaces'], queryFn: getSpaces })
 
@@ -41,7 +43,7 @@ export default function LabelsView() {
           }}
         >
           <IconArrowLeft size={15} />
-          Mina utrymmen
+          {t('labels.back')}
         </button>
 
         <div
@@ -56,16 +58,15 @@ export default function LabelsView() {
         >
           <div>
             <h1 style={{ fontSize: 24, fontWeight: 600, letterSpacing: '-0.02em', margin: 0 }}>
-              Etiketter
+              {t('labels.title')}
             </h1>
             <div style={{ fontSize: 14, color: 'var(--text-2)', marginTop: 4, maxWidth: 560 }}>
-              Skriv ut, klipp längs den streckade kanten och tejpa på lådan. Numret är nyckeln
-              till registret.
+              {t('labels.subtitle')}
             </div>
           </div>
           <button className="btn btn-accent" onClick={() => window.print()}>
             <IconPrinter size={17} />
-            Skriv ut ({labels.length})
+            {t('labels.print', { count: labels.length })}
           </button>
         </div>
 
@@ -89,14 +90,14 @@ export default function LabelsView() {
             }}
           >
             <IconFilter size={15} />
-            Filter
+            {t('labels.filter')}
           </span>
 
           <FilterPill
             active={!labelFilter.spaceId && !isBoxFilter}
             onClick={() => goLabels({})}
           >
-            Alla
+            {t('labels.all')}
             <span className="mono" style={{ opacity: 0.6, marginLeft: 4 }}>
               {totalBoxes}
             </span>
@@ -133,7 +134,7 @@ export default function LabelsView() {
                 fontFamily: 'inherit',
               }}
             >
-              Endast Box #{labelFilter.boxNumber}
+              {t('labels.onlyBox', { number: labelFilter.boxNumber ?? '' })}
               <IconX size={14} />
             </button>
           )}
@@ -143,7 +144,7 @@ export default function LabelsView() {
       {/* Label grid */}
       {isLoading ? (
         <div style={{ color: 'var(--text-3)', padding: '40px 0', textAlign: 'center' }}>
-          Laddar etiketter…
+          {t('labels.loading')}
         </div>
       ) : (
         <div
@@ -195,8 +196,9 @@ function FilterPill({
 }
 
 function LabelCard({ label, qr }: { label: LabelDto; qr: string }) {
+  const t = useT()
   const contents =
-    label.itemNames.length > 0 ? label.itemNames.slice(0, 6).join(' · ') : 'Tom låda'
+    label.itemNames.length > 0 ? label.itemNames.slice(0, 6).join(' · ') : t('labels.emptyBox')
 
   return (
     <div
@@ -251,7 +253,7 @@ function LabelCard({ label, qr }: { label: LabelDto; qr: string }) {
           {qr ? (
             <img
               src={qr}
-              alt={`QR för låda ${label.boxNumber}`}
+              alt={t('labels.qrAlt', { number: label.boxNumber })}
               width={64}
               height={64}
               style={{ imageRendering: 'pixelated' }}
@@ -287,10 +289,10 @@ function LabelCard({ label, qr }: { label: LabelDto; qr: string }) {
           style={{ fontSize: 9, color: 'var(--text-4)', display: 'flex', alignItems: 'center', gap: 4, letterSpacing: '0.06em' }}
         >
           <IconQrcode size={11} />
-          SKANNA FÖR ATT ÖPPNA I APPEN
+          {t('labels.qrCaption')}
         </span>
         <span className="mono" style={{ fontSize: 11, color: 'var(--text-4)' }}>
-          {label.itemNames.length} föremål
+          {t('labels.items', { count: label.itemNames.length })}
         </span>
       </div>
     </div>

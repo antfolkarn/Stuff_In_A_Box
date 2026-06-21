@@ -5,11 +5,13 @@ import { getSpaces, createSpace } from '../../api/spaces'
 import { useUiStore } from '../../store/uiStore'
 import { Icon } from '../../shared/components/Icon'
 import SpaceIconPicker from '../../shared/components/SpaceIconPicker'
+import { useT } from '../../i18n'
 import type { SpaceDto } from '../../api/types'
 
 export default function HomeView() {
   const qc = useQueryClient()
   const { goSpace, goLabels } = useUiStore()
+  const t = useT()
   const [addingSpace, setAddingSpace] = useState(false)
   const [newName, setNewName] = useState('')
   const [newIcon, setNewIcon] = useState('ti-box')
@@ -47,10 +49,10 @@ export default function HomeView() {
       >
         <div>
           <h1 style={{ fontSize: 24, fontWeight: 600, letterSpacing: '-0.02em', margin: 0 }}>
-            Mina utrymmen
+            {t('home.title')}
           </h1>
           <div style={{ fontSize: 14, color: 'var(--text-2)', marginTop: 4 }}>
-            {spaces.length} utrymmen · {totalBoxes} lådor · {totalItems} föremål i registret
+            {t('home.summary', { spaces: spaces.length, boxes: totalBoxes, items: totalItems })}
           </div>
         </div>
         <div style={{ display: 'flex', gap: 8 }}>
@@ -59,14 +61,14 @@ export default function HomeView() {
             onClick={() => goLabels()}
           >
             <IconPrinter size={16} />
-            Etiketter
+            {t('home.labels')}
           </button>
           <button
             className="btn btn-outline btn-sm"
             onClick={() => setAddingSpace((v) => !v)}
           >
             <IconPlus size={16} />
-            Nytt utrymme
+            {t('home.newSpace')}
           </button>
         </div>
       </div>
@@ -92,7 +94,7 @@ export default function HomeView() {
             <input
               className="input"
               style={{ flex: 1 }}
-              placeholder="Namn, t.ex. Vinden eller Förråd"
+              placeholder={t('home.namePlaceholder')}
               value={newName}
               onChange={(e) => setNewName(e.target.value)}
               onKeyDown={(e) => {
@@ -105,7 +107,7 @@ export default function HomeView() {
               onClick={() => createMut.mutate()}
               disabled={!newName.trim() || createMut.isPending}
             >
-              Spara
+              {t('home.save')}
             </button>
             <button
               style={{ color: 'var(--text-3)', display: 'flex' }}
@@ -115,7 +117,7 @@ export default function HomeView() {
             </button>
           </div>
           <div style={{ borderTop: 'var(--bw) solid var(--border)', paddingTop: 12 }}>
-            <SpaceIconPicker value={newIcon} onChange={setNewIcon} label="VÄLJ IKON" />
+            <SpaceIconPicker value={newIcon} onChange={setNewIcon} label={t('home.chooseIcon')} />
           </div>
         </div>
       )}
@@ -123,7 +125,7 @@ export default function HomeView() {
       {/* Space grid */}
       {isLoading ? (
         <div style={{ color: 'var(--text-3)', padding: '40px 0', textAlign: 'center' }}>
-          Laddar…
+          {t('common.loading')}
         </div>
       ) : (
         <div
@@ -147,9 +149,9 @@ export default function HomeView() {
       {!isLoading && spaces.length === 0 && !addingSpace && (
         <div style={{ textAlign: 'center', padding: '60px 0', color: 'var(--text-3)' }}>
           <IconBox size={40} style={{ display: 'block', margin: '0 auto 12px' }} />
-          <div style={{ fontSize: 16, fontWeight: 500 }}>Inga utrymmen ännu</div>
+          <div style={{ fontSize: 16, fontWeight: 500 }}>{t('home.emptyTitle')}</div>
           <div style={{ fontSize: 14, marginTop: 6 }}>
-            Klicka på "Nytt utrymme" för att komma igång.
+            {t('home.emptyBody')}
           </div>
         </div>
       )}
@@ -164,6 +166,7 @@ function SpaceCard({
   space: SpaceDto
   onClick: () => void
 }) {
+  const t = useT()
   return (
     <div
       className="card space-card"
@@ -195,7 +198,7 @@ function SpaceCard({
           className="mono"
           style={{ fontSize: 12, color: 'var(--text-3)', marginTop: 3 }}
         >
-          {space.boxCount} lådor · {space.itemCount} föremål
+          {t('space.boxesItems', { boxes: space.boxCount, items: space.itemCount })}
         </div>
       </div>
     </div>

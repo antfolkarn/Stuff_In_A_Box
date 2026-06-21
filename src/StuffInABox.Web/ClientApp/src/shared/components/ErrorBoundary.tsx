@@ -1,4 +1,5 @@
 import { Component, type ErrorInfo, type ReactNode } from 'react'
+import { translate, useI18nStore } from '../../i18n'
 
 interface Props {
   children: ReactNode
@@ -31,6 +32,10 @@ export default class ErrorBoundary extends Component<Props, State> {
   render() {
     if (!this.state.hasError) return this.props.children
 
+    // Non-reactive read is fine here: the boundary reloads the page on reset.
+    const lang = useI18nStore.getState().lang
+    const t = (key: Parameters<typeof translate>[1]) => translate(lang, key)
+
     return (
       <div
         style={{
@@ -53,12 +58,12 @@ export default class ErrorBoundary extends Component<Props, State> {
             padding: 32,
           }}
         >
-          <div style={{ fontSize: 18, fontWeight: 600, marginBottom: 8 }}>Något gick fel</div>
+          <div style={{ fontSize: 18, fontWeight: 600, marginBottom: 8 }}>{t('error.title')}</div>
           <div style={{ fontSize: 14, color: 'var(--text-2)', marginBottom: 20 }}>
-            Ett oväntat fel inträffade. Försök ladda om sidan.
+            {t('error.body')}
           </div>
           <button className="btn btn-accent" onClick={this.reset} style={{ margin: '0 auto' }}>
-            Ladda om
+            {t('error.reload')}
           </button>
         </div>
       </div>

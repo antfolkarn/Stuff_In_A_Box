@@ -13,10 +13,12 @@ import { useAuthStore } from '../../store/authStore'
 import { useUiStore } from '../../store/uiStore'
 import { useSettingsStore, resolveTheme } from '../../store/settingsStore'
 import { useQueryClient } from '@tanstack/react-query'
+import { useT } from '../../i18n'
 
 export default function AppHeader() {
   const { logout } = useAuthStore()
   const { query, setQuery, goHome, openAdd, goSettings } = useUiStore()
+  const t = useT()
   const theme = useSettingsStore((s) => s.theme)
   const toggleTheme = useSettingsStore((s) => s.toggleTheme)
   const isDark = resolveTheme(theme) === 'dark'
@@ -65,7 +67,7 @@ export default function AppHeader() {
                 lineHeight: 1,
               }}
             >
-              INDEX FÖR FYSISK FÖRVARING
+              {t('header.eyebrow')}
             </div>
           </div>
         </button>
@@ -94,7 +96,7 @@ export default function AppHeader() {
             ref={inputRef}
             className="input"
             style={{ paddingLeft: 38, paddingRight: query ? 36 : 14 }}
-            placeholder="Sök – t.ex. täcke, verktyg, vinter…"
+            placeholder={t('header.searchPlaceholder')}
             value={query}
             onChange={(e) => setQuery(e.target.value)}
           />
@@ -119,8 +121,8 @@ export default function AppHeader() {
           <button
             className="btn btn-outline"
             onClick={toggleTheme}
-            title={isDark ? 'Ljust läge' : 'Mörkt läge'}
-            aria-label="Växla färgtema"
+            title={isDark ? t('header.lightMode') : t('header.darkMode')}
+            aria-label={t('header.toggleTheme')}
             style={{ width: 42, padding: 0, flexShrink: 0 }}
           >
             {isDark ? <IconSun size={18} /> : <IconMoon size={18} />}
@@ -130,24 +132,24 @@ export default function AppHeader() {
           <button
             className="btn btn-outline"
             onClick={goSettings}
-            title="Inställningar"
-            aria-label="Inställningar"
+            title={t('header.settings')}
+            aria-label={t('header.settings')}
             style={{ width: 42, padding: 0, flexShrink: 0 }}
           >
             <IconSettings size={18} />
           </button>
 
           {/* Add button */}
-          <button className="btn btn-accent" onClick={() => openAdd()} aria-label="Lägg till" style={{ flexShrink: 0 }}>
+          <button className="btn btn-accent" onClick={() => openAdd()} aria-label={t('header.add')} style={{ flexShrink: 0 }}>
             <IconPlus size={17} />
-            <span className="btn-label">Lägg till</span>
+            <span className="btn-label">{t('header.add')}</span>
           </button>
 
           {/* Logout */}
           <button
             className="btn btn-outline"
             onClick={handleLogout}
-            aria-label="Logga ut"
+            aria-label={t('header.logout')}
             style={{ gap: 8, paddingLeft: 4, flexShrink: 0 }}
           >
             <div
@@ -158,7 +160,7 @@ export default function AppHeader() {
                 A
               </span>
             </div>
-            <span className="btn-label">Logga ut</span>
+            <span className="btn-label">{t('header.logout')}</span>
             <IconLogout size={16} />
           </button>
         </div>

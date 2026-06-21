@@ -6,12 +6,14 @@ import { getBoxesBySpace, getBoxDetail } from '../../api/boxes'
 import { addItem, uploadItemPhoto } from '../../api/items'
 import { recognizeImage } from '../../api/recognize'
 import { useUiStore } from '../../store/uiStore'
+import { useT } from '../../i18n'
 
 type PhotoState = 'idle' | 'analyzing' | 'done'
 
 export default function AddItemSheet() {
   const qc = useQueryClient()
   const { closeAdd, boxNum, spaceId: navSpaceId } = useUiStore()
+  const t = useT()
 
   const [photo, setPhoto] = useState<PhotoState>('idle')
   const [guess, setGuess] = useState('')
@@ -181,9 +183,9 @@ export default function AddItemSheet() {
           }}
         >
           <div>
-            <div style={{ fontSize: 17, fontWeight: 600 }}>Lägg till en sak</div>
+            <div style={{ fontSize: 17, fontWeight: 600 }}>{t('addItem.title')}</div>
             <div className="mono" style={{ fontSize: 11.5, color: 'var(--text-4)', marginTop: 2 }}>
-              Snabbare än att strunta i det
+              {t('addItem.subtitle')}
             </div>
           </div>
           <button
@@ -228,7 +230,7 @@ export default function AddItemSheet() {
             {previewUrl && photo !== 'idle' && (
               <img
                 src={previewUrl}
-                alt="Förhandsvisning"
+                alt={t('addItem.previewAlt')}
                 style={{
                   position: 'absolute',
                   inset: 0,
@@ -242,9 +244,9 @@ export default function AddItemSheet() {
             {photo === 'idle' && (
               <>
                 <IconCamera size={30} style={{ color: 'var(--text-3)' }} />
-                <div style={{ fontSize: 14.5, fontWeight: 500 }}>Ta ett foto</div>
+                <div style={{ fontSize: 14.5, fontWeight: 500 }}>{t('addItem.takePhoto')}</div>
                 <div style={{ fontSize: 12.5, color: 'var(--text-4)' }}>
-                  Vi känner igen vad det är åt dig
+                  {t('addItem.recognizeHint')}
                 </div>
               </>
             )}
@@ -256,7 +258,7 @@ export default function AddItemSheet() {
                   style={{ color: 'var(--accent)', animation: 'spin 1s linear infinite', position: 'relative' }}
                 />
                 <style>{`@keyframes spin { to { transform: rotate(360deg) } }`}</style>
-                <div style={{ fontSize: 14, fontWeight: 500, position: 'relative' }}>Analyserar bild…</div>
+                <div style={{ fontSize: 14, fontWeight: 500, position: 'relative' }}>{t('addItem.analyzing')}</div>
               </>
             )}
             {photo === 'done' && (
@@ -276,13 +278,13 @@ export default function AddItemSheet() {
                   <IconCheck size={22} color="#fff" />
                 </div>
                 <div style={{ fontSize: 14, color: 'var(--success-text)', position: 'relative' }}>
-                  {guess ? <>Igenkänt: <strong>{guess}</strong></> : 'Foto tillagt'}
+                  {guess ? <>{t('addItem.recognized')} <strong>{guess}</strong></> : t('addItem.photoAdded')}
                 </div>
                 <button
                   onClick={(e) => { e.stopPropagation(); fileInputRef.current?.click() }}
                   style={{ fontSize: 12.5, color: 'var(--accent)', position: 'relative' }}
                 >
-                  Ta om
+                  {t('addItem.retake')}
                 </button>
               </>
             )}
@@ -290,13 +292,13 @@ export default function AddItemSheet() {
 
           {/* Name field */}
           <div style={{ marginBottom: 18 }}>
-            <div className="field-label">VAD ÄR DET?</div>
+            <div className="field-label">{t('addItem.whatIsIt')}</div>
             <input
               className="input"
               style={{ height: 46, fontWeight: 500 }}
               value={name}
               onChange={(e) => setName(e.target.value)}
-              placeholder="t.ex. Vinterjacka"
+              placeholder={t('addItem.namePlaceholder')}
             />
             <div
               style={{
@@ -309,14 +311,14 @@ export default function AddItemSheet() {
               }}
             >
               <IconSparkles size={14} />
-              Taggas automatiskt med relaterade ord så den blir lätt att hitta
+              {t('addItem.autoTagHint')}
             </div>
 
             {/* Detected tags from the photo (objects, colours, material, …) */}
             {detectedTags.length > 0 && (
               <div style={{ marginTop: 10 }}>
                 <div className="mono" style={{ fontSize: 10, color: 'var(--text-4)', letterSpacing: '0.08em', marginBottom: 6 }}>
-                  IGENKÄNDA TAGGAR
+                  {t('addItem.detectedTags')}
                 </div>
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
                   {detectedTags.map((tag) => (
@@ -335,8 +337,8 @@ export default function AddItemSheet() {
                     >
                       {tag}
                       <button
-                        onClick={() => setDetectedTags((t) => t.filter((x) => x !== tag))}
-                        aria-label={`Ta bort taggen ${tag}`}
+                        onClick={() => setDetectedTags((tags) => tags.filter((x) => x !== tag))}
+                        aria-label={t('addItem.removeTag', { tag })}
                         style={{ display: 'flex', color: 'inherit', opacity: 0.7 }}
                       >
                         <IconX size={13} />
@@ -350,7 +352,7 @@ export default function AddItemSheet() {
 
           {/* Destination */}
           <div style={{ marginBottom: 18 }}>
-            <div className="field-label">VAR LÄGGER DU DEN?</div>
+            <div className="field-label">{t('addItem.destination')}</div>
             <div className="stack-mobile" style={{ display: 'flex', gap: 8 }}>
               <select
                 className="select"
@@ -373,10 +375,10 @@ export default function AddItemSheet() {
                 value={selectedBox ?? ''}
                 onChange={(e) => setSelectedBox(Number(e.target.value))}
               >
-                {boxes.length === 0 && <option value="">Ingen låda</option>}
+                {boxes.length === 0 && <option value="">{t('addItem.noBox')}</option>}
                 {boxes.map((b) => (
                   <option key={b.number} value={b.number}>
-                    Box #{b.number} · {b.label}
+                    {t('addItem.boxOption', { number: b.number, label: b.label })}
                   </option>
                 ))}
               </select>
@@ -386,7 +388,7 @@ export default function AddItemSheet() {
           {/* Recents */}
           {recent.length > 0 && (
             <div style={{ marginBottom: 18 }}>
-              <div className="field-label">TILLAGDA NU</div>
+              <div className="field-label">{t('addItem.addedNow')}</div>
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
                 {recent.map((r, i) => (
                   <span
@@ -430,7 +432,7 @@ export default function AddItemSheet() {
             onClick={handleSaveNext}
             disabled={!canSave || saveMut.isPending}
           >
-            Spara & nästa
+            {t('addItem.saveNext')}
           </button>
           <button
             className="btn btn-accent"
@@ -438,7 +440,7 @@ export default function AddItemSheet() {
             onClick={handleDone}
             disabled={!canSave || saveMut.isPending}
           >
-            Klart
+            {t('addItem.done')}
           </button>
         </div>
       </div>

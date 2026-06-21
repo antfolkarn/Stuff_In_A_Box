@@ -1,11 +1,13 @@
 import { useEffect } from 'react'
 import { IconX } from '@tabler/icons-react'
 import { useLightbox } from '../../store/lightboxStore'
+import { useT } from '../../i18n'
 
 /** Full-screen overlay that shows an item photo at a comfortable size. */
 export default function ImageLightbox() {
   const url = useLightbox((s) => s.url)
   const close = useLightbox((s) => s.close)
+  const t = useT()
 
   useEffect(() => {
     if (!url) return
@@ -37,7 +39,7 @@ export default function ImageLightbox() {
     >
       <button
         onClick={close}
-        aria-label="Stäng"
+        aria-label={t('lightbox.close')}
         style={{
           position: 'absolute',
           top: 16,
@@ -56,7 +58,7 @@ export default function ImageLightbox() {
       </button>
       <img
         src={url}
-        alt="Föremålsbild"
+        alt={t('lightbox.alt')}
         onClick={(e) => e.stopPropagation()}
         style={{
           maxWidth: '92vw',

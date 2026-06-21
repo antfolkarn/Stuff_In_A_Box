@@ -4,29 +4,32 @@ import { useAuthStore } from '../../store/authStore'
 import { useUiStore } from '../../store/uiStore'
 import { useSettingsStore, resolveTheme } from '../../store/settingsStore'
 import { login, register } from '../../api/auth'
+import { useT, type MessageKey } from '../../i18n'
 
 type Mode = 'login' | 'signup'
 
-const OAUTH_ERRORS: Record<string, string> = {
-  oauth_not_configured: 'Inloggning via leverantör är inte konfigurerad.',
-  oauth_failed: 'Inloggningen avbröts.',
-  oauth_state: 'Säkerhetskontrollen misslyckades. Försök igen.',
-  oauth_exchange: 'Kunde inte verifiera inloggningen. Försök igen.',
+// Maps the OAuth callback error code to a message key; resolved to text at render.
+const OAUTH_ERRORS: Record<string, MessageKey> = {
+  oauth_not_configured: 'login.oauthNotConfigured',
+  oauth_failed: 'login.oauthFailed',
+  oauth_state: 'login.oauthState',
+  oauth_exchange: 'login.oauthExchange',
 }
 
-function initialOAuthError(): string {
+function initialOAuthError(): MessageKey | '' {
   const m = window.location.hash.match(/[#&]error=([^&]+)/)
-  return m ? OAUTH_ERRORS[m[1]] ?? 'Inloggningen misslyckades.' : ''
+  return m ? OAUTH_ERRORS[m[1]] ?? 'login.oauthGeneric' : ''
 }
 
 export default function LoginView() {
   const [mode, setMode] = useState<Mode>('login')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
-  const [error, setError] = useState(initialOAuthError)
+  const [error, setError] = useState<MessageKey | ''>(initialOAuthError)
   const [loading, setLoading] = useState(false)
   const { setToken } = useAuthStore()
   const { pendingBox, goBox, setPendingBox } = useUiStore()
+  const t = useT()
   const themeMode = useSettingsStore((s) => s.theme)
   const toggleTheme = useSettingsStore((s) => s.toggleTheme)
   const isDark = resolveTheme(themeMode) === 'dark'
@@ -45,11 +48,7 @@ export default function LoginView() {
         goBox(pendingBox)
       }
     } catch {
-      setError(
-        mode === 'login'
-          ? 'Fel e-post eller lösenord.'
-          : 'Kunde inte skapa konto. Prova en annan e-post.',
-      )
+      setError(mode === 'login' ? 'login.errLogin' : 'login.errSignup')
     } finally {
       setLoading(false)
     }
@@ -71,8 +70,8 @@ export default function LoginView() {
       <button
         className="btn btn-outline"
         onClick={toggleTheme}
-        title={isDark ? 'Ljust läge' : 'Mörkt läge'}
-        aria-label="Växla färgtema"
+        title={isDark ? t('header.lightMode') : t('header.darkMode')}
+        aria-label={t('header.toggleTheme')}
         style={{ position: 'absolute', top: 20, right: 20, width: 42, padding: 0 }}
       >
         {isDark ? <IconSun size={18} /> : <IconMoon size={18} />}
@@ -99,7 +98,7 @@ export default function LoginView() {
                 marginTop: 2,
               }}
             >
-              INDEX FÖR FYSISK FÖRVARING
+              {t('header.eyebrow')}
             </div>
           </div>
         </div>
@@ -116,12 +115,10 @@ export default function LoginView() {
         >
           <div style={{ marginBottom: 22 }}>
             <div style={{ fontSize: 20, fontWeight: 600 }}>
-              {mode === 'login' ? 'Logga in' : 'Skapa konto'}
+              {mode === 'login' ? t('login.loginTitle') : t('login.signupTitle')}
             </div>
             <div style={{ fontSize: 13.5, color: 'var(--text-2)', marginTop: 4 }}>
-              {mode === 'login'
-                ? 'Välkommen tillbaka till ditt register.'
-                : 'Börja hålla reda på var allt finns.'}
+              {mode === 'login' ? t('login.loginSubtitle') : t('login.signupSubtitle')}
             </div>
           </div>
 
@@ -133,7 +130,7 @@ export default function LoginView() {
               onClick={() => { window.location.href = '/api/auth/google/start' }}
             >
               <IconBrandGoogle size={18} />
-              Fortsätt med Google
+              {t('login.continueGoogle')}
             </button>
             <button
               style={{
@@ -155,7 +152,7 @@ export default function LoginView() {
               onClick={() => { window.location.href = '/api/auth/apple/start' }}
             >
               <IconBrandAppleFilled size={18} />
-              Fortsätt med Apple
+              {t('login.continueApple')}
             </button>
           </div>
 
@@ -169,7 +166,7 @@ export default function LoginView() {
             }}
           >
             <div style={{ flex: 1, height: 1, background: 'var(--border)' }} />
-            <span style={{ fontSize: 12, color: 'var(--text-4)' }}>eller med e-post</span>
+            <span style={{ fontSize: 12, color: 'var(--text-4)' }}>{t('login.orEmail')}</span>
             <div style={{ flex: 1, height: 1, background: 'var(--border)' }} />
           </div>
 
@@ -184,14 +181,14 @@ export default function LoginView() {
                   marginBottom: 6,
                 }}
               >
-                <label style={{ fontSize: 13.5, fontWeight: 500 }}>E-post</label>
+                <label style={{ fontSize: 13.5, fontWeight: 500 }}>{t('login.email')}</label>
               </div>
               <input
                 className="input"
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                placeholder="din@epost.se"
+                placeholder={t('login.emailPlaceholder')}
                 required
               />
             </div>
@@ -205,10 +202,10 @@ export default function LoginView() {
                   marginBottom: 6,
                 }}
               >
-                <label style={{ fontSize: 13.5, fontWeight: 500 }}>Lösenord</label>
+                <label style={{ fontSize: 13.5, fontWeight: 500 }}>{t('login.password')}</label>
                 {mode === 'login' && (
                   <a href="#" style={{ fontSize: 12.5 }}>
-                    Glömt?
+                    {t('login.forgot')}
                   </a>
                 )}
               </div>
@@ -235,7 +232,7 @@ export default function LoginView() {
                   color: '#991B1B',
                 }}
               >
-                {error}
+                {t(error)}
               </div>
             )}
 
@@ -245,7 +242,7 @@ export default function LoginView() {
               disabled={loading}
               style={{ width: '100%', height: 48, borderRadius: 'var(--r-md)', fontSize: 15.5 }}
             >
-              {loading ? 'Vänta…' : mode === 'login' ? 'Logga in' : 'Skapa konto'}
+              {loading ? t('login.waiting') : mode === 'login' ? t('login.loginTitle') : t('login.signupTitle')}
             </button>
           </form>
 
@@ -253,16 +250,16 @@ export default function LoginView() {
           <div style={{ marginTop: 18, fontSize: 13.5, textAlign: 'center', color: 'var(--text-2)' }}>
             {mode === 'login' ? (
               <>
-                Har du inget konto?{' '}
+                {t('login.noAccount')}{' '}
                 <a href="#" onClick={(e) => { e.preventDefault(); setMode('signup'); setError('') }}>
-                  Skapa konto
+                  {t('login.signupTitle')}
                 </a>
               </>
             ) : (
               <>
-                Har du redan ett konto?{' '}
+                {t('login.haveAccount')}{' '}
                 <a href="#" onClick={(e) => { e.preventDefault(); setMode('login'); setError('') }}>
-                  Logga in
+                  {t('login.loginTitle')}
                 </a>
               </>
             )}
@@ -278,7 +275,7 @@ export default function LoginView() {
             marginTop: 16,
           }}
         >
-          Genom att fortsätta godkänner du våra villkor och vår integritetspolicy.
+          {t('login.legal')}
         </p>
       </div>
     </div>

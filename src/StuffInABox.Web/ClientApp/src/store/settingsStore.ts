@@ -5,17 +5,9 @@ import { useAuthStore } from './authStore'
 export type Theme = 'light' | 'dark' | 'system'
 export type Design = 'standard' | 'atelier' | 'pop'
 
-export const DESIGNS: { id: Design; label: string; description: string }[] = [
-  { id: 'standard', label: 'Standard', description: 'Det blå originalet' },
-  { id: 'atelier', label: 'Atelier', description: 'Varmt papper, dämpat' },
-  { id: 'pop', label: 'Pop', description: 'Lekfullt och färgstarkt' },
-]
-
-export const THEMES: { id: Theme; label: string }[] = [
-  { id: 'light', label: 'Ljust' },
-  { id: 'dark', label: 'Mörkt' },
-  { id: 'system', label: 'System' },
-]
+// Order only — labels/descriptions live in the i18n dictionary (design.* / theme.*).
+export const DESIGNS: Design[] = ['standard', 'atelier', 'pop']
+export const THEMES: Theme[] = ['light', 'dark', 'system']
 
 const THEME_KEY = 'sib_theme'
 const DESIGN_KEY = 'sib_design'

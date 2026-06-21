@@ -6,11 +6,13 @@ import { getBoxesBySpace, createBox } from '../../api/boxes'
 import { useUiStore } from '../../store/uiStore'
 import SpaceIconPicker from '../../shared/components/SpaceIconPicker'
 import { Icon } from '../../shared/components/Icon'
+import { useT } from '../../i18n'
 import type { BoxDto } from '../../api/types'
 
 export default function SpaceView() {
   const qc = useQueryClient()
   const { spaceId, goBox, goHome, goLabels } = useUiStore()
+  const t = useT()
   const [editingIcon, setEditingIcon] = useState(false)
   const [newBoxLabel, setNewBoxLabel] = useState('')
   const [addingBox, setAddingBox] = useState(false)
@@ -47,9 +49,9 @@ export default function SpaceView() {
     return (
       <div>
         <button className="btn btn-outline btn-sm" onClick={goHome}>
-          ← Mina utrymmen
+          ← {t('space.back')}
         </button>
-        <p style={{ color: 'var(--text-3)' }}>Utrymme hittades inte.</p>
+        <p style={{ color: 'var(--text-3)' }}>{t('space.notFound')}</p>
       </div>
     )
   }
@@ -73,7 +75,7 @@ export default function SpaceView() {
         }}
       >
         <IconArrowLeft size={15} />
-        Mina utrymmen
+        {t('space.back')}
       </button>
 
       {/* Header row */}
@@ -92,7 +94,7 @@ export default function SpaceView() {
           <div style={{ position: 'relative' }}>
             <button
               onClick={() => setEditingIcon((v) => !v)}
-              title="Ändra ikon"
+              title={t('space.changeIcon')}
               style={{
                 width: 54,
                 height: 54,
@@ -145,7 +147,7 @@ export default function SpaceView() {
               </span>
             </div>
             <div style={{ fontSize: 14, color: 'var(--text-2)', marginTop: 3 }}>
-              {space.boxCount} lådor · {space.itemCount} föremål
+              {t('space.boxesItems', { boxes: space.boxCount, items: space.itemCount })}
             </div>
           </div>
         </div>
@@ -155,7 +157,7 @@ export default function SpaceView() {
           onClick={() => goLabels({ spaceId: space.id })}
         >
           <IconPrinter size={16} />
-          Etiketter
+          {t('space.labels')}
         </button>
       </div>
 
@@ -174,7 +176,7 @@ export default function SpaceView() {
           <SpaceIconPicker
             value={space.icon}
             onChange={(icon) => iconMut.mutate(icon)}
-            label={`VÄLJ IKON FÖR ${space.name.toUpperCase()}`}
+            label={t('space.chooseIconFor', { name: space.name.toUpperCase() })}
           />
         </div>
       )}
@@ -182,7 +184,7 @@ export default function SpaceView() {
       {/* Box grid */}
       {isLoading ? (
         <div style={{ color: 'var(--text-3)', padding: '40px 0', textAlign: 'center' }}>
-          Laddar lådor…
+          {t('space.loadingBoxes')}
         </div>
       ) : (
         <div
@@ -212,7 +214,7 @@ export default function SpaceView() {
               <input
                 className="input"
                 style={{ height: 38, fontSize: 13.5 }}
-                placeholder="Etikett för lådan"
+                placeholder={t('space.boxLabelPlaceholder')}
                 value={newBoxLabel}
                 onChange={(e) => setNewBoxLabel(e.target.value)}
                 onKeyDown={(e) => {
@@ -228,14 +230,14 @@ export default function SpaceView() {
                   onClick={() => createBoxMut.mutate()}
                   disabled={!newBoxLabel.trim() || createBoxMut.isPending}
                 >
-                  Skapa
+                  {t('space.create')}
                 </button>
                 <button
                   className="btn btn-outline"
                   style={{ height: 34, fontSize: 13, padding: '0 10px' }}
                   onClick={() => { setAddingBox(false); setNewBoxLabel('') }}
                 >
-                  Avbryt
+                  {t('space.cancel')}
                 </button>
               </div>
             </div>
@@ -260,7 +262,7 @@ export default function SpaceView() {
               }}
             >
               <IconPlus size={22} />
-              Ny låda
+              {t('space.newBox')}
             </button>
           )}
         </div>
@@ -270,6 +272,7 @@ export default function SpaceView() {
 }
 
 function BoxCard({ box, onClick }: { box: BoxDto; onClick: () => void }) {
+  const t = useT()
   return (
     <div
       className="card"
@@ -301,7 +304,7 @@ function BoxCard({ box, onClick }: { box: BoxDto; onClick: () => void }) {
           className="mono"
           style={{ fontSize: 11.5, color: 'var(--text-4)', marginTop: 3 }}
         >
-          {box.itemCount} föremål
+          {t('space.items', { count: box.itemCount })}
         </div>
       </div>
     </div>

@@ -9,11 +9,13 @@ import { getItemsByBox, deleteItem, updateItem } from '../../api/items'
 import { getSpaces } from '../../api/spaces'
 import { useUiStore } from '../../store/uiStore'
 import { useLightbox } from '../../store/lightboxStore'
+import { useT } from '../../i18n'
 import type { ItemDto } from '../../api/types'
 
 export default function BoxView() {
   const qc = useQueryClient()
   const { boxNum, goSpace, goLabels, openAdd } = useUiStore()
+  const t = useT()
   const [editingLabel, setEditingLabel] = useState(false)
   const [labelDraft, setLabelDraft] = useState('')
 
@@ -61,7 +63,7 @@ export default function BoxView() {
   const currentSpace = spaces.find((s) => s.id === box?.spaceId)
 
   if (!boxNum || !box) {
-    return <div style={{ color: 'var(--text-3)', padding: 40 }}>Laddar låda…</div>
+    return <div style={{ color: 'var(--text-3)', padding: 40 }}>{t('box.loading')}</div>
   }
 
   function startRename() {
@@ -70,7 +72,7 @@ export default function BoxView() {
   }
 
   function confirmDeleteBox() {
-    if (window.confirm(`Ta bort låda #${box!.number} och alla dess föremål?`)) {
+    if (window.confirm(t('box.confirmDelete', { number: box!.number }))) {
       deleteBoxMut.mutate()
     }
   }
@@ -140,14 +142,14 @@ export default function BoxView() {
               <h1 style={{ fontSize: 23, fontWeight: 600, margin: 0 }}>{box.label}</h1>
               <button
                 onClick={startRename}
-                title="Byt namn"
+                title={t('box.rename')}
                 style={{ color: 'var(--text-4)', display: 'flex', padding: 4 }}
               >
                 <IconPencil size={16} />
               </button>
               <button
                 onClick={confirmDeleteBox}
-                title="Ta bort lådan"
+                title={t('box.deleteBox')}
                 style={{ color: 'var(--text-4)', display: 'flex', padding: 4 }}
               >
                 <IconTrash size={16} />
@@ -155,7 +157,7 @@ export default function BoxView() {
             </div>
           )}
           <div style={{ fontSize: 14, color: 'var(--text-2)', marginTop: 3 }}>
-            {items.length} föremål
+            {t('box.items', { count: items.length })}
           </div>
         </div>
 
@@ -166,7 +168,7 @@ export default function BoxView() {
           onClick={() => goLabels({ boxNumber: boxNum })}
         >
           <IconTag size={15} />
-          Märk lådan:
+          {t('box.markBox')}
           <span className="mono" style={{ fontSize: 15, fontWeight: 600 }}>#{box.number}</span>
         </button>
       </div>
@@ -180,7 +182,7 @@ export default function BoxView() {
         }}
       >
         <IconMapPin size={17} style={{ color: 'var(--text-4)', flexShrink: 0 }} />
-        <span style={{ fontSize: 14, fontWeight: 500 }}>Plats</span>
+        <span style={{ fontSize: 14, fontWeight: 500 }}>{t('box.location')}</span>
         <select
           className="select"
           value={box.spaceId}
@@ -192,7 +194,7 @@ export default function BoxView() {
           ))}
         </select>
         <span style={{ fontSize: 12, color: 'var(--text-4)', flexShrink: 0 }}>
-          Numret #{box.number} följer lådan om du flyttar den.
+          {t('box.numberFollows', { number: box.number })}
         </span>
         <button
           className="btn btn-outline btn-sm location-print"
@@ -200,7 +202,7 @@ export default function BoxView() {
           style={{ marginLeft: 'auto', flexShrink: 0 }}
         >
           <IconPrinter size={15} />
-          Etikett för denna låda
+          {t('box.labelForThis')}
         </button>
       </div>
 
@@ -213,9 +215,9 @@ export default function BoxView() {
           }}
         >
           <IconPackage size={36} style={{ color: 'var(--text-5)', marginBottom: 10 }} />
-          <div style={{ fontSize: 15, fontWeight: 500, color: 'var(--text-2)' }}>Tom låda</div>
+          <div style={{ fontSize: 15, fontWeight: 500, color: 'var(--text-2)' }}>{t('box.emptyTitle')}</div>
           <div style={{ fontSize: 13.5, color: 'var(--text-4)', marginTop: 4 }}>
-            Registrera det första du lägger i.
+            {t('box.emptyBody')}
           </div>
         </div>
       ) : (
@@ -238,7 +240,7 @@ export default function BoxView() {
         onClick={() => openAdd(boxNum)}
       >
         <IconCameraPlus size={18} />
-        Lägg till en sak i lådan
+        {t('box.addItem')}
       </button>
     </div>
   )
@@ -246,6 +248,7 @@ export default function BoxView() {
 
 function ItemCard({ item, boxNumber }: { item: ItemDto; boxNumber: number }) {
   const qc = useQueryClient()
+  const t = useT()
   const openLightbox = useLightbox((s) => s.open)
   const [editing, setEditing] = useState(false)
   const [draft, setDraft] = useState(item.name)
@@ -281,7 +284,7 @@ function ItemCard({ item, boxNumber }: { item: ItemDto; boxNumber: number }) {
       <div
         className="hatch-bg"
         onClick={() => hasPhoto && openLightbox(item.photoUrl!)}
-        title={hasPhoto ? 'Visa större' : undefined}
+        title={hasPhoto ? t('box.viewLarger') : undefined}
         style={{
           width: 54, height: 54, borderRadius: 'var(--r-sm)', flexShrink: 0,
           display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden',
@@ -325,12 +328,12 @@ function ItemCard({ item, boxNumber }: { item: ItemDto; boxNumber: number }) {
           <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 6, marginBottom: 5 }}>
             <span style={{ fontSize: 14.5, fontWeight: 500 }}>{item.name}</span>
             <div style={{ display: 'flex', gap: 2, flexShrink: 0 }}>
-              <button onClick={() => { setDraft(item.name); setEditing(true) }} title="Byt namn" style={{ color: 'var(--text-5)', display: 'flex', padding: 2 }}>
+              <button onClick={() => { setDraft(item.name); setEditing(true) }} title={t('box.rename')} style={{ color: 'var(--text-5)', display: 'flex', padding: 2 }}>
                 <IconPencil size={14} />
               </button>
               <button
-                onClick={() => { if (window.confirm(`Ta bort "${item.name}"?`)) deleteMut.mutate() }}
-                title="Ta bort"
+                onClick={() => { if (window.confirm(t('box.confirmDeleteItem', { name: item.name }))) deleteMut.mutate() }}
+                title={t('box.itemRemove')}
                 style={{ color: 'var(--text-5)', display: 'flex', padding: 2 }}
               >
                 <IconTrash size={14} />

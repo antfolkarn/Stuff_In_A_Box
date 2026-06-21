@@ -3,9 +3,11 @@ import { IconArrowRight, IconPhoto, IconSparkles, IconSearchOff } from '@tabler/
 import { search } from '../../api/search'
 import { useUiStore } from '../../store/uiStore'
 import { Icon } from '../../shared/components/Icon'
+import { useT } from '../../i18n'
 
 export default function SearchView() {
   const { query, goBox, goSpace } = useUiStore()
+  const t = useT()
   const q = query.trim()
 
   const { data, isLoading } = useQuery({
@@ -21,18 +23,18 @@ export default function SearchView() {
     <div>
       <div style={{ marginBottom: 22 }}>
         <div style={{ display: 'flex', alignItems: 'baseline', gap: 10 }}>
-          <h1 style={{ fontSize: 21, fontWeight: 600, margin: 0 }}>Sökresultat</h1>
+          <h1 style={{ fontSize: 21, fontWeight: 600, margin: 0 }}>{t('search.title')}</h1>
           <span className="mono" style={{ fontSize: 13, color: 'var(--text-4)' }}>
-            {total} träffar
+            {t('search.hits', { count: total })}
           </span>
         </div>
         <div style={{ fontSize: 14, color: 'var(--text-2)', marginTop: 4 }}>
-          Söker även på relaterade ord – var sakerna finns, utan att öppna en låda.
+          {t('search.subtitle')}
         </div>
       </div>
 
       {isLoading ? (
-        <div style={{ color: 'var(--text-3)', padding: '40px 0', textAlign: 'center' }}>Söker…</div>
+        <div style={{ color: 'var(--text-3)', padding: '40px 0', textAlign: 'center' }}>{t('search.searching')}</div>
       ) : total === 0 ? (
         <div
           style={{
@@ -44,16 +46,16 @@ export default function SearchView() {
           }}
         >
           <IconSearchOff size={38} style={{ color: 'var(--text-5)', marginBottom: 12 }} />
-          <div style={{ fontSize: 16, fontWeight: 500 }}>Inga träffar</div>
+          <div style={{ fontSize: 16, fontWeight: 500 }}>{t('search.noHitsTitle')}</div>
           <div style={{ fontSize: 14, color: 'var(--text-4)', marginTop: 6 }}>
-            Inget i registret matchar ”{q}”.
+            {t('search.noHitsBody', { q })}
           </div>
         </div>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 22 }}>
           {/* Spaces */}
           {data!.spaces.length > 0 && (
-            <ResultGroup label="UTRYMMEN">
+            <ResultGroup label={t('search.groupSpaces')}>
               {data!.spaces.map((s) => (
                 <ResultRow key={s.id} onClick={() => goSpace(s.id)}>
                   <div
@@ -65,7 +67,7 @@ export default function SearchView() {
                   <div style={{ flex: 1 }}>
                     <div style={{ fontSize: 14.5, fontWeight: 500 }}>{s.name}</div>
                     <div className="mono" style={{ fontSize: 12, color: 'var(--text-4)' }}>
-                      Utrymme · {s.boxCount} lådor
+                      {t('search.spaceMeta', { count: s.boxCount })}
                     </div>
                   </div>
                   <IconArrowRight size={17} style={{ color: 'var(--text-5)' }} />
@@ -76,7 +78,7 @@ export default function SearchView() {
 
           {/* Boxes */}
           {data!.boxes.length > 0 && (
-            <ResultGroup label="LÅDOR">
+            <ResultGroup label={t('search.groupBoxes')}>
               {data!.boxes.map((b) => (
                 <ResultRow key={b.number} onClick={() => goBox(b.number)}>
                   <div
@@ -90,11 +92,11 @@ export default function SearchView() {
                   <div style={{ flex: 1 }}>
                     <div style={{ fontSize: 14.5, fontWeight: 500 }}>{b.label}</div>
                     <div className="mono" style={{ fontSize: 12, color: 'var(--text-4)' }}>
-                      {b.spaceName} · Box #{b.number}
+                      {t('search.boxMeta', { space: b.spaceName, number: b.number })}
                     </div>
                     {b.matchReason && (
                       <div style={{ fontSize: 12.5, color: 'var(--accent)', marginTop: 2 }}>
-                        Innehåller {b.matchReason}
+                        {t('search.contains', { reason: b.matchReason })}
                       </div>
                     )}
                   </div>
@@ -106,7 +108,7 @@ export default function SearchView() {
 
           {/* Items */}
           {data!.items.length > 0 && (
-            <ResultGroup label="FÖREMÅL">
+            <ResultGroup label={t('search.groupItems')}>
               {data!.items.map((it) => (
                 <ResultRow key={it.id} onClick={() => goBox(it.boxNumber)}>
                   <div
@@ -147,7 +149,7 @@ export default function SearchView() {
                     }}
                   >
                     <span className="mono" style={{ fontSize: 9, color: 'var(--text-4)', letterSpacing: '0.08em' }}>
-                      LÅDA
+                      {t('search.boxTag')}
                     </span>
                     <span className="mono" style={{ fontSize: 16, fontWeight: 600, color: 'var(--accent)' }}>
                       {it.boxNumber}

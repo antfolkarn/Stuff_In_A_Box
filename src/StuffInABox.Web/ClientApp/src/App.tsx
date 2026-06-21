@@ -2,6 +2,7 @@ import { useEffect } from 'react'
 import { useAuthStore } from './store/authStore'
 import { useUiStore } from './store/uiStore'
 import { useSettingsStore } from './store/settingsStore'
+import { useT } from './i18n'
 import LoginView from './features/auth/LoginView'
 import AppHeader from './shared/components/AppHeader'
 import HomeView from './features/home/HomeView'
@@ -22,6 +23,7 @@ export default function App() {
   // theme + design) before the first paint, including on the login/loading screens.
   useSettingsStore((s) => s.theme)
   const loadSettings = useSettingsStore((s) => s.loadFromServer)
+  const t = useT()
 
   useEffect(() => {
     bootstrap()
@@ -36,7 +38,7 @@ export default function App() {
   if (!ready) {
     return (
       <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-3)' }}>
-        Laddar…
+        {t('common.loading')}
       </div>
     )
   }
