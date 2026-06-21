@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { IconX, IconCamera, IconLoader2, IconCheck, IconSparkles } from '@tabler/icons-react'
 import { getSpaces } from '../../api/spaces'
-import { getBoxesBySpace } from '../../api/boxes'
+import { getBoxesBySpace, getBoxDetail } from '../../api/boxes'
 import { addItem, uploadItemPhoto } from '../../api/items'
 import { recognizeImage } from '../../api/recognize'
 import { useUiStore } from '../../store/uiStore'
@@ -11,7 +11,7 @@ type PhotoState = 'idle' | 'analyzing' | 'done'
 
 export default function AddItemSheet() {
   const qc = useQueryClient()
-  const { closeAdd, boxNum } = useUiStore()
+  const { closeAdd, boxNum, spaceId: navSpaceId } = useUiStore()
 
   const [photo, setPhoto] = useState<PhotoState>('idle')
   const [guess, setGuess] = useState('')
@@ -26,11 +26,22 @@ export default function AddItemSheet() {
 
   const { data: spaces = [] } = useQuery({ queryKey: ['spaces'], queryFn: getSpaces })
 
-  // Default the space from the active box if available, else first space
+  // Look up the opened box's own space. Boxes can be reached without a space
+  // context (search results, QR deep links), so we can't rely on navSpaceId.
+  const boxDetail = useQuery({
+    queryKey: ['box', boxNum],
+    queryFn: () => getBoxDetail(boxNum!),
+    enabled: !!boxNum,
+  })
+
+  // Default the space to the opened box's space, falling back to the current
+  // navigation context, then the first space. When a box was passed in, wait
+  // for its detail so we don't briefly land on the wrong space and lose the box.
   useEffect(() => {
     if (spaceId || spaces.length === 0) return
-    setSpaceId(spaces[0].id)
-  }, [spaces, spaceId])
+    if (boxNum && boxDetail.isPending) return
+    setSpaceId(boxDetail.data?.spaceId ?? navSpaceId ?? spaces[0].id)
+  }, [spaces, spaceId, boxNum, boxDetail.isPending, boxDetail.data, navSpaceId])
 
   const { data: boxes = [] } = useQuery({
     queryKey: ['boxes', spaceId],
