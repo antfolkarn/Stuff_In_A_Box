@@ -1,0 +1,21 @@
+using Microsoft.EntityFrameworkCore;
+using StuffInABox.Domain.Entities;
+using StuffInABox.Domain.Repositories;
+
+namespace StuffInABox.Infrastructure.Persistence.Repositories;
+
+public class UserSettingsRepository(AppDbContext db) : IUserSettingsRepository
+{
+    public async Task<UserSettings?> GetAsync(Guid userId, CancellationToken ct = default) =>
+        await db.UserSettings.FirstOrDefaultAsync(s => s.UserId == userId, ct);
+
+    public async Task UpsertAsync(UserSettings settings, CancellationToken ct = default)
+    {
+        var exists = await db.UserSettings.AnyAsync(s => s.UserId == settings.UserId, ct);
+        if (exists)
+            db.UserSettings.Update(settings);
+        else
+            await db.UserSettings.AddAsync(settings, ct);
+        await db.SaveChangesAsync(ct);
+    }
+}

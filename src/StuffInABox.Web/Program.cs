@@ -169,6 +169,7 @@ app.MapItemEndpoints();
 app.MapRecognitionEndpoints();
 app.MapSearchEndpoints();
 app.MapLabelEndpoints();
+app.MapSettingsEndpoints();
 
 // Health endpoints
 app.MapHealthChecks("/health", new Microsoft.AspNetCore.Diagnostics.HealthChecks.HealthCheckOptions

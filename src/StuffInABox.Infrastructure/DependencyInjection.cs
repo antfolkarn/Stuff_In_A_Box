@@ -41,6 +41,7 @@ public static class DependencyInjection
         services.AddScoped<IItemRepository, ItemRepository>();
         services.AddScoped<IUserIdentityRepository, UserIdentityRepository>();
         services.AddScoped<IRefreshTokenRepository, RefreshTokenRepository>();
+        services.AddScoped<IUserSettingsRepository, UserSettingsRepository>();
 
         services.AddScoped<IStorageService, LocalFileStorageService>();
         services.AddSingleton<IImageProcessor, Imaging.SkiaImageProcessor>();
