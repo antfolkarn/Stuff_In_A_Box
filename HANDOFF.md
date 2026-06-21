@@ -29,16 +29,14 @@ cd src/StuffInABox.Web/ClientApp && npm install && npm run dev
 - **Tre designs (token-nivå):** Standard, Atelier (varmt papper, Manrope/Spectral, skarpa hörn), Pop (lila, Plus Jakarta/Bricolage, runda 20px hörn + 2px-kanter). Växlas via `data-design` + `data-theme` på `<html>`. Form-språk tokeniserat: `--bw`, `--r-xl/lg/md/sm/chip` per design i `src/StuffInABox.Web/ClientApp/src/index.css`.
 - Drift: Dockerfile + docker-compose, GitHub Actions CI, health checks (`/health`, `/health/ready`), Serilog (konsol + roterande fil).
 
-## ⚠️ ÖPPEN PUNKT — design-trohet (här var vi)
-Designerna byter **färg, typsnitt och form** men matchar **inte** prototyperna fullt ut, för prototyperna har **design-specifikt komponentutförande** som de delade komponenterna inte återskapar. Konkret för **Pop** (se skärmdump-jämförelse):
-- **Varje utrymme/låda får egen färg** ur en 6-färgspalett. I prototypen görs det med CSS `.pop-rot:nth-child(6n+k){--c:…}` och färgerna är: `#6C4CF1, #FF5C49, #12B5A4, #FF9E1B, #E8489E, #2E8BFF`. Komponenter använder `var(--c, var(--accent))`.
-- Ikonbrickan är **fylld med kortets färg + vit ikon + större**; Standard har neutrala grå brickor. Plus en mjuk **färgklick i hörnet**, färgad kod-chip, display-typsnitt på siffror.
-- Atelier har sitt eget utförande (eget formspråk).
+## Design-trohet — alternativ 2 gjort (utrymmes-korten)
+Designerna byter **färg, typsnitt och form** men matchade tidigare **inte** prototyperna fullt ut, för prototyperna har **design-specifikt komponentutförande** som de delade komponenterna inte återskapar.
 
-**Beslut som behövs (frågan som ställdes):** hur troget ska det matchas?
-1. Bygg Pop troget, sen Atelier — design-specifik komponentkod, skärm för skärm (stort jobb).
-2. Lyft bara utrymmes-korten (per-utrymme-färg + större fyllda vit-ikon-brickor + hörnklick i Pop).
-3. Behåll token-nivån.
+**Gjort (alt. 2):** Utrymmes-korten på startsidan är nu lyfta för **Pop**: varje utrymme får egen färg ur 6-färgspaletten (`#6C4CF1, #FF5C49, #12B5A4, #FF9E1B, #E8489E, #2E8BFF`) via `:nth-child(6n+k)`, fylld bricka med vit ikon + mjuk färgad skugga, hörn-färgklick (`::before`), färg-matchad kod-chip och hover i kortets egen färg. Standard/Atelier är orörda. Kod: `SpaceCard` i [HomeView.tsx](src/StuffInABox.Web/ClientApp/src/features/home/HomeView.tsx) (hook-klasser `space-grid`/`space-card`/`space-card-icon`/`space-card-code`) + Pop-regler i [index.css](src/StuffInABox.Web/ClientApp/src/index.css).
+
+**Återstår (om man vill gå längre):**
+1. Bygg Pop troget överallt, sen Atelier — design-specifik komponentkod skärm för skärm: per-**låda**-färg i [BoxView.tsx](src/StuffInABox.Web/ClientApp/src/features/box/BoxView.tsx), display-typsnitt på lådnummer, färgade chips i listor/etiketter (stort jobb).
+3. Behåll resten på token-nivån.
 
 Referensprototyper: `design_handoff_stuffinabox/StuffInABox - Atelier.dc.html` och `… - Pop.dc.html` (originalet är `StuffInABox.dc.html`). Råpaket: `design/*.zip`.
 

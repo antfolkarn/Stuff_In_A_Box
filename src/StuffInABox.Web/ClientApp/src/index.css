@@ -316,6 +316,62 @@ h1, h2, h3 {
   color: var(--accent);
 }
 
+/* Space cards — code chip base look (neutral for Standard/Atelier) */
+.space-card-code {
+  color: var(--text-4);
+  background: var(--tile);
+}
+
+/* Pop: lift the space cards — each space gets its own colour from a 6-colour
+   palette (per-card via :nth-child), a filled white-icon badge, a soft corner
+   colour blob and a colour-matched code chip. Standard/Atelier are untouched. */
+html[data-design='pop'] .space-grid > .space-card {
+  position: relative;
+  overflow: hidden;
+}
+html[data-design='pop'] .space-grid > .space-card:nth-child(6n+1) { --c: #6C4CF1; }
+html[data-design='pop'] .space-grid > .space-card:nth-child(6n+2) { --c: #FF5C49; }
+html[data-design='pop'] .space-grid > .space-card:nth-child(6n+3) { --c: #12B5A4; }
+html[data-design='pop'] .space-grid > .space-card:nth-child(6n+4) { --c: #FF9E1B; }
+html[data-design='pop'] .space-grid > .space-card:nth-child(6n+5) { --c: #E8489E; }
+html[data-design='pop'] .space-grid > .space-card:nth-child(6n+6) { --c: #2E8BFF; }
+
+/* Corner colour blob (sits behind the content) */
+html[data-design='pop'] .space-card::before {
+  content: '';
+  position: absolute;
+  top: -26px;
+  right: -26px;
+  width: 88px;
+  height: 88px;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--c, var(--accent)) 14%, var(--surface));
+  pointer-events: none;
+  z-index: 0;
+}
+html[data-design='pop'] .space-card > * {
+  position: relative;
+  z-index: 1;
+}
+
+/* Filled badge with white icon, bigger + soft coloured shadow */
+html[data-design='pop'] .space-card .space-card-icon {
+  background: var(--c, var(--accent));
+  color: #fff;
+  box-shadow: 0 6px 14px color-mix(in srgb, var(--c, var(--accent)) 34%, transparent);
+}
+
+/* Colour-matched code chip */
+html[data-design='pop'] .space-card .space-card-code {
+  color: var(--c, var(--accent));
+  background: color-mix(in srgb, var(--c, var(--accent)) 12%, var(--surface));
+}
+
+/* Hover picks up the card's own colour */
+html[data-design='pop'] .space-card:hover {
+  border-color: var(--c, var(--accent));
+}
+
 /* Buttons */
 .btn {
   display: inline-flex;

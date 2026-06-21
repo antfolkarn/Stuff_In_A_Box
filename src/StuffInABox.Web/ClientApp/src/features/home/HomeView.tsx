@@ -127,6 +127,7 @@ export default function HomeView() {
         </div>
       ) : (
         <div
+          className="space-grid"
           style={{
             display: 'grid',
             gridTemplateColumns: 'repeat(auto-fill, minmax(252px, 1fr))',
@@ -165,24 +166,22 @@ function SpaceCard({
 }) {
   return (
     <div
-      className="card"
+      className="card space-card"
       style={{ padding: 18, cursor: 'pointer', borderRadius: 'var(--r-lg)' }}
       onClick={onClick}
     >
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
         <div
-          className="icon-tile icon-tile-neutral"
+          className="icon-tile icon-tile-neutral space-card-icon"
           style={{ width: 42, height: 42, borderRadius: 'var(--r-md)', fontSize: 21 }}
         >
-          <Icon name={space.icon} size={21} color="var(--text-2)" />
+          <Icon name={space.icon} size={21} color="currentColor" />
         </div>
         <span
-          className="mono"
+          className="mono space-card-code"
           style={{
             fontSize: 11,
             letterSpacing: '0.08em',
-            color: 'var(--text-4)',
-            background: 'var(--tile)',
             padding: '3px 8px',
             borderRadius: 'var(--r-sm)',
           }}
