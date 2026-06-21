@@ -2,12 +2,12 @@
 
 Snabb lägesbild för att fortsätta på en annan dator. För djupare info: [README.md](README.md) och [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
 
-_Senast uppdaterad: 2026-06-20._
+_Senast uppdaterad: 2026-06-21._
 
 ---
 
 ## Vad det är
-Svensk webapp för att katalogisera fysisk förvaring (utrymmen → lådor → föremål), sök, QR-etiketter. .NET 10 (Clean Architecture) + React/TypeScript (Vite). Lösningsfil: **`StuffInABox.slnx`** (modern XML-format; öppnas i Visual Studio 17.13+).
+Webapp (svenska + engelska) för att katalogisera fysisk förvaring (utrymmen → lådor → föremål), sök, QR-etiketter, **delning av utrymmen**. .NET 10 (Clean Architecture) + React/TypeScript (Vite). Lösningsfil: **`StuffInABox.slnx`** (modern XML-format; öppnas i Visual Studio 17.13+).
 
 ## Kör igång
 ```bash
@@ -17,11 +17,13 @@ cd src/StuffInABox.Web && dotnet run
 # Frontend i dev-läge (valfritt) — http://localhost:5173, proxar /api → 5184
 cd src/StuffInABox.Web/ClientApp && npm install && npm run dev
 ```
-- **Tester:** `dotnet test StuffInABox.slnx` — **86 gröna** (Domain 27, Application 25, Infrastructure 18, Web 16).
+- **Tester:** `dotnet test StuffInABox.slnx` — **90 gröna** (Domain 27, Application 27, Infrastructure 18, Web 18).
 - **Bygg SPA till wwwroot:** `cd src/StuffInABox.Web/ClientApp && npm run build`.
 
 ## Färdigt och fungerar
-- Kärna: utrymmen/lådor/föremål (CRUD), sök, etiketter med QR, globala oföränderliga lådnummer, dataisolering per användare.
+- Kärna: utrymmen/lådor/föremål (CRUD), sök, etiketter med QR, oföränderliga lådnummer (per ägare).
+- **Delning av utrymmen:** ägaren skapar en delningslänk (`#invite=<token>`); inbjudna blir medlemmar som kan se/redigera lådor & föremål men inte hantera utrymmet. Auktorisering via `ISpaceAccessService` (ägare-eller-medlem, annars 403). Allt innehåll ägs av utrymmets ägare; lådnummer disambigueras med `spaceId`. Ägare kan återkalla länk/ta bort medlem, medlem kan lämna. Se README §Säkerhet + ARCHITECTURE §4b.
+- **Flerspråk (sv/en):** lätt egen i18n (`src/…/ClientApp/src/i18n/`), webbläsardetektering med engelska som fallback, manuell växling i inställningarna. `<html lang>` sätts via JS (rör inte CSP-hashen).
 - Auth: JWT + roterande refresh-token (HttpOnly-cookie) + Google/Apple OAuth (PKCE, kräver konfig).
 - Bilduppladdning (magic-byte + EXIF-strip via SkiaSharp). **Uppladdningar lagras utanför `wwwroot`** (annars raderas de av SPA-bygget).
 - **Bildigenkänning (Ollama, lokal):** foto → `{ namn, taggar }` (föremål, färger, material, boktitlar). På som default i dev (`ImageRecognition:Provider=ollama`). Se "Ollama" nedan.
@@ -50,6 +52,9 @@ Referensprototyper: `design_handoff_stuffinabox/StuffInABox - Atelier.dc.html` o
 - **Windows PowerShell 5.1** manglar icke-ASCII i `Invoke-RestMethod -Body` och `curl -F` (multipart) ger HTTP 000 — använd .NET `HttpClient` eller integrationstest för svenska/multipart.
 - **NU1903 (SQLite, CVE-2025-6965):** `SQLitePCLRaw.lib.e_sqlite3 2.1.11` (transitivt via EF Core Sqlite) flaggas som high. **Ingen patchad version finns ännu** (advisory: `patched: None`, `<= 2.1.11`, 2.1.11 är senaste). Faktisk risk låg: appen kör enbart parametriserad EF Core/LINQ, ingen rå SQL; CI failar inte på varningen. **Beslut: vänta på uppström** — bumpa så fort SQLitePCLRaw släpper en fix.
 
-## Var saker ligger (nytt sen design-arbetet)
+## Var saker ligger
 - Inställningar backend: `src/StuffInABox.Application/Settings/`, `…Domain/Entities/UserSettings.cs`, `…Web/Endpoints/SettingsEndpoints.cs`.
 - Tema/design frontend: `…/ClientApp/src/store/settingsStore.ts`, `…/features/settings/SettingsView.tsx`, `…/api/settings.ts`, design-CSS i `…/src/index.css`.
+- Flerspråk: `…/ClientApp/src/i18n/` (`messages.ts` = ordlista sv/en, `index.ts` = `useT`-hook + språkstore + detektering).
+- Delning backend: `…Domain/Entities/SpaceMembership.cs` + `SpaceInvite.cs`, `…Application/Common/Access/SpaceAccessService.cs` (+ `ISpaceAccessService`), `…Application/Sharing/` (use cases), `…Web/Endpoints/InviteEndpoints.cs` + delnings-rutter i `SpaceEndpoints.cs`. Migration: `…Migrations/*_AddSpaceSharing.cs`.
+- Delning frontend: `…/ClientApp/src/api/invites.ts`, `…/features/space/SharePanel.tsx`, `…/features/invite/InviteAcceptSheet.tsx`. `spaceId` trådas genom `api/boxes.ts` + `api/items.ts`; deeplink `#invite=` i `store/uiStore.ts`.

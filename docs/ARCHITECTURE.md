@@ -13,7 +13,7 @@ lager. Web är composition root och kopplar ihop allt.
 ```mermaid
 flowchart TD
     subgraph Web["StuffInABox.Web — Presentation / Composition root"]
-        EP["Minimal API-endpoints<br/>Auth · OAuth · Spaces · Boxes · Items · Search · Labels"]
+        EP["Minimal API-endpoints<br/>Auth · OAuth · Spaces · Invites · Boxes · Items · Search · Labels · Settings"]
         MW["Middleware<br/>GlobalExceptionHandler · SecurityHeaders · Serilog"]
         AUTH["Auth<br/>JwtTokenService · TokenIssuer · OAuthService · CurrentUserService"]
         SPA["ClientApp (React SPA, byggs till wwwroot/)"]
@@ -30,11 +30,11 @@ flowchart TD
     subgraph App["StuffInABox.Application"]
         UC["Use cases (CQRS via MediatR)<br/>Commands · Queries · Handlers · Validators · DTOs"]
         BEH["ValidationBehavior (pipeline)"]
-        IF["Service-gränssnitt<br/>IStorageService · ITaggingService · IImageProcessor<br/>ICurrentUserService · IEnrichmentQueue"]
+        IF["Service-gränssnitt<br/>IStorageService · ITaggingService · IImageProcessor<br/>ICurrentUserService · ISpaceAccessService · IEnrichmentQueue"]
     end
 
     subgraph Domain["StuffInABox.Domain — kärna, inga beroenden"]
-        ENT["Entiteter<br/>Space · Box · Item · UserIdentity · RefreshToken"]
+        ENT["Entiteter<br/>Space · SpaceMembership · SpaceInvite<br/>Box · Item · UserIdentity · RefreshToken · UserSettings"]
         VO["Value objects<br/>UserId · BoxNumber · SpaceCode"]
         REPO["Repository-gränssnitt"]
         EXC["Domänundantag"]
@@ -94,6 +94,9 @@ sequenceDiagram
 
 Snabba taggar (tokenisering av namnet) sätts synkront så sparet aldrig blockeras.
 Bredare taggar (synonymer/kategori/material) berikas asynkront av workern.
+
+Handlern auktoriserar först anropet via `ISpaceAccessService` (ägare-eller-medlem mot
+`spaceId`) och använder den resolverade ägaren som `OwnerId` på det nya föremålet — se §4b.
 
 Fel hanteras centralt av `GlobalExceptionHandler` som mappar undantag till HTTP-status:
 `ValidationException`/`InvalidImageException` → 400, `NotFoundException` → 404,
@@ -167,6 +170,19 @@ classDiagram
         +SpaceCode Code
         +string Icon
     }
+    class SpaceMembership {
+        +Guid Id
+        +Guid SpaceId
+        +UserId UserId
+    }
+    class SpaceInvite {
+        +Guid Id
+        +Guid SpaceId
+        +string Token
+        +UserId CreatedBy
+        +DateTimeOffset? RevokedAt
+        +IsActive / Revoke
+    }
     class Box {
         +BoxNumber Number
         +Guid SpaceId
@@ -199,11 +215,43 @@ classDiagram
 
     Space "1" --> "*" Box : innehåller
     Box "1" --> "*" Item : innehåller
+    Space "1" --> "*" SpaceMembership : delas via
+    Space "1" --> "*" SpaceInvite : delningslänk
 ```
 
-`BoxNumber` är globalt unikt och oföränderligt — composite-nyckel `(Number, OwnerId)`
+`BoxNumber` är unikt **per ägare** och oföränderligt — composite-nyckel `(Number, OwnerId)`
 i databasen. Att flytta en låda ändrar bara `SpaceId`. `SpaceCode` härleds från namnet
 (3 versaler, svenska tecken normaliseras: å/ä→a, ö→o).
+
+Allt innehåll (lådor, föremål) ägs av **utrymmets ägare** via `OwnerId` — även det
+som en inbjuden medlem lägger till. Eftersom lådnummer är per ägare disambigueras
+låd-anrop med `spaceId` så att en medlems egen låda #5 och en delad låda #5 inte
+krockar (se §4b).
+
+### 4b. Åtkomst & delning
+
+Ett utrymme kan delas med andra användare. Auktorisering är centraliserad i
+`ISpaceAccessService` (Application-lagret):
+
+- **`RequireSpaceAsync(spaceId, ownerOnly)`** slår upp utrymmet och returnerar dess
+  `OwnerId` om den inloggade är **ägare** eller (när `ownerOnly=false`) **medlem** —
+  annars `ForbiddenException` → 403. Returvärdet (ägarens `UserId`) används som
+  effektiv ägare i alla efterföljande repo-anrop, så en medlems operationer körs mot
+  ägarens data.
+- **`GetAccessibleSpacesAsync()`** = ägda utrymmen + de man gått med i (används av
+  `GetSpaces`, `Search`, `Labels`).
+
+Roller: **ägaren** kan allt (byta namn/ikon, flytta lådor, ta bort utrymmet,
+skapa/återkalla delningslänk, ta bort medlemmar). **Medlemmar** kan se och redigera
+lådor och föremål men inte hantera utrymmet. Hanterings-handlers använder
+`ownerOnly: true`; läs/skriv av innehåll använder ägare-eller-medlem. Box-handlers
+verifierar dessutom att lådan ligger i det auktoriserade utrymmet, så en medlem inte
+kan nå ägarens andra, icke-delade utrymmen.
+
+**Delningslänk:** ägaren skapar en `SpaceInvite` med en slumpad URL-säker token.
+Mottagaren öppnar `/#invite=<token>`, förhandsgranskar utrymmet och accepterar —
+vilket skapar en `SpaceMembership`. Länken är återkallningsbar (`RevokedAt`); befintliga
+medlemmar behåller åtkomst tills de tas bort eller lämnar.
 
 ---
 
@@ -227,14 +275,20 @@ i databasen. Att flytta en låda ändrar bara `SpaceId`. `SpaceCode` härleds fr
 
 ```
 ClientApp/src/
-├── api/        # axios-klient (JWT-interceptor, 401→refresh) + en fil per resurs
-├── store/      # Zustand: authStore · uiStore · themeStore
-├── features/   # auth · home · space · box · addItem · search · labels
-├── shared/     # AppHeader · SpaceIconPicker · useQrCode
+├── api/        # axios-klient (JWT-interceptor, 401→refresh) + en fil per resurs (inkl. invites)
+├── i18n/       # lätt egen i18n: messages (sv/en) + useT-hook + språkdetektering
+├── store/      # Zustand: authStore · uiStore · settingsStore · i18nStore · lightboxStore
+├── features/   # auth · home · space · box · addItem · search · labels · settings · invite
+├── shared/     # AppHeader · Icon · SpaceIconPicker · ImageLightbox · useQrCode
 └── App.tsx     # vy-växling (state-driven; query åsidosätter vy)
 ```
 
 - **Server-state**: React Query (cache, bakgrunds-refetch, invalidering vid mutationer).
-- **UI/auth/tema-state**: Zustand.
-- **Routing**: tillståndsdriven (ingen URL-router); `#box=N` är en QR-deeplänk och
-  `#token=…` tas emot från OAuth-callbacken.
+- **UI/auth/inställnings-/språk-state**: Zustand. Tema + design persisteras på kontot
+  (DB) och i `localStorage`; språk i `localStorage` med webbläsardetektering (engelska
+  som fallback).
+- **Delning**: `space/SharePanel` (ägarens länk + medlemslista) och
+  `invite/InviteAcceptSheet` (förhandsgranska + gå med). Låd-/föremåls-anrop trådar
+  `spaceId` så delade utrymmen resolvar rätt ägare.
+- **Routing**: tillståndsdriven (ingen URL-router); `#box=N` är en QR-deeplänk,
+  `#invite=<token>` öppnar en accept-dialog, och `#token=…` tas emot från OAuth-callbacken.

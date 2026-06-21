@@ -2,9 +2,11 @@
 
 > Ett sökbart register för fysisk förvaring. Lägg in vad som ligger i varje låda **en** gång — sök sedan istället för att öppna varje kartong i garaget, på vinden eller i förrådet.
 
-StuffInABox löser ett *minnesproblem*, inte ett organisationsproblem. Varje låda har ett **globalt, permanent nummer** som du skriver på lådan. Vilket utrymme lådan står i är en separat, ändringsbar egenskap — att flytta en låda ändrar aldrig dess nummer. Föremål taggas brett (synonymer, kategori, material) så att en sökning på "täcke" hittar en låda märkt "Filtar".
+StuffInABox löser ett *minnesproblem*, inte ett organisationsproblem. Varje låda har ett **permanent nummer** som du skriver på lådan. Vilket utrymme lådan står i är en separat, ändringsbar egenskap — att flytta en låda ändrar aldrig dess nummer. Föremål taggas brett (synonymer, kategori, material) så att en sökning på "täcke" hittar en låda märkt "Filtar".
 
-Gränssnittet är på svenska.
+Utrymmen kan **delas**: ägaren skapar en delningslänk och inbjudna användare kan se och redigera lådor och föremål — men bara ägaren och inbjudna medlemmar når innehållet (se [Säkerhet](#säkerhet)).
+
+Gränssnittet finns på **svenska och engelska** och väljs automatiskt efter webbläsaren (engelska om svenska inte är förstaspråk), med manuell växling i inställningarna.
 
 ---
 
@@ -31,8 +33,10 @@ Gränssnittet är på svenska.
 | Taggning | `ITaggingService` — tokenizer (default) eller Claude API (feature-flagga) |
 | Loggning | Serilog → konsol **och** roterande dagsfil |
 | Frontend | React 18 + TypeScript + Vite, React Query + Zustand |
-| Tema | Ljust/mörkt läge (persisterat, respekterar OS-inställning) |
-| Tester | xUnit + Moq (backend), WebApplicationFactory (integration) — **78 tester** |
+| Tema & design | Ljust/mörkt läge + tre designer (persisterat, följer kontot), respekterar OS-inställning |
+| Språk | Svenska + engelska, webbläsardetektering (lätt egen i18n, inga beroenden) |
+| Delning | Delningslänkar per utrymme + medlemskap (ägare-eller-medlem-auktorisering) |
+| Tester | xUnit + Moq (backend), WebApplicationFactory (integration) — **90 tester** |
 | Drift | Dockerfile (multi-stage) + docker-compose, health checks, GitHub Actions CI |
 
 ---
@@ -152,15 +156,15 @@ Backenden POSTar fotot till Ollama (`http://localhost:11434`, modell via `ImageR
 ## Testning
 
 ```bash
-dotnet test StuffInABox.slnx          # alla 78 backend-tester
+dotnet test StuffInABox.slnx          # alla 90 backend-tester
 ```
 
 | Lager | Antal | Vad testas |
 |-------|------:|------------|
 | Domain | 27 | Entitetsinvarianter, value object-validering |
-| Application | 19 | Handler-logik, auth, validering, service-orkestrering |
-| Infrastructure | 16 | Repository-SQL, EF-config, bildbehandling, Claude-taggning, Ollama-igenkänning |
-| Web | 16 | JWT, refresh-flöde, OAuth-start, rate limiting, bilduppladdning, health checks, fel-mappning |
+| Application | 27 | Handler-logik, space-access-auktorisering, validering, service-orkestrering |
+| Infrastructure | 18 | Repository-SQL, EF-config, bildbehandling, Claude-taggning, Ollama-igenkänning |
+| Web | 18 | JWT, refresh-flöde, OAuth-start, rate limiting, bilduppladdning, **delning (åtkomstgräns)**, health checks, fel-mappning |
 
 Utvecklat test-drivet: testet skrivs före implementationen.
 
@@ -173,7 +177,8 @@ Utvecklat test-drivet: testet skrivs före implementationen.
 - **Bilduppladdning** valideras via magic bytes (JPEG/PNG/WEBP), max 10 MB, och **EXIF strippas** genom om-kodning (skyddar mot GPS-läckage).
 - **Rate limiting** på alla `/auth/*` (per IP).
 - **Säkerhetsheaders** (CSP, `X-Frame-Options: DENY`, `X-Content-Type-Options: nosniff`, m.fl.) + HSTS i produktion.
-- **Dataisolering**: alla repositories är scoped till inloggad `UserId`.
+- **Åtkomstkontroll & delning**: all läsning och skrivning av lådor/föremål går genom `ISpaceAccessService`, som auktoriserar **ägare-eller-medlem** mot utrymmet och annars svarar **403**. Allt innehåll ägs av utrymmets ägare; inbjudna medlemmar kan redigera lådor och föremål men inte hantera utrymmet (byta namn/ikon, flytta lådor, ta bort, bjuda in). En extra kontroll verifierar att en låda faktiskt ligger i det auktoriserade utrymmet, så en medlem aldrig når ägarens andra, icke-delade utrymmen (lådnummer är per ägare och disambigueras med `spaceId`).
+- **Delningslänkar**: slumpade, återkallningsbara tokens — ingen e-posthantering, matchar PII-modellen. Ägaren kan när som helst återkalla länken eller ta bort en medlem.
 
 ---
 
