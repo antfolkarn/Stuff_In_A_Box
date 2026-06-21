@@ -80,7 +80,7 @@ export default function SearchView() {
           {data!.boxes.length > 0 && (
             <ResultGroup label={t('search.groupBoxes')}>
               {data!.boxes.map((b) => (
-                <ResultRow key={b.number} onClick={() => goBox(b.number)}>
+                <ResultRow key={`${b.spaceId}-${b.number}`} onClick={() => goBox(b.number, b.spaceId)}>
                   <div
                     className="icon-tile icon-tile-accent-tint"
                     style={{ width: 38, height: 38, borderRadius: 'var(--r-sm)' }}
@@ -110,7 +110,7 @@ export default function SearchView() {
           {data!.items.length > 0 && (
             <ResultGroup label={t('search.groupItems')}>
               {data!.items.map((it) => (
-                <ResultRow key={it.id} onClick={() => goBox(it.boxNumber)}>
+                <ResultRow key={it.id} onClick={() => goBox(it.boxNumber, it.spaceId)}>
                   <div
                     className="icon-tile icon-tile-neutral"
                     style={{ width: 38, height: 38, borderRadius: 'var(--r-sm)' }}

@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { IconPlus, IconPrinter, IconX, IconBox } from '@tabler/icons-react'
+import { IconPlus, IconPrinter, IconX, IconBox, IconUsers } from '@tabler/icons-react'
 import { getSpaces, createSpace } from '../../api/spaces'
 import { useUiStore } from '../../store/uiStore'
 import { Icon } from '../../shared/components/Icon'
@@ -180,17 +180,37 @@ function SpaceCard({
         >
           <Icon name={space.icon} size={21} color="currentColor" />
         </div>
-        <span
-          className="mono space-card-code"
-          style={{
-            fontSize: 11,
-            letterSpacing: '0.08em',
-            padding: '3px 8px',
-            borderRadius: 'var(--r-sm)',
-          }}
-        >
-          {space.code}
-        </span>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+          {!space.isOwner && (
+            <span
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 4,
+                fontSize: 10.5,
+                fontWeight: 600,
+                color: 'var(--accent)',
+                background: 'var(--accent-9)',
+                padding: '3px 8px',
+                borderRadius: 'var(--r-chip)',
+              }}
+            >
+              <IconUsers size={12} />
+              {t('home.sharedBadge')}
+            </span>
+          )}
+          <span
+            className="mono space-card-code"
+            style={{
+              fontSize: 11,
+              letterSpacing: '0.08em',
+              padding: '3px 8px',
+              borderRadius: 'var(--r-sm)',
+            }}
+          >
+            {space.code}
+          </span>
+        </div>
       </div>
       <div style={{ marginTop: 12 }}>
         <div style={{ fontSize: 17, fontWeight: 600 }}>{space.name}</div>

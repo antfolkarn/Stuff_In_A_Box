@@ -23,9 +23,9 @@ public static class BoxEndpoints
             return Results.Ok(result);
         }).WithSummary("Hämta lådor för ett utrymme");
 
-        group.MapGet("/{number:int}", async (int number, IMediator mediator, CancellationToken ct) =>
+        group.MapGet("/{number:int}", async (int number, Guid? spaceId, IMediator mediator, CancellationToken ct) =>
         {
-            var result = await mediator.Send(new GetBoxDetailQuery(number), ct);
+            var result = await mediator.Send(new GetBoxDetailQuery(number, spaceId), ct);
             return result is null ? Results.NotFound() : Results.Ok(result);
         }).WithSummary("Hämta detaljer för en låda");
 
@@ -43,13 +43,13 @@ public static class BoxEndpoints
 
         group.MapPatch("/{number:int}/label", async (int number, UpdateLabelRequest req, IMediator mediator, CancellationToken ct) =>
         {
-            await mediator.Send(new UpdateBoxLabelCommand(number, req.Label), ct);
+            await mediator.Send(new UpdateBoxLabelCommand(number, req.SpaceId, req.Label), ct);
             return Results.NoContent();
         }).WithSummary("Byt namn på låda");
 
-        group.MapDelete("/{number:int}", async (int number, IMediator mediator, CancellationToken ct) =>
+        group.MapDelete("/{number:int}", async (int number, Guid spaceId, IMediator mediator, CancellationToken ct) =>
         {
-            await mediator.Send(new DeleteBoxCommand(number), ct);
+            await mediator.Send(new DeleteBoxCommand(number, spaceId), ct);
             return Results.NoContent();
         }).WithSummary("Ta bort låda och dess föremål");
 
@@ -57,5 +57,5 @@ public static class BoxEndpoints
     }
 
     private record MoveBoxRequest(Guid SpaceId);
-    private record UpdateLabelRequest(string Label);
+    private record UpdateLabelRequest(Guid SpaceId, string Label);
 }

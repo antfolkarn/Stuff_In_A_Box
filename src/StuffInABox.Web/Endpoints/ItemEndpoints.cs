@@ -15,15 +15,15 @@ public static class ItemEndpoints
     {
         var group = app.MapGroup("/api/boxes/{boxNumber:int}/items").WithTags("Items").RequireAuthorization();
 
-        group.MapGet("/", async (int boxNumber, IMediator mediator, CancellationToken ct) =>
+        group.MapGet("/", async (int boxNumber, Guid spaceId, IMediator mediator, CancellationToken ct) =>
         {
-            var result = await mediator.Send(new GetItemsByBoxQuery(boxNumber), ct);
+            var result = await mediator.Send(new GetItemsByBoxQuery(boxNumber, spaceId), ct);
             return Results.Ok(result);
         }).WithSummary("Hämta föremål i en låda");
 
         group.MapPost("/", async (int boxNumber, AddItemRequest req, IMediator mediator, CancellationToken ct) =>
         {
-            var result = await mediator.Send(new AddItemCommand(boxNumber, req.Name, req.Tags), ct);
+            var result = await mediator.Send(new AddItemCommand(boxNumber, req.SpaceId, req.Name, req.Tags), ct);
             return Results.Created($"/api/boxes/{boxNumber}/items/{result.ItemId}", result);
         }).WithSummary("Lägg till föremål i låda");
 
@@ -53,6 +53,6 @@ public static class ItemEndpoints
         return app;
     }
 
-    private record AddItemRequest(string Name, IReadOnlyList<string>? Tags);
+    private record AddItemRequest(Guid SpaceId, string Name, IReadOnlyList<string>? Tags);
     private record UpdateItemRequest(string? Name, IReadOnlyList<string>? Tags);
 }

@@ -10,15 +10,20 @@ namespace StuffInABox.Application.Tests.Boxes;
 public class UpdateBoxLabelHandlerTests
 {
     private readonly Mock<IBoxRepository> _boxRepo = new();
-    private readonly Mock<ICurrentUserService> _user = new();
+    private readonly Mock<ISpaceAccessService> _access = new();
     private readonly UserId _userId = new(Guid.NewGuid());
+    private readonly Guid _spaceId = Guid.NewGuid();
 
-    public UpdateBoxLabelHandlerTests() => _user.Setup(u => u.UserId).Returns(_userId);
+    public UpdateBoxLabelHandlerTests()
+    {
+        _access.Setup(a => a.RequireSpaceAsync(_spaceId, It.IsAny<bool>(), It.IsAny<CancellationToken>()))
+               .ReturnsAsync(_userId);
+    }
 
     [Fact]
     public async Task Handle_RenamesBox()
     {
-        var box = Box.Create(new BoxNumber(3), Guid.NewGuid(), _userId, "Gammalt namn");
+        var box = Box.Create(new BoxNumber(3), _spaceId, _userId, "Gammalt namn");
         _boxRepo.Setup(r => r.GetByNumberAsync(It.IsAny<BoxNumber>(), _userId, It.IsAny<CancellationToken>()))
                 .ReturnsAsync(box);
         Box? updated = null;
@@ -26,8 +31,8 @@ public class UpdateBoxLabelHandlerTests
                 .Callback<Box, CancellationToken>((b, _) => updated = b)
                 .Returns(Task.CompletedTask);
 
-        var handler = new UpdateBoxLabelCommandHandler(_boxRepo.Object, _user.Object);
-        await handler.Handle(new UpdateBoxLabelCommand(3, "Nytt namn"), default);
+        var handler = new UpdateBoxLabelCommandHandler(_boxRepo.Object, _access.Object);
+        await handler.Handle(new UpdateBoxLabelCommand(3, _spaceId, "Nytt namn"), default);
 
         Assert.Equal("Nytt namn", updated!.Label);
     }
@@ -37,9 +42,9 @@ public class UpdateBoxLabelHandlerTests
     {
         _boxRepo.Setup(r => r.GetByNumberAsync(It.IsAny<BoxNumber>(), _userId, It.IsAny<CancellationToken>()))
                 .ReturnsAsync((Box?)null);
-        var handler = new UpdateBoxLabelCommandHandler(_boxRepo.Object, _user.Object);
+        var handler = new UpdateBoxLabelCommandHandler(_boxRepo.Object, _access.Object);
 
         await Assert.ThrowsAsync<Domain.Exceptions.NotFoundException>(
-            () => handler.Handle(new UpdateBoxLabelCommand(99, "x"), default));
+            () => handler.Handle(new UpdateBoxLabelCommand(99, _spaceId, "x"), default));
     }
 }

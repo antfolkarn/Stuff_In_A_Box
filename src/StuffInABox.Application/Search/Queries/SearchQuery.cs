@@ -11,6 +11,6 @@ public sealed record SearchResultDto(
 
 public sealed record SpaceSearchResult(Guid Id, string Name, string Icon, int BoxCount);
 
-public sealed record BoxSearchResult(int Number, string Label, string SpaceName, string? MatchReason);
+public sealed record BoxSearchResult(int Number, Guid SpaceId, string Label, string SpaceName, string? MatchReason);
 
-public sealed record ItemSearchResult(Guid Id, string Name, int BoxNumber, string SpaceName, string? MatchedTag);
+public sealed record ItemSearchResult(Guid Id, string Name, int BoxNumber, Guid SpaceId, string SpaceName, string? MatchedTag);

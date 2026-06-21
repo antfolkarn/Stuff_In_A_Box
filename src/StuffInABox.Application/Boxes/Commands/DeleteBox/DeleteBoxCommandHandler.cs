@@ -11,19 +11,20 @@ public sealed class DeleteBoxCommandHandler(
     IBoxRepository boxRepo,
     IItemRepository itemRepo,
     IStorageService storage,
-    ICurrentUserService currentUser)
+    ISpaceAccessService access)
     : IRequestHandler<DeleteBoxCommand>
 {
     public async Task Handle(DeleteBoxCommand request, CancellationToken ct)
     {
-        var userId = currentUser.UserId;
+        var ownerId = await access.RequireSpaceAsync(request.SpaceId, ct: ct);
         var boxNumber = new BoxNumber(request.BoxNumber);
 
-        var box = await boxRepo.GetByNumberAsync(boxNumber, userId, ct)
-            ?? throw new NotFoundException(nameof(Box), request.BoxNumber);
+        var box = await boxRepo.GetByNumberAsync(boxNumber, ownerId, ct);
+        if (box is null || box.SpaceId != request.SpaceId)
+            throw new NotFoundException(nameof(Box), request.BoxNumber);
 
         // Cascade: remove all items in the box (and their photos) first
-        var items = await itemRepo.GetByBoxAsync(boxNumber, userId, ct);
+        var items = await itemRepo.GetByBoxAsync(boxNumber, ownerId, ct);
         foreach (var item in items)
         {
             if (item.PhotoStorageKey is not null)
@@ -31,6 +32,6 @@ public sealed class DeleteBoxCommandHandler(
             await itemRepo.DeleteAsync(item.Id, ct);
         }
 
-        await boxRepo.DeleteAsync(box.Number, userId, ct);
+        await boxRepo.DeleteAsync(box.Number, ownerId, ct);
     }
 }

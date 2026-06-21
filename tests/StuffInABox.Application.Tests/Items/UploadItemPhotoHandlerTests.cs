@@ -10,29 +10,39 @@ namespace StuffInABox.Application.Tests.Items;
 public class UploadItemPhotoHandlerTests
 {
     private readonly Mock<IItemRepository> _itemRepo = new();
+    private readonly Mock<IBoxRepository> _boxRepo = new();
     private readonly Mock<IImageProcessor> _processor = new();
     private readonly Mock<IStorageService> _storage = new();
-    private readonly Mock<ICurrentUserService> _user = new();
+    private readonly Mock<ISpaceAccessService> _access = new();
     private readonly UserId _userId = new(Guid.NewGuid());
+    private readonly Guid _spaceId = Guid.NewGuid();
 
     public UploadItemPhotoHandlerTests()
     {
-        _user.Setup(u => u.UserId).Returns(_userId);
         _processor.Setup(p => p.ProcessAndStripMetadata(It.IsAny<byte[]>()))
                   .Returns(new ProcessedImage(new byte[] { 1, 2, 3 }, ".jpg", "image/jpeg"));
         _storage.Setup(s => s.StoreAsync(It.IsAny<Stream>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
                 .ReturnsAsync("stored-key.jpg");
         _storage.Setup(s => s.GetUrl("stored-key.jpg")).Returns("/uploads/stored-key.jpg");
+        _access.Setup(a => a.RequireSpaceAsync(_spaceId, It.IsAny<bool>(), It.IsAny<CancellationToken>()))
+               .ReturnsAsync(_userId);
     }
 
     private UploadItemPhotoCommandHandler CreateHandler() =>
-        new(_itemRepo.Object, _processor.Object, _storage.Object, _user.Object);
+        new(_itemRepo.Object, _boxRepo.Object, _processor.Object, _storage.Object, _access.Object);
+
+    private void SetupItemAndBox(Item item)
+    {
+        _itemRepo.Setup(r => r.GetByIdAsync(item.Id, It.IsAny<CancellationToken>())).ReturnsAsync(item);
+        _boxRepo.Setup(r => r.GetByNumberAsync(item.BoxNumber, item.OwnerId, It.IsAny<CancellationToken>()))
+                .ReturnsAsync(Box.Create(new BoxNumber(item.BoxNumber.Value), _spaceId, item.OwnerId, "Box"));
+    }
 
     [Fact]
     public async Task Handle_ValidImage_StoresAndSetsPhoto()
     {
         var item = Item.Create(new BoxNumber(1), _userId, "Jacka");
-        _itemRepo.Setup(r => r.GetByIdAsync(item.Id, It.IsAny<CancellationToken>())).ReturnsAsync(item);
+        SetupItemAndBox(item);
 
         var result = await CreateHandler().Handle(
             new UploadItemPhotoCommand(item.Id, new byte[] { 0xFF, 0xD8, 0xFF }, "x.jpg"), default);
@@ -47,7 +57,7 @@ public class UploadItemPhotoHandlerTests
     {
         var item = Item.Create(new BoxNumber(1), _userId, "Jacka");
         item.SetPhoto("old-key.jpg");
-        _itemRepo.Setup(r => r.GetByIdAsync(item.Id, It.IsAny<CancellationToken>())).ReturnsAsync(item);
+        SetupItemAndBox(item);
 
         await CreateHandler().Handle(
             new UploadItemPhotoCommand(item.Id, new byte[] { 0xFF, 0xD8, 0xFF }, "x.jpg"), default);
@@ -59,7 +69,7 @@ public class UploadItemPhotoHandlerTests
     public async Task Handle_TooLarge_Throws()
     {
         var item = Item.Create(new BoxNumber(1), _userId, "Jacka");
-        _itemRepo.Setup(r => r.GetByIdAsync(item.Id, It.IsAny<CancellationToken>())).ReturnsAsync(item);
+        SetupItemAndBox(item);
         var big = new byte[UploadItemPhotoCommandHandler.MaxBytes + 1];
 
         await Assert.ThrowsAsync<InvalidImageException>(
@@ -67,12 +77,12 @@ public class UploadItemPhotoHandlerTests
     }
 
     [Fact]
-    public async Task Handle_OtherUsersItem_Throws()
+    public async Task Handle_ItemNotFound_Throws()
     {
-        var item = Item.Create(new BoxNumber(1), new UserId(Guid.NewGuid()), "Annans");
-        _itemRepo.Setup(r => r.GetByIdAsync(item.Id, It.IsAny<CancellationToken>())).ReturnsAsync(item);
+        var id = Guid.NewGuid();
+        _itemRepo.Setup(r => r.GetByIdAsync(id, It.IsAny<CancellationToken>())).ReturnsAsync((Item?)null);
 
         await Assert.ThrowsAsync<Domain.Exceptions.NotFoundException>(
-            () => CreateHandler().Handle(new UploadItemPhotoCommand(item.Id, new byte[] { 0xFF, 0xD8, 0xFF }, "x.jpg"), default));
+            () => CreateHandler().Handle(new UploadItemPhotoCommand(id, new byte[] { 0xFF, 0xD8, 0xFF }, "x.jpg"), default));
     }
 }

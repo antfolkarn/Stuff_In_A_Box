@@ -10,19 +10,21 @@ namespace StuffInABox.Application.Items.Commands.AddItem;
 public sealed class AddItemCommandHandler(
     IItemRepository itemRepo,
     IBoxRepository boxRepo,
-    ICurrentUserService currentUser,
+    ISpaceAccessService access,
     IEnrichmentQueue enrichmentQueue)
     : IRequestHandler<AddItemCommand, AddItemResult>
 {
     public async Task<AddItemResult> Handle(AddItemCommand request, CancellationToken ct)
     {
-        var userId = currentUser.UserId;
+        var ownerId = await access.RequireSpaceAsync(request.SpaceId, ct: ct);
         var boxNumber = new BoxNumber(request.BoxNumber);
 
-        _ = await boxRepo.GetByNumberAsync(boxNumber, userId, ct)
-            ?? throw new NotFoundException(nameof(Box), request.BoxNumber);
+        var box = await boxRepo.GetByNumberAsync(boxNumber, ownerId, ct);
+        if (box is null || box.SpaceId != request.SpaceId)
+            throw new NotFoundException(nameof(Box), request.BoxNumber);
 
-        var item = Item.Create(boxNumber, userId, request.Name);
+        // Content is owned by the space owner regardless of which member added it.
+        var item = Item.Create(boxNumber, ownerId, request.Name);
 
         // Synchronous tokenizer tags from the item name
         var quickTags = Tokenize(request.Name);

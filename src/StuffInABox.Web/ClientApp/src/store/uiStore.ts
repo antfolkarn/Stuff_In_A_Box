@@ -15,16 +15,18 @@ interface UiState {
   addOpen: boolean
   labelFilter: LabelFilter
   pendingBox: number | null
+  pendingInvite: string | null
 
   goHome: () => void
   goSpace: (spaceId: string) => void
-  goBox: (boxNum: number) => void
+  goBox: (boxNum: number, spaceId?: string) => void
   goLabels: (filter?: LabelFilter) => void
   goSettings: () => void
   setQuery: (q: string) => void
   openAdd: (boxNum?: number) => void
   closeAdd: () => void
   setPendingBox: (n: number | null) => void
+  setPendingInvite: (token: string | null) => void
 }
 
 // Parse QR deep link on load
@@ -32,6 +34,12 @@ function parsePendingBox(): number | null {
   const hash = window.location.hash
   const match = hash.match(/[#&]box=(\d+)/)
   return match ? parseInt(match[1], 10) : null
+}
+
+// Parse share-link deep link on load (#invite=<token>)
+function parsePendingInvite(): string | null {
+  const match = window.location.hash.match(/[#&]invite=([A-Za-z0-9_-]+)/)
+  return match ? match[1] : null
 }
 
 export const useUiStore = create<UiState>((set) => ({
@@ -42,12 +50,14 @@ export const useUiStore = create<UiState>((set) => ({
   addOpen: false,
   labelFilter: {},
   pendingBox: parsePendingBox(),
+  pendingInvite: parsePendingInvite(),
 
   goHome: () => set({ view: 'home', spaceId: null, boxNum: null, query: '' }),
 
   goSpace: (spaceId) => set({ view: 'space', spaceId, boxNum: null, query: '' }),
 
-  goBox: (boxNum) => set({ view: 'box', boxNum, query: '' }),
+  // spaceId carries the space (owner) context so shared boxes resolve correctly.
+  goBox: (boxNum, spaceId) => set((s) => ({ view: 'box', boxNum, spaceId: spaceId ?? s.spaceId, query: '' })),
 
   goLabels: (filter = {}) => set({ view: 'labels', labelFilter: filter, query: '' }),
 
@@ -61,4 +71,6 @@ export const useUiStore = create<UiState>((set) => ({
   closeAdd: () => set({ addOpen: false }),
 
   setPendingBox: (n) => set({ pendingBox: n }),
+
+  setPendingInvite: (token) => set({ pendingInvite: token }),
 }))

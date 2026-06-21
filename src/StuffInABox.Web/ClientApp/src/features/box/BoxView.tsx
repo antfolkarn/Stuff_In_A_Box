@@ -14,27 +14,30 @@ import type { ItemDto } from '../../api/types'
 
 export default function BoxView() {
   const qc = useQueryClient()
-  const { boxNum, goSpace, goLabels, openAdd } = useUiStore()
+  const { boxNum, spaceId: navSpaceId, goSpace, goLabels, openAdd } = useUiStore()
   const t = useT()
   const [editingLabel, setEditingLabel] = useState(false)
   const [labelDraft, setLabelDraft] = useState('')
 
   const { data: box } = useQuery({
-    queryKey: ['box', boxNum],
-    queryFn: () => getBoxDetail(boxNum!),
+    queryKey: ['box', boxNum, navSpaceId],
+    queryFn: () => getBoxDetail(boxNum!, navSpaceId ?? undefined),
     enabled: !!boxNum,
   })
 
+  // The box's own space is authoritative for all follow-up calls (handles shared spaces).
+  const spaceId = box?.spaceId
+
   const { data: items = [] } = useQuery({
-    queryKey: ['items', boxNum],
-    queryFn: () => getItemsByBox(boxNum!),
-    enabled: !!boxNum,
+    queryKey: ['items', boxNum, spaceId],
+    queryFn: () => getItemsByBox(boxNum!, spaceId!),
+    enabled: !!boxNum && !!spaceId,
   })
 
   const { data: spaces = [] } = useQuery({ queryKey: ['spaces'], queryFn: getSpaces })
 
   const moveMut = useMutation({
-    mutationFn: (spaceId: string) => moveBox(boxNum!, spaceId),
+    mutationFn: (target: string) => moveBox(boxNum!, target),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['box', boxNum] })
       qc.invalidateQueries({ queryKey: ['boxes'] })
@@ -43,7 +46,7 @@ export default function BoxView() {
   })
 
   const renameMut = useMutation({
-    mutationFn: (label: string) => updateBoxLabel(boxNum!, label),
+    mutationFn: (label: string) => updateBoxLabel(boxNum!, spaceId!, label),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['box', boxNum] })
       qc.invalidateQueries({ queryKey: ['boxes'] })
@@ -52,7 +55,7 @@ export default function BoxView() {
   })
 
   const deleteBoxMut = useMutation({
-    mutationFn: () => deleteBox(boxNum!),
+    mutationFn: () => deleteBox(boxNum!, spaceId!),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['boxes'] })
       qc.invalidateQueries({ queryKey: ['spaces'] })
@@ -61,6 +64,7 @@ export default function BoxView() {
   })
 
   const currentSpace = spaces.find((s) => s.id === box?.spaceId)
+  const isOwner = currentSpace?.isOwner ?? true
 
   if (!boxNum || !box) {
     return <div style={{ color: 'var(--text-3)', padding: 40 }}>{t('box.loading')}</div>
@@ -183,16 +187,20 @@ export default function BoxView() {
       >
         <IconMapPin size={17} style={{ color: 'var(--text-4)', flexShrink: 0 }} />
         <span style={{ fontSize: 14, fontWeight: 500 }}>{t('box.location')}</span>
-        <select
-          className="select"
-          value={box.spaceId}
-          onChange={(e) => moveMut.mutate(e.target.value)}
-          style={{ flex: 1, height: 36, minWidth: 140 }}
-        >
-          {spaces.map((s) => (
-            <option key={s.id} value={s.id}>{s.name}</option>
-          ))}
-        </select>
+        {isOwner ? (
+          <select
+            className="select"
+            value={box.spaceId}
+            onChange={(e) => moveMut.mutate(e.target.value)}
+            style={{ flex: 1, height: 36, minWidth: 140 }}
+          >
+            {spaces.filter((s) => s.isOwner).map((s) => (
+              <option key={s.id} value={s.id}>{s.name}</option>
+            ))}
+          </select>
+        ) : (
+          <span style={{ flex: 1, fontSize: 14, minWidth: 140 }}>{currentSpace?.name}</span>
+        )}
         <span style={{ fontSize: 12, color: 'var(--text-4)', flexShrink: 0 }}>
           {t('box.numberFollows', { number: box.number })}
         </span>

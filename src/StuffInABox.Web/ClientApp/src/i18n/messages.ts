@@ -50,6 +50,34 @@ const sv = {
   'space.items': '{count} föremål',
   'space.labels': 'Etiketter',
 
+  // Sharing (space owner)
+  'home.sharedBadge': 'Delat',
+  'space.share': 'Dela',
+  'space.shareTitle': 'Dela utrymme',
+  'space.shareDesc': 'Vem som helst med länken kan gå med och redigera lådor och föremål. Bara du kan byta namn, ikon eller ta bort utrymmet.',
+  'space.createLink': 'Skapa delningslänk',
+  'space.copyLink': 'Kopiera länk',
+  'space.linkCopied': 'Kopierad!',
+  'space.revokeLink': 'Återkalla länk',
+  'space.confirmRevoke': 'Återkalla länken? Den slutar fungera, men nuvarande medlemmar behåller åtkomst.',
+  'space.members': 'Medlemmar',
+  'space.noMembers': 'Inga medlemmar har gått med ännu.',
+  'space.member': 'Medlem',
+  'space.removeMember': 'Ta bort',
+  'space.confirmRemoveMember': 'Ta bort den här medlemmens åtkomst?',
+  // Sharing (invited member)
+  'space.sharedWithYou': 'Delat med dig',
+  'space.leave': 'Lämna utrymme',
+  'space.confirmLeave': 'Lämna det här delade utrymmet? Du förlorar åtkomsten tills du bjuds in igen.',
+  // Accept-invite flow
+  'invite.joinTitle': 'Gå med i utrymme',
+  'invite.joinBody': 'Du har bjudits in till "{name}".',
+  'invite.join': 'Gå med',
+  'invite.cancel': 'Avbryt',
+  'invite.alreadyMember': 'Du har redan åtkomst till det här utrymmet.',
+  'invite.open': 'Öppna',
+  'invite.invalid': 'Inbjudningslänken är ogiltig eller har återkallats.',
+
   // Box
   'box.loading': 'Laddar låda…',
   'box.confirmDelete': 'Ta bort låda #{number} och alla dess föremål?',
@@ -215,6 +243,34 @@ const en: Record<MessageKey, string> = {
   'space.newBox': 'New box',
   'space.items': '{count} items',
   'space.labels': 'Labels',
+
+  // Sharing (space owner)
+  'home.sharedBadge': 'Shared',
+  'space.share': 'Share',
+  'space.shareTitle': 'Share space',
+  'space.shareDesc': 'Anyone with the link can join and edit boxes and items. Only you can rename, change the icon or delete the space.',
+  'space.createLink': 'Create share link',
+  'space.copyLink': 'Copy link',
+  'space.linkCopied': 'Copied!',
+  'space.revokeLink': 'Revoke link',
+  'space.confirmRevoke': 'Revoke the link? It stops working, but current members keep access.',
+  'space.members': 'Members',
+  'space.noMembers': 'No members have joined yet.',
+  'space.member': 'Member',
+  'space.removeMember': 'Remove',
+  'space.confirmRemoveMember': "Remove this member's access?",
+  // Sharing (invited member)
+  'space.sharedWithYou': 'Shared with you',
+  'space.leave': 'Leave space',
+  'space.confirmLeave': 'Leave this shared space? You lose access until you are invited again.',
+  // Accept-invite flow
+  'invite.joinTitle': 'Join space',
+  'invite.joinBody': 'You\'ve been invited to "{name}".',
+  'invite.join': 'Join',
+  'invite.cancel': 'Cancel',
+  'invite.alreadyMember': 'You already have access to this space.',
+  'invite.open': 'Open',
+  'invite.invalid': 'The invite link is invalid or has been revoked.',
 
   // Box
   'box.loading': 'Loading box…',

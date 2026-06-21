@@ -37,6 +37,8 @@ public static class DependencyInjection
         });
 
         services.AddScoped<ISpaceRepository, SpaceRepository>();
+        services.AddScoped<ISpaceMembershipRepository, SpaceMembershipRepository>();
+        services.AddScoped<ISpaceInviteRepository, SpaceInviteRepository>();
         services.AddScoped<IBoxRepository, BoxRepository>();
         services.AddScoped<IItemRepository, ItemRepository>();
         services.AddScoped<IUserIdentityRepository, UserIdentityRepository>();

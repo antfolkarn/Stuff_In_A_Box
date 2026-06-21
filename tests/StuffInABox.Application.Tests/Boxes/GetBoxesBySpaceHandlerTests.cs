@@ -11,13 +11,14 @@ public class GetBoxesBySpaceHandlerTests
 {
     private readonly Mock<IBoxRepository> _boxRepo = new();
     private readonly Mock<IItemRepository> _itemRepo = new();
-    private readonly Mock<ICurrentUserService> _user = new();
+    private readonly Mock<ISpaceAccessService> _access = new();
     private readonly UserId _userId = new(Guid.NewGuid());
     private readonly Guid _spaceId = Guid.NewGuid();
 
     public GetBoxesBySpaceHandlerTests()
     {
-        _user.Setup(u => u.UserId).Returns(_userId);
+        _access.Setup(a => a.RequireSpaceAsync(_spaceId, It.IsAny<bool>(), It.IsAny<CancellationToken>()))
+               .ReturnsAsync(_userId);
     }
 
     [Fact]
@@ -34,7 +35,7 @@ public class GetBoxesBySpaceHandlerTests
         _itemRepo.Setup(r => r.GetByBoxAsync(box2.Number, _userId, It.IsAny<CancellationToken>()))
                  .ReturnsAsync(Array.Empty<Item>());
 
-        var handler = new GetBoxesBySpaceQueryHandler(_boxRepo.Object, _itemRepo.Object, _user.Object);
+        var handler = new GetBoxesBySpaceQueryHandler(_boxRepo.Object, _itemRepo.Object, _access.Object);
         var result = await handler.Handle(new GetBoxesBySpaceQuery(_spaceId), default);
 
         Assert.Equal(2, result.Count);

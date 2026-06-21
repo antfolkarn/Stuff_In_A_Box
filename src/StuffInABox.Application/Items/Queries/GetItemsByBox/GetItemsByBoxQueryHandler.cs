@@ -7,13 +7,21 @@ namespace StuffInABox.Application.Items.Commands.AddItem;
 
 public sealed class GetItemsByBoxQueryHandler(
     IItemRepository repo,
-    ICurrentUserService currentUser,
+    IBoxRepository boxRepo,
+    ISpaceAccessService access,
     IStorageService storage)
     : IRequestHandler<GetItemsByBoxQuery, IReadOnlyList<ItemDto>>
 {
     public async Task<IReadOnlyList<ItemDto>> Handle(GetItemsByBoxQuery request, CancellationToken ct)
     {
-        var items = await repo.GetByBoxAsync(new BoxNumber(request.BoxNumber), currentUser.UserId, ct);
+        var ownerId = await access.RequireSpaceAsync(request.SpaceId, ct: ct);
+        var boxNumber = new BoxNumber(request.BoxNumber);
+
+        // Confirm the box is in the authorized space before listing its items.
+        var box = await boxRepo.GetByNumberAsync(boxNumber, ownerId, ct);
+        if (box is null || box.SpaceId != request.SpaceId) return [];
+
+        var items = await repo.GetByBoxAsync(boxNumber, ownerId, ct);
         return items.Select(i => new ItemDto(
             i.Id,
             i.Name,

@@ -1,11 +1,13 @@
 import { api } from './client'
 import type { ItemDto, AddItemResult } from './types'
 
-export const getItemsByBox = (boxNumber: number) =>
-  api.get<ItemDto[]>(`/boxes/${boxNumber}/items`).then((r) => r.data)
+// spaceId identifies which space (and thus owner) the box belongs to — required
+// so invited members reach the shared space's content, not their own box #n.
+export const getItemsByBox = (boxNumber: number, spaceId: string) =>
+  api.get<ItemDto[]>(`/boxes/${boxNumber}/items`, { params: { spaceId } }).then((r) => r.data)
 
-export const addItem = (boxNumber: number, name: string, tags?: string[]) =>
-  api.post<AddItemResult>(`/boxes/${boxNumber}/items`, { name, tags }).then((r) => r.data)
+export const addItem = (boxNumber: number, spaceId: string, name: string, tags?: string[]) =>
+  api.post<AddItemResult>(`/boxes/${boxNumber}/items`, { spaceId, name, tags }).then((r) => r.data)
 
 export const updateItem = (
   boxNumber: number,

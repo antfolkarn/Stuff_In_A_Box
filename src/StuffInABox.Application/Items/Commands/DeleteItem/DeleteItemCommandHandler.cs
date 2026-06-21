@@ -8,15 +8,19 @@ namespace StuffInABox.Application.Items.Commands.DeleteItem;
 
 public sealed class DeleteItemCommandHandler(
     IItemRepository itemRepo,
+    IBoxRepository boxRepo,
     IStorageService storage,
-    ICurrentUserService currentUser)
+    ISpaceAccessService access)
     : IRequestHandler<DeleteItemCommand>
 {
     public async Task Handle(DeleteItemCommand request, CancellationToken ct)
     {
-        var item = await itemRepo.GetByIdAsync(request.ItemId, ct);
-        if (item is null || item.OwnerId != currentUser.UserId)
-            throw new NotFoundException(nameof(Item), request.ItemId);
+        var item = await itemRepo.GetByIdAsync(request.ItemId, ct)
+            ?? throw new NotFoundException(nameof(Item), request.ItemId);
+
+        var box = await boxRepo.GetByNumberAsync(item.BoxNumber, item.OwnerId, ct)
+            ?? throw new NotFoundException(nameof(Item), request.ItemId);
+        await access.RequireSpaceAsync(box.SpaceId, ct: ct);
 
         if (item.PhotoStorageKey is not null)
             await storage.DeleteAsync(item.PhotoStorageKey, ct);

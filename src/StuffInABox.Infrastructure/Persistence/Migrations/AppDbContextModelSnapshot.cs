@@ -142,6 +142,64 @@ namespace StuffInABox.Infrastructure.Persistence.Migrations
                     b.ToTable("Spaces");
                 });
 
+            modelBuilder.Entity("StuffInABox.Domain.Entities.SpaceInvite", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid>("CreatedBy")
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTimeOffset?>("RevokedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid>("SpaceId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Token")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("SpaceId");
+
+                    b.HasIndex("Token")
+                        .IsUnique();
+
+                    b.ToTable("SpaceInvites");
+                });
+
+            modelBuilder.Entity("StuffInABox.Domain.Entities.SpaceMembership", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid>("SpaceId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("UserId");
+
+                    b.HasIndex("SpaceId", "UserId")
+                        .IsUnique();
+
+                    b.ToTable("SpaceMemberships");
+                });
+
             modelBuilder.Entity("StuffInABox.Domain.Entities.UserIdentity", b =>
                 {
                     b.Property<Guid>("InternalUserId")

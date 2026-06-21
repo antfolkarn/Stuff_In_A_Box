@@ -8,6 +8,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Serilog;
 using Serilog.Events;
+using StuffInABox.Application.Common.Access;
 using StuffInABox.Application.Common.Behaviors;
 using StuffInABox.Application.Common.Interfaces;
 using StuffInABox.Infrastructure;
@@ -56,6 +57,7 @@ builder.Services.AddInfrastructure(builder.Configuration);
 // Auth
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<ICurrentUserService, CurrentUserService>();
+builder.Services.AddScoped<ISpaceAccessService, SpaceAccessService>();
 builder.Services.AddScoped<JwtTokenService>();
 builder.Services.AddHttpClient<OAuthService>();
 
@@ -164,6 +166,7 @@ app.UseAuthorization();
 app.MapAuthEndpoints();
 app.MapOAuthEndpoints();
 app.MapSpaceEndpoints();
+app.MapInviteEndpoints();
 app.MapBoxEndpoints();
 app.MapItemEndpoints();
 app.MapRecognitionEndpoints();

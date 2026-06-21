@@ -10,18 +10,16 @@ namespace StuffInABox.Application.Tests.Boxes;
 public class CreateBoxHandlerTests
 {
     private readonly Mock<IBoxRepository> _boxRepo = new();
-    private readonly Mock<ISpaceRepository> _spaceRepo = new();
-    private readonly Mock<ICurrentUserService> _user = new();
+    private readonly Mock<ISpaceAccessService> _access = new();
     private readonly UserId _userId = new(Guid.NewGuid());
     private readonly Guid _spaceId = Guid.NewGuid();
 
     public CreateBoxHandlerTests()
     {
-        _user.Setup(u => u.UserId).Returns(_userId);
         _boxRepo.Setup(r => r.GetNextBoxNumberAsync(_userId, It.IsAny<CancellationToken>()))
                 .ReturnsAsync(new BoxNumber(5));
-        _spaceRepo.Setup(r => r.GetByIdAsync(_spaceId, _userId, It.IsAny<CancellationToken>()))
-                  .ReturnsAsync(Space.Create(_userId, "Garage", "ti-car"));
+        _access.Setup(a => a.RequireSpaceAsync(_spaceId, It.IsAny<bool>(), It.IsAny<CancellationToken>()))
+               .ReturnsAsync(_userId);
     }
 
     [Fact]
@@ -32,24 +30,26 @@ public class CreateBoxHandlerTests
                 .Callback<Box, CancellationToken>((b, _) => saved = b)
                 .Returns(Task.CompletedTask);
 
-        var handler = new CreateBoxCommandHandler(_boxRepo.Object, _spaceRepo.Object, _user.Object);
+        var handler = new CreateBoxCommandHandler(_boxRepo.Object, _access.Object);
         var result = await handler.Handle(new CreateBoxCommand(_spaceId, "Verktyg"), default);
 
         Assert.Equal(5, result.BoxNumber);
         Assert.Equal("Verktyg", result.Label);
         Assert.NotNull(saved);
         Assert.Equal(5, saved!.Number.Value);
+        Assert.Equal(_spaceId, saved.SpaceId);
     }
 
     [Fact]
-    public async Task Handle_SpaceNotFound_Throws()
+    public async Task Handle_NoAccess_Throws()
     {
-        _spaceRepo.Setup(r => r.GetByIdAsync(It.IsAny<Guid>(), _userId, It.IsAny<CancellationToken>()))
-                  .ReturnsAsync((Space?)null);
+        var otherSpace = Guid.NewGuid();
+        _access.Setup(a => a.RequireSpaceAsync(otherSpace, It.IsAny<bool>(), It.IsAny<CancellationToken>()))
+               .ThrowsAsync(new Domain.Exceptions.ForbiddenException());
 
-        var handler = new CreateBoxCommandHandler(_boxRepo.Object, _spaceRepo.Object, _user.Object);
+        var handler = new CreateBoxCommandHandler(_boxRepo.Object, _access.Object);
 
-        await Assert.ThrowsAsync<Domain.Exceptions.NotFoundException>(
-            () => handler.Handle(new CreateBoxCommand(Guid.NewGuid(), "Test"), default));
+        await Assert.ThrowsAsync<Domain.Exceptions.ForbiddenException>(
+            () => handler.Handle(new CreateBoxCommand(otherSpace, "Test"), default));
     }
 }

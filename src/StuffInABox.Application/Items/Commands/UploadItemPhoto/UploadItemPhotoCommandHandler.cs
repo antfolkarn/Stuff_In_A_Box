@@ -8,9 +8,10 @@ namespace StuffInABox.Application.Items.Commands.UploadItemPhoto;
 
 public sealed class UploadItemPhotoCommandHandler(
     IItemRepository itemRepo,
+    IBoxRepository boxRepo,
     IImageProcessor imageProcessor,
     IStorageService storage,
-    ICurrentUserService currentUser)
+    ISpaceAccessService access)
     : IRequestHandler<UploadItemPhotoCommand, UploadItemPhotoResult>
 {
     // 10 MB cap, matching the plan's upload limit
@@ -18,9 +19,12 @@ public sealed class UploadItemPhotoCommandHandler(
 
     public async Task<UploadItemPhotoResult> Handle(UploadItemPhotoCommand request, CancellationToken ct)
     {
-        var item = await itemRepo.GetByIdAsync(request.ItemId, ct);
-        if (item is null || item.OwnerId != currentUser.UserId)
-            throw new NotFoundException(nameof(Item), request.ItemId);
+        var item = await itemRepo.GetByIdAsync(request.ItemId, ct)
+            ?? throw new NotFoundException(nameof(Item), request.ItemId);
+
+        var box = await boxRepo.GetByNumberAsync(item.BoxNumber, item.OwnerId, ct)
+            ?? throw new NotFoundException(nameof(Item), request.ItemId);
+        await access.RequireSpaceAsync(box.SpaceId, ct: ct);
 
         if (request.Content.Length == 0)
             throw new InvalidImageException("Tom fil.");

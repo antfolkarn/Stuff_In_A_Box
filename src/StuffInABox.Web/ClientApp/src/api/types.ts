@@ -5,6 +5,29 @@ export interface SpaceDto {
   icon: string
   boxCount: number
   itemCount: number
+  isOwner: boolean
+  memberCount: number
+}
+
+export interface InviteDto {
+  token: string
+}
+
+export interface InvitePreviewDto {
+  spaceId: string
+  spaceName: string
+  alreadyMember: boolean
+  isOwner: boolean
+}
+
+export interface AcceptInviteResult {
+  spaceId: string
+  spaceName: string
+}
+
+export interface MemberDto {
+  userId: string
+  joinedAt: string
 }
 
 export interface BoxDto {
@@ -59,6 +82,7 @@ export interface SpaceSearchResult {
 
 export interface BoxSearchResult {
   number: number
+  spaceId: string
   label: string
   spaceName: string
   matchReason: string | null
@@ -68,6 +92,7 @@ export interface ItemSearchResult {
   id: string
   name: string
   boxNumber: number
+  spaceId: string
   spaceName: string
   matchedTag: string | null
 }

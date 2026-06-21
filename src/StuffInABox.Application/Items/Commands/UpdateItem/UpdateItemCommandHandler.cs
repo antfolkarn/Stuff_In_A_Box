@@ -8,14 +8,19 @@ namespace StuffInABox.Application.Items.Commands.UpdateItem;
 
 public sealed class UpdateItemCommandHandler(
     IItemRepository itemRepo,
-    ICurrentUserService currentUser)
+    IBoxRepository boxRepo,
+    ISpaceAccessService access)
     : IRequestHandler<UpdateItemCommand>
 {
     public async Task Handle(UpdateItemCommand request, CancellationToken ct)
     {
-        var item = await itemRepo.GetByIdAsync(request.ItemId, ct);
-        if (item is null || item.OwnerId != currentUser.UserId)
-            throw new NotFoundException(nameof(Item), request.ItemId);
+        var item = await itemRepo.GetByIdAsync(request.ItemId, ct)
+            ?? throw new NotFoundException(nameof(Item), request.ItemId);
+
+        // Authorize via the item's box → space (owner or invited member).
+        var box = await boxRepo.GetByNumberAsync(item.BoxNumber, item.OwnerId, ct)
+            ?? throw new NotFoundException(nameof(Item), request.ItemId);
+        await access.RequireSpaceAsync(box.SpaceId, ct: ct);
 
         if (request.Name is not null)
             item.Rename(request.Name);

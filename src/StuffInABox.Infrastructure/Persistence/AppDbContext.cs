@@ -6,6 +6,8 @@ namespace StuffInABox.Infrastructure.Persistence;
 public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(options)
 {
     public DbSet<Space> Spaces => Set<Space>();
+    public DbSet<SpaceMembership> SpaceMemberships => Set<SpaceMembership>();
+    public DbSet<SpaceInvite> SpaceInvites => Set<SpaceInvite>();
     public DbSet<Box> Boxes => Set<Box>();
     public DbSet<Item> Items => Set<Item>();
     public DbSet<UserIdentity> UserIdentities => Set<UserIdentity>();

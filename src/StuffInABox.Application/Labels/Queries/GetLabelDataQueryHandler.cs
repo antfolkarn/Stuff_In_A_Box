@@ -6,16 +6,14 @@ using StuffInABox.Domain.ValueObjects;
 namespace StuffInABox.Application.Labels.Queries;
 
 public sealed class GetLabelDataQueryHandler(
-    ISpaceRepository spaceRepo,
     IBoxRepository boxRepo,
     IItemRepository itemRepo,
-    ICurrentUserService currentUser)
+    ISpaceAccessService access)
     : IRequestHandler<GetLabelDataQuery, IReadOnlyList<LabelDto>>
 {
     public async Task<IReadOnlyList<LabelDto>> Handle(GetLabelDataQuery request, CancellationToken ct)
     {
-        var userId = currentUser.UserId;
-        var spaces = await spaceRepo.GetAllAsync(userId, ct);
+        var spaces = await access.GetAccessibleSpacesAsync(ct);
         var result = new List<LabelDto>();
 
         foreach (var space in spaces)
@@ -23,13 +21,13 @@ public sealed class GetLabelDataQueryHandler(
             if (request.SpaceId.HasValue && space.Id != request.SpaceId.Value)
                 continue;
 
-            var boxes = await boxRepo.GetBySpaceAsync(space.Id, userId, ct);
+            var boxes = await boxRepo.GetBySpaceAsync(space.Id, space.OwnerId, ct);
             foreach (var box in boxes)
             {
                 if (request.BoxNumber.HasValue && box.Number.Value != request.BoxNumber.Value)
                     continue;
 
-                var items = await itemRepo.GetByBoxAsync(box.Number, userId, ct);
+                var items = await itemRepo.GetByBoxAsync(box.Number, space.OwnerId, ct);
                 result.Add(new LabelDto(
                     box.Number.Value,
                     box.Label,

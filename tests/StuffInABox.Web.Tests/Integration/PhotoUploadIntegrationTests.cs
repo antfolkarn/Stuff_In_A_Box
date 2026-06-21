@@ -41,7 +41,7 @@ public class PhotoUploadIntegrationTests : IClassFixture<WebApplicationFactory<P
 
     public void Dispose() => _keepAlive.Dispose();
 
-    private async Task<(HttpClient client, int boxNumber, string itemId)> SetupItemAsync()
+    private async Task<(HttpClient client, string spaceId, int boxNumber, string itemId)> SetupItemAsync()
     {
         var client = _factory.CreateClient();
         var reg = await client.PostAsJsonAsync("/api/auth/register",
@@ -55,16 +55,16 @@ public class PhotoUploadIntegrationTests : IClassFixture<WebApplicationFactory<P
         var bx = await client.PostAsJsonAsync("/api/boxes", new { spaceId, label = "Tools" });
         var boxNumber = (await bx.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("boxNumber").GetInt32();
 
-        var it = await client.PostAsJsonAsync($"/api/boxes/{boxNumber}/items", new { name = "Hammer" });
+        var it = await client.PostAsJsonAsync($"/api/boxes/{boxNumber}/items", new { spaceId, name = "Hammer" });
         var itemId = (await it.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("itemId").GetString();
 
-        return (client, boxNumber, itemId!);
+        return (client, spaceId!, boxNumber, itemId!);
     }
 
     [Fact]
     public async Task UploadPhoto_ValidPng_Returns200WithUrl()
     {
-        var (client, boxNumber, itemId) = await SetupItemAsync();
+        var (client, spaceId, boxNumber, itemId) = await SetupItemAsync();
 
         using var content = new MultipartFormDataContent();
         var file = new ByteArrayContent(Convert.FromBase64String(Png1x1Base64));
@@ -79,7 +79,7 @@ public class PhotoUploadIntegrationTests : IClassFixture<WebApplicationFactory<P
         Assert.StartsWith("/uploads/", url);
 
         // The item now reports a photo URL
-        var items = await client.GetFromJsonAsync<JsonElement>($"/api/boxes/{boxNumber}/items");
+        var items = await client.GetFromJsonAsync<JsonElement>($"/api/boxes/{boxNumber}/items?spaceId={spaceId}");
         Assert.False(string.IsNullOrEmpty(items[0].GetProperty("photoUrl").GetString()));
 
         // And the photo is actually served (regression guard: uploads must live
@@ -92,7 +92,7 @@ public class PhotoUploadIntegrationTests : IClassFixture<WebApplicationFactory<P
     [Fact]
     public async Task UploadPhoto_NonImage_Returns400()
     {
-        var (client, boxNumber, itemId) = await SetupItemAsync();
+        var (client, _, boxNumber, itemId) = await SetupItemAsync();
 
         using var content = new MultipartFormDataContent();
         var file = new ByteArrayContent(Encoding.UTF8.GetBytes("this is not an image"));

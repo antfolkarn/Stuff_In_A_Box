@@ -1,10 +1,12 @@
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { IconPlus, IconPrinter, IconPencil, IconArrowLeft } from '@tabler/icons-react'
+import { IconPlus, IconPrinter, IconPencil, IconArrowLeft, IconUsers, IconLogout } from '@tabler/icons-react'
 import { getSpaces, updateSpaceIcon } from '../../api/spaces'
 import { getBoxesBySpace, createBox } from '../../api/boxes'
+import { leaveSpace } from '../../api/invites'
 import { useUiStore } from '../../store/uiStore'
 import SpaceIconPicker from '../../shared/components/SpaceIconPicker'
+import SharePanel from './SharePanel'
 import { Icon } from '../../shared/components/Icon'
 import { useT } from '../../i18n'
 import type { BoxDto } from '../../api/types'
@@ -14,6 +16,7 @@ export default function SpaceView() {
   const { spaceId, goBox, goHome, goLabels } = useUiStore()
   const t = useT()
   const [editingIcon, setEditingIcon] = useState(false)
+  const [showShare, setShowShare] = useState(false)
   const [newBoxLabel, setNewBoxLabel] = useState('')
   const [addingBox, setAddingBox] = useState(false)
 
@@ -41,9 +44,19 @@ export default function SpaceView() {
       qc.invalidateQueries({ queryKey: ['spaces'] })
       setAddingBox(false)
       setNewBoxLabel('')
-      goBox(result.boxNumber)
+      goBox(result.boxNumber, spaceId!)
     },
   })
+
+  const leaveMut = useMutation({
+    mutationFn: () => leaveSpace(spaceId!),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['spaces'] })
+      goHome()
+    },
+  })
+
+  const isOwner = space?.isOwner ?? false
 
   if (!space) {
     return (
@@ -93,8 +106,8 @@ export default function SpaceView() {
           {/* Editable icon button */}
           <div style={{ position: 'relative' }}>
             <button
-              onClick={() => setEditingIcon((v) => !v)}
-              title={t('space.changeIcon')}
+              onClick={() => isOwner && setEditingIcon((v) => !v)}
+              title={isOwner ? t('space.changeIcon') : undefined}
               style={{
                 width: 54,
                 height: 54,
@@ -104,28 +117,30 @@ export default function SpaceView() {
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                cursor: 'pointer',
+                cursor: isOwner ? 'pointer' : 'default',
                 color: 'var(--text-2)',
               }}
             >
               <Icon name={space.icon} size={26} color="var(--text-2)" />
             </button>
-            <div
-              style={{
-                position: 'absolute',
-                bottom: -4,
-                right: -4,
-                width: 21,
-                height: 21,
-                background: 'var(--accent)',
-                borderRadius: '50%',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-              }}
-            >
-              <IconPencil size={11} color="#fff" />
-            </div>
+            {isOwner && (
+              <div
+                style={{
+                  position: 'absolute',
+                  bottom: -4,
+                  right: -4,
+                  width: 21,
+                  height: 21,
+                  background: 'var(--accent)',
+                  borderRadius: '50%',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}
+              >
+                <IconPencil size={11} color="#fff" />
+              </div>
+            )}
           </div>
 
           <div>
@@ -152,14 +167,62 @@ export default function SpaceView() {
           </div>
         </div>
 
-        <button
-          className="btn btn-outline btn-sm"
-          onClick={() => goLabels({ spaceId: space.id })}
-        >
-          <IconPrinter size={16} />
-          {t('space.labels')}
-        </button>
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+          {isOwner ? (
+            <button
+              className="btn btn-outline btn-sm"
+              onClick={() => setShowShare((v) => !v)}
+            >
+              <IconUsers size={16} />
+              {t('space.share')}
+              {space.memberCount > 0 && (
+                <span className="mono" style={{ opacity: 0.6 }}>{space.memberCount}</span>
+              )}
+            </button>
+          ) : (
+            <button
+              className="btn btn-outline btn-sm"
+              style={{ color: 'var(--text-2)' }}
+              onClick={() => {
+                if (window.confirm(t('space.confirmLeave'))) leaveMut.mutate()
+              }}
+            >
+              <IconLogout size={16} />
+              {t('space.leave')}
+            </button>
+          )}
+          <button
+            className="btn btn-outline btn-sm"
+            onClick={() => goLabels({ spaceId: space.id })}
+          >
+            <IconPrinter size={16} />
+            {t('space.labels')}
+          </button>
+        </div>
       </div>
+
+      {/* Share panel (owner) */}
+      {isOwner && showShare && <SharePanel spaceId={space.id} />}
+
+      {/* "Shared with you" hint for invited members */}
+      {!isOwner && (
+        <div
+          style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: 6,
+            fontSize: 12.5,
+            color: 'var(--accent)',
+            background: 'var(--accent-9)',
+            padding: '5px 11px',
+            borderRadius: 'var(--r-chip)',
+            marginBottom: 20,
+          }}
+        >
+          <IconUsers size={14} />
+          {t('space.sharedWithYou')}
+        </div>
+      )}
 
       {/* Icon picker panel */}
       {editingIcon && (

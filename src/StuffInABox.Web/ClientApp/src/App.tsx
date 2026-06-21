@@ -12,13 +12,14 @@ import SearchView from './features/search/SearchView'
 import LabelsView from './features/labels/LabelsView'
 import SettingsView from './features/settings/SettingsView'
 import AddItemSheet from './features/addItem/AddItemSheet'
+import InviteAcceptSheet from './features/invite/InviteAcceptSheet'
 import ImageLightbox from './shared/components/ImageLightbox'
 
 export default function App() {
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated)
   const ready = useAuthStore((s) => s.ready)
   const bootstrap = useAuthStore((s) => s.bootstrap)
-  const { view, query, addOpen } = useUiStore()
+  const { view, query, addOpen, pendingInvite } = useUiStore()
   // Subscribing here ensures the settings store initializes (and applies the saved
   // theme + design) before the first paint, including on the login/loading screens.
   useSettingsStore((s) => s.theme)
@@ -66,6 +67,7 @@ export default function App() {
         )}
       </main>
       {addOpen && <AddItemSheet />}
+      {pendingInvite && <InviteAcceptSheet token={pendingInvite} />}
       <ImageLightbox />
     </div>
   )

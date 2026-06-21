@@ -9,14 +9,15 @@ namespace StuffInABox.Application.Boxes.Commands.UpdateBoxLabel;
 
 public sealed class UpdateBoxLabelCommandHandler(
     IBoxRepository boxRepo,
-    ICurrentUserService currentUser)
+    ISpaceAccessService access)
     : IRequestHandler<UpdateBoxLabelCommand>
 {
     public async Task Handle(UpdateBoxLabelCommand request, CancellationToken ct)
     {
-        var userId = currentUser.UserId;
-        var box = await boxRepo.GetByNumberAsync(new BoxNumber(request.BoxNumber), userId, ct)
-            ?? throw new NotFoundException(nameof(Box), request.BoxNumber);
+        var ownerId = await access.RequireSpaceAsync(request.SpaceId, ct: ct);
+        var box = await boxRepo.GetByNumberAsync(new BoxNumber(request.BoxNumber), ownerId, ct);
+        if (box is null || box.SpaceId != request.SpaceId)
+            throw new NotFoundException(nameof(Box), request.BoxNumber);
 
         box.UpdateLabel(request.Label);
         await boxRepo.UpdateAsync(box, ct);

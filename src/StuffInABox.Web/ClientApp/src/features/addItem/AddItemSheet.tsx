@@ -66,7 +66,7 @@ export default function AddItemSheet() {
   const saveMut = useMutation({
     mutationFn: async () => {
       // Pass the photo-derived tags so they're stored and searchable
-      const result = await addItem(selectedBox!, name.trim(), detectedTags)
+      const result = await addItem(selectedBox!, spaceId, name.trim(), detectedTags)
       // Attach the photo (if any) to the freshly created item
       if (photoFile) {
         try {

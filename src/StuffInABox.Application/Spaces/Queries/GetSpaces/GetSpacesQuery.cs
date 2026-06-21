@@ -10,4 +10,6 @@ public sealed record SpaceDto(
     string Code,
     string Icon,
     int BoxCount,
-    int ItemCount);
+    int ItemCount,
+    bool IsOwner,
+    int MemberCount);

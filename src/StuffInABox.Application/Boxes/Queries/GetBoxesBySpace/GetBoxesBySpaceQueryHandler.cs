@@ -7,11 +7,11 @@ namespace StuffInABox.Application.Boxes.Queries.GetBoxesBySpace;
 public class GetBoxesBySpaceQueryHandler(
     IBoxRepository boxes,
     IItemRepository items,
-    ICurrentUserService currentUser) : IRequestHandler<GetBoxesBySpaceQuery, IReadOnlyList<BoxDto>>
+    ISpaceAccessService access) : IRequestHandler<GetBoxesBySpaceQuery, IReadOnlyList<BoxDto>>
 {
     public async Task<IReadOnlyList<BoxDto>> Handle(GetBoxesBySpaceQuery request, CancellationToken ct)
     {
-        var ownerId = currentUser.UserId;
+        var ownerId = await access.RequireSpaceAsync(request.SpaceId, ct: ct);
         var boxList = await boxes.GetBySpaceAsync(request.SpaceId, ownerId, ct);
 
         var result = new List<BoxDto>();

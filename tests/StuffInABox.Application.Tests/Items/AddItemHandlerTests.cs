@@ -11,16 +11,18 @@ public class AddItemHandlerTests
 {
     private readonly Mock<IItemRepository> _itemRepo = new();
     private readonly Mock<IBoxRepository> _boxRepo = new();
-    private readonly Mock<ICurrentUserService> _user = new();
+    private readonly Mock<ISpaceAccessService> _access = new();
     private readonly Mock<IEnrichmentQueue> _queue = new();
     private readonly UserId _userId = new(Guid.NewGuid());
     private readonly BoxNumber _boxNum = new(3);
+    private readonly Guid _spaceId = Guid.NewGuid();
 
     public AddItemHandlerTests()
     {
-        _user.Setup(u => u.UserId).Returns(_userId);
+        _access.Setup(a => a.RequireSpaceAsync(_spaceId, It.IsAny<bool>(), It.IsAny<CancellationToken>()))
+               .ReturnsAsync(_userId);
         _boxRepo.Setup(r => r.GetByNumberAsync(_boxNum, _userId, It.IsAny<CancellationToken>()))
-                .ReturnsAsync(Box.Create(_boxNum, Guid.NewGuid(), _userId, "Verktyg"));
+                .ReturnsAsync(Box.Create(_boxNum, _spaceId, _userId, "Verktyg"));
     }
 
     [Fact]
@@ -31,8 +33,8 @@ public class AddItemHandlerTests
                  .Callback<Item, CancellationToken>((i, _) => saved = i)
                  .Returns(Task.CompletedTask);
 
-        var handler = new AddItemCommandHandler(_itemRepo.Object, _boxRepo.Object, _user.Object, _queue.Object);
-        var result = await handler.Handle(new AddItemCommand(3, "Hammare"), default);
+        var handler = new AddItemCommandHandler(_itemRepo.Object, _boxRepo.Object, _access.Object, _queue.Object);
+        var result = await handler.Handle(new AddItemCommand(3, _spaceId, "Hammare"), default);
 
         Assert.Equal("Hammare", result.Name);
         Assert.NotEqual(Guid.Empty, result.ItemId);
@@ -48,9 +50,9 @@ public class AddItemHandlerTests
                  .Callback<Item, CancellationToken>((i, _) => saved = i)
                  .Returns(Task.CompletedTask);
 
-        var handler = new AddItemCommandHandler(_itemRepo.Object, _boxRepo.Object, _user.Object, _queue.Object);
+        var handler = new AddItemCommandHandler(_itemRepo.Object, _boxRepo.Object, _access.Object, _queue.Object);
         var result = await handler.Handle(
-            new AddItemCommand(3, "Röd jacka", new[] { "jacka", "röd", "ytterkläder" }), default);
+            new AddItemCommand(3, _spaceId, "Röd jacka", new[] { "jacka", "röd", "ytterkläder" }), default);
 
         // Tokenizer tags from the name plus the photo-derived tags, de-duplicated
         Assert.Contains("röd", result.Tags);
@@ -66,8 +68,8 @@ public class AddItemHandlerTests
         _itemRepo.Setup(r => r.AddAsync(It.IsAny<Item>(), It.IsAny<CancellationToken>()))
                  .Returns(Task.CompletedTask);
 
-        var handler = new AddItemCommandHandler(_itemRepo.Object, _boxRepo.Object, _user.Object, _queue.Object);
-        await handler.Handle(new AddItemCommand(3, "Hammare"), default);
+        var handler = new AddItemCommandHandler(_itemRepo.Object, _boxRepo.Object, _access.Object, _queue.Object);
+        await handler.Handle(new AddItemCommand(3, _spaceId, "Hammare"), default);
 
         _queue.Verify(q => q.EnqueueEnrichment(It.IsAny<Guid>(), "Hammare"), Times.Once);
     }
@@ -78,9 +80,9 @@ public class AddItemHandlerTests
         _boxRepo.Setup(r => r.GetByNumberAsync(It.IsAny<BoxNumber>(), _userId, It.IsAny<CancellationToken>()))
                 .ReturnsAsync((Box?)null);
 
-        var handler = new AddItemCommandHandler(_itemRepo.Object, _boxRepo.Object, _user.Object, _queue.Object);
+        var handler = new AddItemCommandHandler(_itemRepo.Object, _boxRepo.Object, _access.Object, _queue.Object);
 
         await Assert.ThrowsAsync<Domain.Exceptions.NotFoundException>(
-            () => handler.Handle(new AddItemCommand(99, "Test"), default));
+            () => handler.Handle(new AddItemCommand(99, _spaceId, "Test"), default));
     }
 }
