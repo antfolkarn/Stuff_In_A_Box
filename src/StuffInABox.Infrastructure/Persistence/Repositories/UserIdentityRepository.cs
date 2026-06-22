@@ -24,4 +24,7 @@ public class UserIdentityRepository(AppDbContext db) : IUserIdentityRepository
         db.UserIdentities.Update(identity);
         await db.SaveChangesAsync(ct);
     }
+
+    public Task DeleteAsync(Guid internalUserId, CancellationToken ct = default) =>
+        db.UserIdentities.Where(u => u.InternalUserId == internalUserId).ExecuteDeleteAsync(ct);
 }

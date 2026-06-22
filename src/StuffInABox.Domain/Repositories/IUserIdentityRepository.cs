@@ -8,4 +8,5 @@ public interface IUserIdentityRepository
     Task<UserIdentity?> FindByIdAsync(Guid internalUserId, CancellationToken ct = default);
     Task AddAsync(UserIdentity identity, CancellationToken ct = default);
     Task UpdateAsync(UserIdentity identity, CancellationToken ct = default);
+    Task DeleteAsync(Guid internalUserId, CancellationToken ct = default);
 }

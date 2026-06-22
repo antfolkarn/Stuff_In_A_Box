@@ -18,4 +18,7 @@ public class UserSettingsRepository(AppDbContext db) : IUserSettingsRepository
             await db.UserSettings.AddAsync(settings, ct);
         await db.SaveChangesAsync(ct);
     }
+
+    public Task DeleteAsync(Guid userId, CancellationToken ct = default) =>
+        db.UserSettings.Where(s => s.UserId == userId).ExecuteDeleteAsync(ct);
 }

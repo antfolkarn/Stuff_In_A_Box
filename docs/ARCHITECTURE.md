@@ -13,7 +13,7 @@ lager. Web är composition root och kopplar ihop allt.
 ```mermaid
 flowchart TD
     subgraph Web["StuffInABox.Web — Presentation / Composition root"]
-        EP["Minimal API-endpoints<br/>Auth · OAuth · Spaces · Invites · Boxes · Items · Search · Labels · Settings"]
+        EP["Minimal API-endpoints<br/>Auth · OAuth · Account · Spaces · Invites · Boxes · Items · Search · Labels · Settings"]
         MW["Middleware<br/>GlobalExceptionHandler · SecurityHeaders · Serilog"]
         AUTH["Auth<br/>JwtTokenService · TokenIssuer · OAuthService · CurrentUserService"]
         SPA["ClientApp (React SPA, byggs till wwwroot/)"]

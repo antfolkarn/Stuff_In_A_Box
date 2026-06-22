@@ -38,4 +38,7 @@ public class SpaceMembershipRepository(AppDbContext db) : ISpaceMembershipReposi
         db.SpaceMemberships.RemoveRange(rows);
         await db.SaveChangesAsync(ct);
     }
+
+    public Task RemoveAllForUserAsync(UserId userId, CancellationToken ct = default) =>
+        db.SpaceMemberships.Where(m => m.UserId == userId).ExecuteDeleteAsync(ct);
 }

@@ -9,4 +9,5 @@ public interface IPasswordResetTokenRepository
     Task UpdateAsync(PasswordResetToken token, CancellationToken ct = default);
     /// <summary>Invalidate any outstanding reset tokens for a user (e.g. after a successful reset).</summary>
     Task InvalidateAllForUserAsync(Guid userId, CancellationToken ct = default);
+    Task DeleteAllForUserAsync(Guid userId, CancellationToken ct = default);
 }

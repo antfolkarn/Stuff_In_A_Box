@@ -40,4 +40,7 @@ public class SpaceRepository(AppDbContext db) : ISpaceRepository
         db.Spaces.Remove(space);
         await db.SaveChangesAsync(ct);
     }
+
+    public Task DeleteAllForOwnerAsync(UserId ownerId, CancellationToken ct = default) =>
+        db.Spaces.Where(s => s.OwnerId == ownerId).ExecuteDeleteAsync(ct);
 }

@@ -1,6 +1,10 @@
-import { IconArrowLeft, IconCheck, IconDeviceLaptop, IconSun, IconMoon } from '@tabler/icons-react'
+import { useState } from 'react'
+import { useQueryClient } from '@tanstack/react-query'
+import { IconArrowLeft, IconCheck, IconDeviceLaptop, IconSun, IconMoon, IconDownload, IconTrash } from '@tabler/icons-react'
 import { useUiStore } from '../../store/uiStore'
+import { useAuthStore } from '../../store/authStore'
 import { useSettingsStore, THEMES, DESIGNS, type Theme, type Design } from '../../store/settingsStore'
+import { exportData, deleteAccount } from '../../api/account'
 import { useT, useI18nStore, LANGS } from '../../i18n'
 
 // Accent swatch shown per design (mirrors the CSS in index.css)
@@ -19,12 +23,38 @@ const THEME_ICON: Record<Theme, typeof IconSun> = {
 export default function SettingsView() {
   const { goHome } = useUiStore()
   const t = useT()
+  const qc = useQueryClient()
+  const logout = useAuthStore((s) => s.logout)
   const theme = useSettingsStore((s) => s.theme)
   const design = useSettingsStore((s) => s.design)
   const setTheme = useSettingsStore((s) => s.setTheme)
   const setDesign = useSettingsStore((s) => s.setDesign)
   const lang = useI18nStore((s) => s.lang)
   const setLang = useI18nStore((s) => s.setLang)
+  const [exporting, setExporting] = useState(false)
+  const [deleting, setDeleting] = useState(false)
+
+  async function handleExport() {
+    setExporting(true)
+    try {
+      await exportData()
+    } finally {
+      setExporting(false)
+    }
+  }
+
+  async function handleDelete() {
+    if (!window.confirm(t('account.confirmDelete'))) return
+    setDeleting(true)
+    try {
+      await deleteAccount()
+      await logout()
+      qc.clear()
+      window.location.reload()
+    } catch {
+      setDeleting(false)
+    }
+  }
 
   return (
     <div style={{ maxWidth: 640 }}>
@@ -132,6 +162,38 @@ export default function SettingsView() {
         </div>
         <div style={{ fontSize: 12.5, color: 'var(--text-4)', marginTop: 12 }}>
           {t('settings.languageNote')}
+        </div>
+      </section>
+
+      {/* Account & data (GDPR) */}
+      <section style={{ marginTop: 32, borderTop: 'var(--bw) solid var(--border)', paddingTop: 24 }}>
+        <div className="field-label" style={{ marginBottom: 12 }}>{t('account.title')}</div>
+
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap', marginBottom: 18 }}>
+          <div style={{ maxWidth: 380 }}>
+            <div style={{ fontSize: 14.5, fontWeight: 500 }}>{t('account.export')}</div>
+            <div style={{ fontSize: 12.5, color: 'var(--text-3)', marginTop: 2 }}>{t('account.exportHint')}</div>
+          </div>
+          <button className="btn btn-outline btn-sm" onClick={handleExport} disabled={exporting}>
+            <IconDownload size={16} />
+            {t('account.export')}
+          </button>
+        </div>
+
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
+          <div style={{ maxWidth: 380 }}>
+            <div style={{ fontSize: 14.5, fontWeight: 500, color: '#B91C1C' }}>{t('account.delete')}</div>
+            <div style={{ fontSize: 12.5, color: 'var(--text-3)', marginTop: 2 }}>{t('account.deleteHint')}</div>
+          </div>
+          <button
+            className="btn btn-sm"
+            onClick={handleDelete}
+            disabled={deleting}
+            style={{ border: '1.5px solid #FCA5A5', color: '#B91C1C', background: 'var(--surface)' }}
+          >
+            <IconTrash size={16} />
+            {deleting ? t('account.deleting') : t('account.delete')}
+          </button>
         </div>
       </section>
     </div>

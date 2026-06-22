@@ -42,4 +42,7 @@ public class BoxRepository(AppDbContext db) : IBoxRepository
         db.Boxes.Remove(box);
         await db.SaveChangesAsync(ct);
     }
+
+    public Task DeleteAllForOwnerAsync(UserId ownerId, CancellationToken ct = default) =>
+        db.Boxes.Where(b => b.OwnerId == ownerId).ExecuteDeleteAsync(ct);
 }

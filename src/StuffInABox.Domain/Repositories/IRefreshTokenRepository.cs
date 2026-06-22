@@ -8,4 +8,5 @@ public interface IRefreshTokenRepository
     Task AddAsync(RefreshToken token, CancellationToken ct = default);
     Task UpdateAsync(RefreshToken token, CancellationToken ct = default);
     Task RevokeAllForUserAsync(Guid userId, CancellationToken ct = default);
+    Task DeleteAllForUserAsync(Guid userId, CancellationToken ct = default);
 }

@@ -31,4 +31,7 @@ public class RefreshTokenRepository(AppDbContext db) : IRefreshTokenRepository
             t.Revoke(now);
         await db.SaveChangesAsync(ct);
     }
+
+    public Task DeleteAllForUserAsync(Guid userId, CancellationToken ct = default) =>
+        db.RefreshTokens.Where(t => t.UserId == userId).ExecuteDeleteAsync(ct);
 }

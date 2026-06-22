@@ -31,4 +31,7 @@ public class PasswordResetTokenRepository(AppDbContext db) : IPasswordResetToken
             t.Use(now);
         await db.SaveChangesAsync(ct);
     }
+
+    public Task DeleteAllForUserAsync(Guid userId, CancellationToken ct = default) =>
+        db.PasswordResetTokens.Where(t => t.UserId == userId).ExecuteDeleteAsync(ct);
 }

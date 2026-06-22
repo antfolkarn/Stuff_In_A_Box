@@ -13,6 +13,9 @@ public class ItemRepository(AppDbContext db) : IItemRepository
     public async Task<IReadOnlyList<Item>> GetByBoxAsync(BoxNumber boxNumber, UserId ownerId, CancellationToken ct = default) =>
         await db.Items.Where(i => i.BoxNumber == boxNumber && i.OwnerId == ownerId).ToListAsync(ct);
 
+    public async Task<IReadOnlyList<Item>> GetByOwnerAsync(UserId ownerId, CancellationToken ct = default) =>
+        await db.Items.Where(i => i.OwnerId == ownerId).ToListAsync(ct);
+
     public async Task<IReadOnlyList<Item>> SearchAsync(UserId ownerId, string query, CancellationToken ct = default)
     {
         var q = query.ToLowerInvariant();
@@ -43,4 +46,7 @@ public class ItemRepository(AppDbContext db) : IItemRepository
         db.Items.Remove(item);
         await db.SaveChangesAsync(ct);
     }
+
+    public Task DeleteAllForOwnerAsync(UserId ownerId, CancellationToken ct = default) =>
+        db.Items.Where(i => i.OwnerId == ownerId).ExecuteDeleteAsync(ct);
 }

@@ -11,4 +11,5 @@ public interface IBoxRepository
     Task AddAsync(Box box, CancellationToken ct = default);
     Task UpdateAsync(Box box, CancellationToken ct = default);
     Task DeleteAsync(BoxNumber number, UserId ownerId, CancellationToken ct = default);
+    Task DeleteAllForOwnerAsync(UserId ownerId, CancellationToken ct = default);
 }

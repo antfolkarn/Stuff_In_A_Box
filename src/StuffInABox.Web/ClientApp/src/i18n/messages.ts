@@ -192,6 +192,14 @@ const sv = {
   'settings.designNote': 'Varje design byter färger och typsnitt. Ljust/mörkt läge gäller fortfarande ovanpå.',
   'settings.language': 'SPRÅK',
   'settings.languageNote': 'Väljs automatiskt efter din webbläsare. Engelska används om svenska inte är förstaspråk.',
+  // Account & data (GDPR)
+  'account.title': 'KONTO & DATA',
+  'account.export': 'Exportera mina data',
+  'account.exportHint': 'Ladda ner allt vi sparar om dig som en JSON-fil.',
+  'account.delete': 'Radera konto',
+  'account.deleteHint': 'Tar bort ditt konto och all din data permanent. Går inte att ångra.',
+  'account.confirmDelete': 'Är du helt säker? Detta raderar ditt konto och ALL din data permanent och går inte att ångra.',
+  'account.deleting': 'Raderar…',
 
   // Themes
   'theme.light': 'Ljust',
@@ -399,6 +407,14 @@ const en: Record<MessageKey, string> = {
   'settings.designNote': 'Each design changes colours and fonts. Light/dark mode still applies on top.',
   'settings.language': 'LANGUAGE',
   'settings.languageNote': "Chosen automatically from your browser. English is used when Swedish isn't your primary language.",
+  // Account & data (GDPR)
+  'account.title': 'ACCOUNT & DATA',
+  'account.export': 'Export my data',
+  'account.exportHint': 'Download everything we store about you as a JSON file.',
+  'account.delete': 'Delete account',
+  'account.deleteHint': 'Permanently removes your account and all your data. This cannot be undone.',
+  'account.confirmDelete': 'Are you absolutely sure? This permanently deletes your account and ALL your data and cannot be undone.',
+  'account.deleting': 'Deleting…',
 
   // Themes
   'theme.light': 'Light',

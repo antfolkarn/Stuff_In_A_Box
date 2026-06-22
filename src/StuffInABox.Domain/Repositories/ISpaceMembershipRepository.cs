@@ -11,4 +11,5 @@ public interface ISpaceMembershipRepository
     Task AddAsync(SpaceMembership membership, CancellationToken ct = default);
     Task RemoveAsync(Guid spaceId, UserId userId, CancellationToken ct = default);
     Task RemoveAllForSpaceAsync(Guid spaceId, CancellationToken ct = default);
+    Task RemoveAllForUserAsync(UserId userId, CancellationToken ct = default);
 }

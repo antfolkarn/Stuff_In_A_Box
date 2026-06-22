@@ -37,9 +37,12 @@ Inga kodändringar — men appen startar inte / fungerar inte korrekt utan dessa
     SendGrid-/Resend-/Supabase-implementation bakom `Email:Provider` och sätt `App:BaseUrl`
     (publik URL för länkarna). OAuth-konton lagrar fortfarande ingen e-post — vill man
     mejla dem måste e-post fångas från providern (separat jobb).
-- **GDPR (relevant för svenskt bolag):** ingen **kontoradering** och ingen
-  **dataexport** finns. Rätten till radering och dataportabilitet bör täckas.
-  Rent backend-jobb, kräver ingen e-post — bra fristående nästa commit.
+- **GDPR — ✅ byggt.** Kontoradering (`DELETE /account`) och dataexport
+  (`GET /account/export`, JSON) finns, med UI under Inställningar → "Konto & data".
+  Radering tar bort allt: utrymmen/lådor/föremål (+ foton), medlemskap/inbjudningar,
+  sessioner, reset-tokens, inställningar och identiteten — och drar med delade
+  utrymmen så medlemmar tappar åtkomst. (Kvarstår ev.: en *ångerfrist*/mjuk radering
+  om ni vill, men hård radering uppfyller rätten till radering.)
 - **Villkor & integritetspolicy** — login-skärmen hänvisar till "våra villkor och
   vår integritetspolicy" men det finns inga sidor/länkar bakom. Behövs riktiga texter.
 
