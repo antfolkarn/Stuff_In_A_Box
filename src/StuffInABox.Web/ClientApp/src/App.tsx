@@ -4,6 +4,7 @@ import { useUiStore } from './store/uiStore'
 import { useSettingsStore } from './store/settingsStore'
 import { useT } from './i18n'
 import LoginView from './features/auth/LoginView'
+import ResetPasswordView from './features/auth/ResetPasswordView'
 import AppHeader from './shared/components/AppHeader'
 import HomeView from './features/home/HomeView'
 import SpaceView from './features/space/SpaceView'
@@ -19,7 +20,7 @@ export default function App() {
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated)
   const ready = useAuthStore((s) => s.ready)
   const bootstrap = useAuthStore((s) => s.bootstrap)
-  const { view, query, addOpen, pendingInvite } = useUiStore()
+  const { view, query, addOpen, pendingInvite, pendingReset } = useUiStore()
   // Subscribing here ensures the settings store initializes (and applies the saved
   // theme + design) before the first paint, including on the login/loading screens.
   useSettingsStore((s) => s.theme)
@@ -43,6 +44,9 @@ export default function App() {
       </div>
     )
   }
+
+  // A password-reset link takes priority over the login gate (works signed-out too).
+  if (pendingReset) return <ResetPasswordView token={pendingReset} />
 
   if (!isAuthenticated) return <LoginView />
 

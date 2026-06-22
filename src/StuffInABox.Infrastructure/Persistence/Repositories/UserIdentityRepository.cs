@@ -10,9 +10,18 @@ public class UserIdentityRepository(AppDbContext db) : IUserIdentityRepository
         await db.UserIdentities.FirstOrDefaultAsync(
             u => u.Provider == provider.ToLowerInvariant() && u.ExternalId == externalId, ct);
 
+    public async Task<UserIdentity?> FindByIdAsync(Guid internalUserId, CancellationToken ct = default) =>
+        await db.UserIdentities.FirstOrDefaultAsync(u => u.InternalUserId == internalUserId, ct);
+
     public async Task AddAsync(UserIdentity identity, CancellationToken ct = default)
     {
         await db.UserIdentities.AddAsync(identity, ct);
+        await db.SaveChangesAsync(ct);
+    }
+
+    public async Task UpdateAsync(UserIdentity identity, CancellationToken ct = default)
+    {
+        db.UserIdentities.Update(identity);
         await db.SaveChangesAsync(ct);
     }
 }

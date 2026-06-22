@@ -16,6 +16,7 @@ interface UiState {
   labelFilter: LabelFilter
   pendingBox: number | null
   pendingInvite: string | null
+  pendingReset: string | null
 
   goHome: () => void
   goSpace: (spaceId: string) => void
@@ -27,6 +28,7 @@ interface UiState {
   closeAdd: () => void
   setPendingBox: (n: number | null) => void
   setPendingInvite: (token: string | null) => void
+  setPendingReset: (token: string | null) => void
 }
 
 // Parse QR deep link on load
@@ -42,6 +44,12 @@ function parsePendingInvite(): string | null {
   return match ? match[1] : null
 }
 
+// Parse password-reset deep link on load (#reset=<token>)
+function parsePendingReset(): string | null {
+  const match = window.location.hash.match(/[#&]reset=([A-Za-z0-9_-]+)/)
+  return match ? match[1] : null
+}
+
 export const useUiStore = create<UiState>((set) => ({
   view: 'home',
   spaceId: null,
@@ -51,6 +59,7 @@ export const useUiStore = create<UiState>((set) => ({
   labelFilter: {},
   pendingBox: parsePendingBox(),
   pendingInvite: parsePendingInvite(),
+  pendingReset: parsePendingReset(),
 
   goHome: () => set({ view: 'home', spaceId: null, boxNum: null, query: '' }),
 
@@ -73,4 +82,6 @@ export const useUiStore = create<UiState>((set) => ({
   setPendingBox: (n) => set({ pendingBox: n }),
 
   setPendingInvite: (token) => set({ pendingInvite: token }),
+
+  setPendingReset: (token) => set({ pendingReset: token }),
 }))

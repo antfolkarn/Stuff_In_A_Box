@@ -8,6 +8,12 @@ public class UserIdentity
     public string Provider { get; private set; }
     public string ExternalId { get; private set; }
     public string? PasswordHash { get; private set; }
+    /// <summary>
+    /// Plaintext email, stored so we can contact the user (e.g. password resets).
+    /// Null for OAuth identities (the provider returns no email by default). Lookups
+    /// still go via the hashed email in <see cref="ExternalId"/>; this is for sending.
+    /// </summary>
+    public string? Email { get; private set; }
     public DateTimeOffset CreatedAt { get; private set; }
 
     private UserIdentity()
@@ -31,12 +37,14 @@ public class UserIdentity
         };
     }
 
-    public static UserIdentity CreateEmail(string hashedEmail, string passwordHash)
+    public static UserIdentity CreateEmail(string hashedEmail, string passwordHash, string email)
     {
         if (string.IsNullOrWhiteSpace(hashedEmail))
             throw new ArgumentException("Hashed email cannot be empty.", nameof(hashedEmail));
         if (string.IsNullOrWhiteSpace(passwordHash))
             throw new ArgumentException("Password hash cannot be empty.", nameof(passwordHash));
+        if (string.IsNullOrWhiteSpace(email))
+            throw new ArgumentException("Email cannot be empty.", nameof(email));
 
         return new UserIdentity
         {
@@ -44,6 +52,7 @@ public class UserIdentity
             Provider = "email",
             ExternalId = hashedEmail,
             PasswordHash = passwordHash,
+            Email = email.Trim(),
             CreatedAt = DateTimeOffset.UtcNow
         };
     }

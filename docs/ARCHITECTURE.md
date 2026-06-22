@@ -139,6 +139,13 @@ i JavaScript). Native-appar utan cookie-hantering signalerar istället med heade
 (Keychain/Keystore), och förnyar via headern `X-Refresh-Token`. All trafik ligger
 under det versionerade prefixet `/api/v1` (`ApiRoutes.cs`).
 
+**Glömt lösenord:** e-postkonton lagrar adressen i klartext (`UserIdentity.Email`) för
+att kunna mejla en återställningslänk. `POST /auth/forgot-password` svarar alltid `200`
+(avslöjar inte om adressen finns) och skapar en `PasswordResetToken` (hash lagras, rå
+token i `/#reset=<token>`-länken, engångs, 1 h). `POST /auth/reset-password` byter
+lösenord och återkallar alla sessioner. E-post går via `IEmailService` — default loggar
+meddelandet (`LoggingEmailService`); en riktig leverantör pluggas in bakom `Email:Provider`.
+
 ### 3b. OAuth (Google / Apple, Authorization Code + PKCE)
 
 ```mermaid
@@ -211,12 +218,19 @@ classDiagram
         +string Provider
         +string ExternalId
         +string? PasswordHash
+        +string? Email
     }
     class RefreshToken {
         +Guid UserId
         +string TokenHash
         +ExpiresAt / RevokedAt
         +Issue / Revoke / IsActive
+    }
+    class PasswordResetToken {
+        +Guid UserId
+        +string TokenHash
+        +ExpiresAt / UsedAt
+        +Issue / Use / IsActive
     }
 
     Space "1" --> "*" Box : innehåller

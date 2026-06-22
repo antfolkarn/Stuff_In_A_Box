@@ -3,6 +3,8 @@ using System.Text;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Routing;
+using Microsoft.Extensions.Configuration;
+using StuffInABox.Application.Common.Interfaces;
 using StuffInABox.Domain.Entities;
 using StuffInABox.Domain.Repositories;
 using StuffInABox.Domain.ValueObjects;
@@ -32,6 +34,14 @@ public static class AuthEndpoints
             .AllowAnonymous()
             .WithSummary("Logga ut och återkalla refresh-token");
 
+        group.MapPost("/forgot-password", ForgotPasswordAsync)
+            .AllowAnonymous()
+            .WithSummary("Begär återställningslänk för lösenord");
+
+        group.MapPost("/reset-password", ResetPasswordAsync)
+            .AllowAnonymous()
+            .WithSummary("Återställ lösenord med token");
+
         return app;
     }
 
@@ -49,7 +59,7 @@ public static class AuthEndpoints
             return Results.Conflict(new { code = "email_taken", error = "E-postadress redan registrerad." });
 
         var passwordHash = BCrypt.Net.BCrypt.HashPassword(req.Password);
-        var identity = UserIdentity.CreateEmail(externalId, passwordHash);
+        var identity = UserIdentity.CreateEmail(externalId, passwordHash, req.Email.Trim());
         await repo.AddAsync(identity, ct);
 
         var (token, rawRefresh) = await TokenIssuer.IssueAsync(identity.GetUserId(), jwt, refreshRepo, ctx, ct);
@@ -124,6 +134,75 @@ public static class AuthEndpoints
         return Results.Ok();
     }
 
+    private static async Task<IResult> ForgotPasswordAsync(
+        ForgotPasswordRequest req,
+        IUserIdentityRepository userRepo,
+        IPasswordResetTokenRepository resetRepo,
+        IEmailService email,
+        IConfiguration config,
+        HttpContext ctx,
+        CancellationToken ct)
+    {
+        var identity = await userRepo.FindAsync("email", HashEmail(req.Email), ct);
+
+        // Only send when the account exists and has a stored email — but ALWAYS return
+        // 200 so the endpoint never reveals which addresses are registered.
+        if (identity is not null && !string.IsNullOrEmpty(identity.Email))
+        {
+            await resetRepo.InvalidateAllForUserAsync(identity.InternalUserId, ct);
+
+            var rawToken = JwtTokenService.GenerateRefreshTokenRaw();
+            var entity = PasswordResetToken.Issue(
+                identity.InternalUserId, JwtTokenService.HashRefreshToken(rawToken), TimeSpan.FromHours(1));
+            await resetRepo.AddAsync(entity, ct);
+
+            await email.SendPasswordResetAsync(identity.Email, BuildResetLink(config, ctx, rawToken), ct);
+        }
+
+        return Results.Ok();
+    }
+
+    private static async Task<IResult> ResetPasswordAsync(
+        ResetPasswordRequest req,
+        IUserIdentityRepository userRepo,
+        IPasswordResetTokenRepository resetRepo,
+        IRefreshTokenRepository refreshRepo,
+        CancellationToken ct)
+    {
+        if (string.IsNullOrWhiteSpace(req.Password) || req.Password.Length < 6)
+            return Results.BadRequest(new { code = "weak_password", error = "Lösenordet måste vara minst 6 tecken." });
+
+        var stored = await resetRepo.FindByHashAsync(JwtTokenService.HashRefreshToken(req.Token), ct);
+        if (stored is null || !stored.IsActive(DateTimeOffset.UtcNow))
+            return Results.BadRequest(new { code = "invalid_token", error = "Återställningslänken är ogiltig eller har gått ut." });
+
+        var identity = await userRepo.FindByIdAsync(stored.UserId, ct);
+        if (identity is null || identity.PasswordHash is null)
+            return Results.BadRequest(new { code = "invalid_token", error = "Återställningslänken är ogiltig eller har gått ut." });
+
+        identity.UpdatePasswordHash(BCrypt.Net.BCrypt.HashPassword(req.Password));
+        await userRepo.UpdateAsync(identity, ct);
+
+        stored.Use(DateTimeOffset.UtcNow);
+        await resetRepo.UpdateAsync(stored, ct);
+
+        // Security: drop any other reset tokens and revoke all existing sessions.
+        await resetRepo.InvalidateAllForUserAsync(identity.InternalUserId, ct);
+        await refreshRepo.RevokeAllForUserAsync(identity.InternalUserId, ct);
+
+        return Results.Ok();
+    }
+
+    // Reset links point at the SPA's #reset deep link. Prefer a configured public base
+    // URL (correct behind a reverse proxy); fall back to the request's own origin.
+    private static string BuildResetLink(IConfiguration config, HttpContext ctx, string token)
+    {
+        var baseUrl = config["App:BaseUrl"];
+        if (string.IsNullOrWhiteSpace(baseUrl))
+            baseUrl = $"{ctx.Request.Scheme}://{ctx.Request.Host}";
+        return $"{baseUrl.TrimEnd('/')}/#reset={token}";
+    }
+
     // Browsers get the access token only (refresh stays in the HttpOnly cookie);
     // native clients additionally get the refresh token in the body to store securely.
     private static IResult TokenResult(HttpContext ctx, string accessToken, string rawRefresh) =>
@@ -136,4 +215,6 @@ public static class AuthEndpoints
 
     private record RegisterRequest(string Email, string Password);
     private record LoginRequest(string Email, string Password);
+    private record ForgotPasswordRequest(string Email);
+    private record ResetPasswordRequest(string Token, string Password);
 }

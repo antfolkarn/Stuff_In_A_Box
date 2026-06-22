@@ -169,6 +169,19 @@ const sv = {
   'login.oauthState': 'Säkerhetskontrollen misslyckades. Försök igen.',
   'login.oauthExchange': 'Kunde inte verifiera inloggningen. Försök igen.',
   'login.oauthGeneric': 'Inloggningen misslyckades.',
+  // Forgot / reset password
+  'login.forgotTitle': 'Återställ lösenord',
+  'login.forgotSubtitle': 'Skriv in din e-post så skickar vi en återställningslänk.',
+  'login.sendResetLink': 'Skicka länk',
+  'login.forgotSent': 'Om adressen finns har vi mejlat en återställningslänk.',
+  'login.backToLogin': 'Tillbaka till inloggning',
+  'reset.title': 'Välj nytt lösenord',
+  'reset.subtitle': 'Skriv in ditt nya lösenord nedan.',
+  'reset.newPassword': 'Nytt lösenord',
+  'reset.submit': 'Spara nytt lösenord',
+  'reset.success': 'Lösenordet är uppdaterat. Du kan nu logga in.',
+  'reset.invalid': 'Återställningslänken är ogiltig eller har gått ut.',
+  'reset.toLogin': 'Till inloggning',
 
   // Settings
   'settings.back': 'Mina utrymmen',
@@ -363,6 +376,19 @@ const en: Record<MessageKey, string> = {
   'login.oauthState': 'Security check failed. Please try again.',
   'login.oauthExchange': "Couldn't verify the sign-in. Please try again.",
   'login.oauthGeneric': 'Sign-in failed.',
+  // Forgot / reset password
+  'login.forgotTitle': 'Reset password',
+  'login.forgotSubtitle': "Enter your email and we'll send a reset link.",
+  'login.sendResetLink': 'Send link',
+  'login.forgotSent': "If the address exists, we've emailed a reset link.",
+  'login.backToLogin': 'Back to log in',
+  'reset.title': 'Choose a new password',
+  'reset.subtitle': 'Enter your new password below.',
+  'reset.newPassword': 'New password',
+  'reset.submit': 'Save new password',
+  'reset.success': 'Your password is updated. You can now log in.',
+  'reset.invalid': 'The reset link is invalid or has expired.',
+  'reset.toLogin': 'Go to log in',
 
   // Settings
   'settings.back': 'My spaces',

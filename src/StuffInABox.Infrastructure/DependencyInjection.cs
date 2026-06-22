@@ -43,7 +43,12 @@ public static class DependencyInjection
         services.AddScoped<IItemRepository, ItemRepository>();
         services.AddScoped<IUserIdentityRepository, UserIdentityRepository>();
         services.AddScoped<IRefreshTokenRepository, RefreshTokenRepository>();
+        services.AddScoped<IPasswordResetTokenRepository, PasswordResetTokenRepository>();
         services.AddScoped<IUserSettingsRepository, UserSettingsRepository>();
+
+        // Email: "log" (default — writes the message to the log so flows work without a
+        // provider) or a real provider added later behind this flag.
+        services.AddScoped<IEmailService, Email.LoggingEmailService>();
 
         services.AddScoped<IStorageService, LocalFileStorageService>();
         services.AddSingleton<IImageProcessor, Imaging.SkiaImageProcessor>();

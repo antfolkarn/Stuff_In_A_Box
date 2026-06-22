@@ -13,6 +13,7 @@ public class UserIdentityConfiguration : IEntityTypeConfiguration<UserIdentity>
         builder.Property(u => u.Provider).IsRequired().HasMaxLength(20);
         builder.Property(u => u.ExternalId).IsRequired().HasMaxLength(500);
         builder.Property(u => u.PasswordHash).HasMaxLength(200);
+        builder.Property(u => u.Email).HasMaxLength(320); // RFC 5321 max email length
 
         builder.HasIndex(u => new { u.Provider, u.ExternalId }).IsUnique();
     }

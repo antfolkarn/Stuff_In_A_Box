@@ -37,7 +37,7 @@ Gränssnittet finns på **svenska och engelska** och väljs automatiskt efter we
 | Tema & design | Ljust/mörkt läge + tre designer (persisterat, följer kontot), respekterar OS-inställning |
 | Språk | Svenska + engelska, webbläsardetektering (lätt egen i18n, inga beroenden) |
 | Delning | Delningslänkar per utrymme + medlemskap (ägare-eller-medlem-auktorisering) |
-| Tester | xUnit + Moq (backend), WebApplicationFactory (integration) — **91 tester** |
+| Tester | xUnit + Moq (backend), WebApplicationFactory (integration) — **94 tester** |
 | Drift | Dockerfile (multi-stage) + docker-compose, health checks, GitHub Actions CI |
 
 ---
@@ -114,6 +114,8 @@ Alla värden ligger i `src/StuffInABox.Web/appsettings.json` (hemligheter hör h
 | Nyckel | Beskrivning |
 |--------|-------------|
 | `Jwt:Secret` | HMAC-nyckel (≥32 tecken). **Måste** sättas — finns i `appsettings.Development.json` för dev. |
+| `App:BaseUrl` | Publik bas-URL för länkar i e-post (t.ex. återställning). Tom = härleds från requesten (sätt i produktion bakom proxy). |
+| `Email:Provider` | `log` (default — loggar meddelandet så flöden funkar utan leverantör). Riktig SMTP/SendGrid/Resend/Supabase pluggas in här. |
 | `Jwt:Issuer` / `Jwt:Audience` | JWT issuer/audience. |
 | `Jwt:RefreshDays` | Livslängd för refresh-token (default 7). |
 | `Database:Provider` | `sqlite` (default). Postgres/SQL Server finns förberett i `Infrastructure/DependencyInjection.cs`. |
@@ -157,7 +159,7 @@ Backenden POSTar fotot till Ollama (`http://localhost:11434`, modell via `ImageR
 ## Testning
 
 ```bash
-dotnet test StuffInABox.slnx          # alla 91 backend-tester
+dotnet test StuffInABox.slnx          # alla 94 backend-tester
 ```
 
 | Lager | Antal | Vad testas |
@@ -165,7 +167,7 @@ dotnet test StuffInABox.slnx          # alla 91 backend-tester
 | Domain | 27 | Entitetsinvarianter, value object-validering |
 | Application | 27 | Handler-logik, space-access-auktorisering, validering, service-orkestrering |
 | Infrastructure | 18 | Repository-SQL, EF-config, bildbehandling, Claude-taggning, Ollama-igenkänning |
-| Web | 19 | JWT, refresh-flöde (cookie + mobil-header), OAuth-start, rate limiting, bilduppladdning, **delning (åtkomstgräns)**, health checks, fel-mappning |
+| Web | 22 | JWT, refresh-flöde (cookie + mobil-header), **lösenordsåterställning**, OAuth-start, rate limiting, bilduppladdning, **delning (åtkomstgräns)**, health checks, fel-mappning |
 
 Utvecklat test-drivet: testet skrivs före implementationen.
 
@@ -173,7 +175,8 @@ Utvecklat test-drivet: testet skrivs före implementationen.
 
 ## Säkerhet
 
-- **Ingen PII lagras.** För e-postinloggning sparas `SHA256(e-post)` + BCrypt-hash av lösenordet. För OAuth sparas bara `(provider, sub)` — inget namn eller e-post.
+- **Minimal PII.** För e-postinloggning sparas `SHA256(e-post)` (för uppslag) + BCrypt-hash av lösenordet, **samt e-postadressen i klartext** för att kunna kontakta användaren (t.ex. lösenordsåterställning). För OAuth sparas bara `(provider, sub)` — ingen e-post.
+- **Glömt lösenord.** `POST /auth/forgot-password` skickar en återställningslänk (alltid `200`, avslöjar aldrig om adressen finns). Återställnings-token lagras som hash, är engångs, går ut efter 1 timme; vid lyckad återställning återkallas alla sessioner. E-post skickas via `IEmailService` (logg-default; riktig leverantör bakom `Email:Provider`).
 - **Refresh-tokens** lagras endast som SHA-256-hash, levereras i `HttpOnly; SameSite=Strict`-cookie, roteras vid varje förnyelse och kan återkallas vid utloggning.
 - **Bilduppladdning** valideras via magic bytes (JPEG/PNG/WEBP), max 10 MB, och **EXIF strippas** genom om-kodning (skyddar mot GPS-läckage).
 - **Rate limiting** på alla `/auth/*` (per IP).

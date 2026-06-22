@@ -3,10 +3,10 @@ import { IconSun, IconMoon, IconStack2Filled, IconBrandGoogle, IconBrandAppleFil
 import { useAuthStore } from '../../store/authStore'
 import { useUiStore } from '../../store/uiStore'
 import { useSettingsStore, resolveTheme } from '../../store/settingsStore'
-import { login, register } from '../../api/auth'
+import { login, register, forgotPassword } from '../../api/auth'
 import { useT, type MessageKey } from '../../i18n'
 
-type Mode = 'login' | 'signup'
+type Mode = 'login' | 'signup' | 'forgot'
 
 // Maps the OAuth callback error code to a message key; resolved to text at render.
 const OAUTH_ERRORS: Record<string, MessageKey> = {
@@ -27,6 +27,7 @@ export default function LoginView() {
   const [password, setPassword] = useState('')
   const [error, setError] = useState<MessageKey | ''>(initialOAuthError)
   const [loading, setLoading] = useState(false)
+  const [forgotSent, setForgotSent] = useState(false)
   const { setToken } = useAuthStore()
   const { pendingBox, goBox, setPendingBox } = useUiStore()
   const t = useT()
@@ -34,11 +35,22 @@ export default function LoginView() {
   const toggleTheme = useSettingsStore((s) => s.toggleTheme)
   const isDark = resolveTheme(themeMode) === 'dark'
 
+  function switchMode(next: Mode) {
+    setMode(next)
+    setError('')
+    setForgotSent(false)
+  }
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     setError('')
     setLoading(true)
     try {
+      if (mode === 'forgot') {
+        await forgotPassword(email)
+        setForgotSent(true) // always succeeds; server never reveals if the address exists
+        return
+      }
       const token = mode === 'login'
         ? await login(email, password)
         : await register(email, password)
@@ -115,14 +127,16 @@ export default function LoginView() {
         >
           <div style={{ marginBottom: 22 }}>
             <div style={{ fontSize: 20, fontWeight: 600 }}>
-              {mode === 'login' ? t('login.loginTitle') : t('login.signupTitle')}
+              {mode === 'login' ? t('login.loginTitle') : mode === 'signup' ? t('login.signupTitle') : t('login.forgotTitle')}
             </div>
             <div style={{ fontSize: 13.5, color: 'var(--text-2)', marginTop: 4 }}>
-              {mode === 'login' ? t('login.loginSubtitle') : t('login.signupSubtitle')}
+              {mode === 'login' ? t('login.loginSubtitle') : mode === 'signup' ? t('login.signupSubtitle') : t('login.forgotSubtitle')}
             </div>
           </div>
 
-          {/* OAuth buttons */}
+          {/* OAuth buttons (not for password reset) */}
+          {mode !== 'forgot' && (
+          <>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 20 }}>
             <button
               className="btn btn-outline"
@@ -169,8 +183,10 @@ export default function LoginView() {
             <span style={{ fontSize: 12, color: 'var(--text-4)' }}>{t('login.orEmail')}</span>
             <div style={{ flex: 1, height: 1, background: 'var(--border)' }} />
           </div>
+          </>
+          )}
 
-          {/* Email/password form */}
+          {/* Email/(password) form */}
           <form onSubmit={handleSubmit}>
             <div style={{ marginBottom: 14 }}>
               <div
@@ -193,6 +209,7 @@ export default function LoginView() {
               />
             </div>
 
+            {mode !== 'forgot' && (
             <div style={{ marginBottom: 20 }}>
               <div
                 style={{
@@ -204,7 +221,7 @@ export default function LoginView() {
               >
                 <label style={{ fontSize: 13.5, fontWeight: 500 }}>{t('login.password')}</label>
                 {mode === 'login' && (
-                  <a href="#" style={{ fontSize: 12.5 }}>
+                  <a href="#" style={{ fontSize: 12.5 }} onClick={(e) => { e.preventDefault(); switchMode('forgot') }}>
                     {t('login.forgot')}
                   </a>
                 )}
@@ -219,6 +236,22 @@ export default function LoginView() {
                 minLength={6}
               />
             </div>
+            )}
+
+            {mode === 'forgot' && forgotSent && (
+              <div
+                style={{
+                  marginBottom: 14,
+                  padding: '10px 14px',
+                  background: 'var(--success-bg)',
+                  borderRadius: 'var(--r-sm)',
+                  fontSize: 13.5,
+                  color: 'var(--success-text)',
+                }}
+              >
+                {t('login.forgotSent')}
+              </div>
+            )}
 
             {error && (
               <div
@@ -242,7 +275,11 @@ export default function LoginView() {
               disabled={loading}
               style={{ width: '100%', height: 48, borderRadius: 'var(--r-md)', fontSize: 15.5 }}
             >
-              {loading ? t('login.waiting') : mode === 'login' ? t('login.loginTitle') : t('login.signupTitle')}
+              {loading
+                ? t('login.waiting')
+                : mode === 'login' ? t('login.loginTitle')
+                : mode === 'signup' ? t('login.signupTitle')
+                : t('login.sendResetLink')}
             </button>
           </form>
 
@@ -251,17 +288,21 @@ export default function LoginView() {
             {mode === 'login' ? (
               <>
                 {t('login.noAccount')}{' '}
-                <a href="#" onClick={(e) => { e.preventDefault(); setMode('signup'); setError('') }}>
+                <a href="#" onClick={(e) => { e.preventDefault(); switchMode('signup') }}>
                   {t('login.signupTitle')}
                 </a>
               </>
-            ) : (
+            ) : mode === 'signup' ? (
               <>
                 {t('login.haveAccount')}{' '}
-                <a href="#" onClick={(e) => { e.preventDefault(); setMode('login'); setError('') }}>
+                <a href="#" onClick={(e) => { e.preventDefault(); switchMode('login') }}>
                   {t('login.loginTitle')}
                 </a>
               </>
+            ) : (
+              <a href="#" onClick={(e) => { e.preventDefault(); switchMode('login') }}>
+                {t('login.backToLogin')}
+              </a>
             )}
           </div>
         </div>

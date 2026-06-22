@@ -28,3 +28,13 @@ export async function logout(): Promise<void> {
     // ignore — we clear local state regardless
   }
 }
+
+// Always resolves (the server returns 200 regardless, to avoid leaking which
+// addresses are registered).
+export async function forgotPassword(email: string): Promise<void> {
+  await api.post('/auth/forgot-password', { email })
+}
+
+export async function resetPassword(token: string, password: string): Promise<void> {
+  await api.post('/auth/reset-password', { token, password })
+}

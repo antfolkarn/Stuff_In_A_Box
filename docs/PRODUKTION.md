@@ -28,15 +28,15 @@ Inga kodändringar — men appen startar inte / fungerar inte korrekt utan dessa
 
 ## 🟡 Funktionsluckor användare lär förvänta sig
 
-- **Glömt lösenord saknas helt.** "Glömt?"-länken i
-  `ClientApp/src/features/auth/LoginView.tsx` är död (`<a href="#">` utan onClick),
-  och det finns **ingen återställning + ingen e-postinfrastruktur** i backend. En
-  e-postregistrerad användare som glömmer lösenordet blir utelåst.
-  - ⚠️ **Designkonflikt:** appen lagrar medvetet bara `SHA256(e-post)`
-    (integritetsmodellen). Lösenordsåterställning kräver att man kan *mejla*
-    användaren — alltså lagra/skicka till klartext-e-post. Medvetet vägval som måste
-    tas: behåll noll-PII (ingen återställning möjlig) **eller** lägg till e-post +
-    utskick för reset.
+- **Glömt lösenord — ✅ byggt.** Hela flödet finns (`forgot-password`/`reset-password`,
+  reset-vy via `#reset=`-deeplink, engångs-token 1 h, återkallar sessioner). E-postkonton
+  lagrar nu adressen i klartext (`UserIdentity.Email`) — det medvetna "noll-PII"-valet är
+  alltså frångått för att kunna kontakta användare.
+  - ⚠️ **Kvarstår:** koppla in en **riktig e-postleverantör.** Default `IEmailService`
+    (`LoggingEmailService`) *loggar* bara länken — inga mejl skickas. Lägg en SMTP-/
+    SendGrid-/Resend-/Supabase-implementation bakom `Email:Provider` och sätt `App:BaseUrl`
+    (publik URL för länkarna). OAuth-konton lagrar fortfarande ingen e-post — vill man
+    mejla dem måste e-post fångas från providern (separat jobb).
 - **GDPR (relevant för svenskt bolag):** ingen **kontoradering** och ingen
   **dataexport** finns. Rätten till radering och dataportabilitet bör täckas.
   Rent backend-jobb, kräver ingen e-post — bra fristående nästa commit.
