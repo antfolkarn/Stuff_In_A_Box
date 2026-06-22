@@ -54,19 +54,74 @@ Inga kodändringar — men appen startar inte / fungerar inte korrekt utan dessa
 - **Backend-felmeddelanden** vid bilduppladdning är hårdkodad svenska
   (`UploadItemPhotoCommandHandler`) — i18n täcker bara frontend.
 
-## 🔵 Skalning (bara om ni växer förbi en instans)
+## 🟣 Effektivitet & fler gratis-förberedelser (hjälper både webb och mobil)
 
-Allt nedan fungerar bra för **en server med beständig volym** (som docker-compose
-ger nu):
+Lågrisk-förbättringar som inte försämrar webben:
 
-- **SQLite → PostgreSQL** vid flera instanser (provider-switch finns redan i
-  `Infrastructure/DependencyInjection.cs`).
-- **Lokala bilduppladdningar → objektlagring** (Azure Blob/S3) — `IStorageService` är
-  redan abstraherat, liten isolerad ändring.
-- **SQLite-sårbarheten NU1903** (CVE-2025-6965) — ingen uppströms-fix än, låg risk,
-  dokumenterad i [HANDOFF.md](../HANDOFF.md).
+- **Fixa N+1-frågorna** (störst effekt) — `GetSpacesQueryHandler` loopar utrymmen →
+  lådor → en separat fråga per låda för föremål. Samma mönster i `Search`/`Labels`.
+  Det här är den verkliga effektivitetsvinsten, **oberoende av vilken databas** som
+  körs. Bör göras snart.
+- **Bredare rate limiting** — idag bara på `/auth/*`; en generös global gräns skyddar
+  hela API:t mot missbruk.
+- **ETag / `Cache-Control` på GET-svar** — sparar bandbredd (särskilt mobil) via 304.
+- **Exponera OpenAPI-specen i produktion (read-only)** — låter mobilutvecklare
+  *generera* en typad API-klient istället för att handskriva den (idag bara i dev).
 - **Felövervakning** — bara Serilog till fil idag; överväg Sentry/App Insights för
   fel + metrics.
+
+Förmodligen onödigt nu (YAGNI): idempotency-nycklar för POST, "hantera enheter"-vy.
+
+---
+
+## 🔵 Skalning: databas & bildlagring (bara om ni växer förbi en instans)
+
+> **Viktigt:** SQLite är förmodligen inte flaskhalsen — frågemönstret (N+1 ovan) är
+> det. Migrera **inte** i förtid. Den verkliga förberedelsen finns redan:
+> `IStorageService` (bilder) och EF Core provider-switch (databas) i
+> `Infrastructure/DependencyInjection.cs`. Byt först när **(1)** ni behöver fler än en
+> instans, eller **(2)** ni vill ha riktig backup/durabilitet utan att kopiera en fil.
+
+### Databas
+
+| Alternativ | Skalning | Effektivitet | Säkerhet | Pris | Kod-insats |
+|---|---|---|---|---|---|
+| **SQLite** (nu) | 1 instans (en skrivare) | Snabb läsning, lokal | Ingen nätverksyta (plus) | $0 | — |
+| **Serverless Postgres** (Supabase / Neon) | Auto, scale-to-zero | Bra; kallstart vid noll-trafik | TLS + managed, backup ingår | Gratis-tier → betala vid trafik | Liten |
+| **Managed Postgres** (Azure DB / RDS) | Vertikalt + läsrepliker | Stark, JSON + fulltext | TLS, roller, managed patchning | ~$15–30/mån floor | Liten |
+| **Turso / libSQL** | Distribuerad/edge | Snabb, SQLite-dialekt | TLS, managed | Generös gratis-tier | Minst (SQLite-kompatibel) |
+| **SQL Server / Azure SQL** | Bra | Stark | Stark | Dyrast (licens) | Liten |
+
+### Bildlagring (separat fråga)
+
+| Alternativ | Skalning | Säkerhet | Pris (nyckel: **egress**) | Kod-insats |
+|---|---|---|---|---|
+| **Lokal disk** (nu) | 1 instans + volym | Filrättigheter, `/uploads` saknar åtkomstkontroll | $0 | — |
+| **Cloudflare R2** | Obegränsad | Signerade URL:er, TLS | Billig lagring, **ingen egress-avgift** ✅ | Liten |
+| **Backblaze B2** | Obegränsad | TLS, signerade URL:er | Billigast lagring | Liten |
+| **Azure Blob / S3** | Obegränsad | Moget, IAM/SAS | Lagring billig men **egress kostar** | Liten |
+
+### Beslut / rekommendation
+
+- **Databas → Supabase (serverless PostgreSQL).** ✅ *Vald väg.* Gratis vid låg trafik,
+  skalar när det behövs, TLS + automatisk backup utan drift, och EF Core-providern är
+  redan förberedd. (Neon är ett likvärdigt serverless-Postgres-alternativ; Turso är
+  frestande för minimal kodändring men Postgres är mer beprövat med EF Core.)
+- **Bilder → Cloudflare R2.** För en bild-tung app är **egress** (utgående trafik när
+  bilder visas) den stora kostnaden — R2 har **noll egress-avgift**, markant billigare
+  än S3/Azure Blob vid frekvent bildvisning. Backblaze B2 är näst billigast.
+- **SQLite-sårbarheten NU1903** (CVE-2025-6965) löser sig på köpet vid byte till
+  Postgres; tills dess: låg risk, dokumenterad i [HANDOFF.md](../HANDOFF.md).
+
+**Migrationsskiss när tröskeln nås:**
+1. Skapa ett Supabase-projekt → sätt `Database:Provider=postgres` +
+   `ConnectionStrings:Default` (installera `Npgsql.EntityFrameworkCore.PostgreSQL`,
+   avkommentera grenen i `DependencyInjection.cs`).
+2. Kör `dotnet ef database update` mot Postgres (migrationerna är providerneutrala —
+   verifiera att inget SQLite-specifikt smugit sig in).
+3. Lägg till en `R2StorageService : IStorageService` (S3-kompatibelt API) och
+   registrera den bakom en `Storage:Provider`-flagga; behåll lokal disk som default.
+4. Flytta befintliga bilder från volymen till R2 (engångs-kopiering).
 
 ---
 
