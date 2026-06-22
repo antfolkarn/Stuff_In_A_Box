@@ -43,8 +43,11 @@ Inga kodändringar — men appen startar inte / fungerar inte korrekt utan dessa
   sessioner, reset-tokens, inställningar och identiteten — och drar med delade
   utrymmen så medlemmar tappar åtkomst. (Kvarstår ev.: en *ångerfrist*/mjuk radering
   om ni vill, men hård radering uppfyller rätten till radering.)
-- **Villkor & integritetspolicy** — login-skärmen hänvisar till "våra villkor och
-  vår integritetspolicy" men det finns inga sidor/länkar bakom. Behövs riktiga texter.
+- **Villkor & integritetspolicy — ✅ byggt.** Användarvillkor + Integritetspolicy finns
+  som tvåspråkiga sidor (`features/legal/`), nåbara från login och Inställningar.
+  Integritetspolicyn speglar appens faktiska databehandling.
+  - ⚠️ **Kvarstår:** låt en jurist granska texterna och fyll i platshållarna
+    `[Företagsnamn]` och `[kontakt@dindomän.se]` i `legalContent.ts`.
 
 ## 🟢 Design / UX att överväga
 

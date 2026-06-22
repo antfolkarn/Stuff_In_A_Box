@@ -21,7 +21,7 @@ const THEME_ICON: Record<Theme, typeof IconSun> = {
 }
 
 export default function SettingsView() {
-  const { goHome } = useUiStore()
+  const { goHome, setLegal } = useUiStore()
   const t = useT()
   const qc = useQueryClient()
   const logout = useAuthStore((s) => s.logout)
@@ -196,6 +196,16 @@ export default function SettingsView() {
           </button>
         </div>
       </section>
+
+      {/* Legal footer */}
+      <div style={{ marginTop: 32, paddingTop: 16, fontSize: 12.5, color: 'var(--text-4)', display: 'flex', gap: 16 }}>
+        <a href="#" onClick={(e) => { e.preventDefault(); setLegal('terms') }} style={{ color: 'var(--text-3)' }}>
+          {t('legal.terms')}
+        </a>
+        <a href="#" onClick={(e) => { e.preventDefault(); setLegal('privacy') }} style={{ color: 'var(--text-3)' }}>
+          {t('legal.privacy')}
+        </a>
+      </div>
     </div>
   )
 }

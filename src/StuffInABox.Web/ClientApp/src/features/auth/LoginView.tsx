@@ -29,7 +29,7 @@ export default function LoginView() {
   const [loading, setLoading] = useState(false)
   const [forgotSent, setForgotSent] = useState(false)
   const { setToken } = useAuthStore()
-  const { pendingBox, goBox, setPendingBox } = useUiStore()
+  const { pendingBox, goBox, setPendingBox, setLegal } = useUiStore()
   const t = useT()
   const themeMode = useSettingsStore((s) => s.theme)
   const toggleTheme = useSettingsStore((s) => s.toggleTheme)
@@ -316,7 +316,11 @@ export default function LoginView() {
             marginTop: 16,
           }}
         >
-          {t('login.legal')}
+          {t('login.legalBefore')}
+          <a href="#" onClick={(e) => { e.preventDefault(); setLegal('terms') }}>{t('legal.terms')}</a>
+          {t('login.legalBetween')}
+          <a href="#" onClick={(e) => { e.preventDefault(); setLegal('privacy') }}>{t('legal.privacy')}</a>
+          {t('login.legalAfter')}
         </p>
       </div>
     </div>

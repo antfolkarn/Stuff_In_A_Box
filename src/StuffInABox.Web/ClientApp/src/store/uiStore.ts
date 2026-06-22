@@ -1,6 +1,7 @@
 import { create } from 'zustand'
 
 type View = 'home' | 'space' | 'box' | 'labels' | 'settings'
+export type LegalPage = 'terms' | 'privacy'
 
 interface LabelFilter {
   spaceId?: string
@@ -17,6 +18,7 @@ interface UiState {
   pendingBox: number | null
   pendingInvite: string | null
   pendingReset: string | null
+  legal: LegalPage | null
 
   goHome: () => void
   goSpace: (spaceId: string) => void
@@ -29,6 +31,7 @@ interface UiState {
   setPendingBox: (n: number | null) => void
   setPendingInvite: (token: string | null) => void
   setPendingReset: (token: string | null) => void
+  setLegal: (page: LegalPage | null) => void
 }
 
 // Parse QR deep link on load
@@ -60,6 +63,7 @@ export const useUiStore = create<UiState>((set) => ({
   pendingBox: parsePendingBox(),
   pendingInvite: parsePendingInvite(),
   pendingReset: parsePendingReset(),
+  legal: null,
 
   goHome: () => set({ view: 'home', spaceId: null, boxNum: null, query: '' }),
 
@@ -84,4 +88,6 @@ export const useUiStore = create<UiState>((set) => ({
   setPendingInvite: (token) => set({ pendingInvite: token }),
 
   setPendingReset: (token) => set({ pendingReset: token }),
+
+  setLegal: (page) => set({ legal: page }),
 }))
