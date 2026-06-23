@@ -10,7 +10,7 @@ public static class LabelEndpoints
 {
     public static IEndpointRouteBuilder MapLabelEndpoints(this IEndpointRouteBuilder app)
     {
-        app.MapGet("/api/labels", async (Guid? spaceId, int? boxNumber, IMediator mediator, CancellationToken ct) =>
+        app.MapGet(ApiRoutes.V1 + "/labels", async (Guid? spaceId, int? boxNumber, IMediator mediator, CancellationToken ct) =>
         {
             var result = await mediator.Send(new GetLabelDataQuery(spaceId, boxNumber), ct);
             return Results.Ok(result);

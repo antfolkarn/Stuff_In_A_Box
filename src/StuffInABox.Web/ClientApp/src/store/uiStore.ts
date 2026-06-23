@@ -34,22 +34,21 @@ interface UiState {
   setLegal: (page: LegalPage | null) => void
 }
 
-// Parse QR deep link on load
-function parsePendingBox(): number | null {
-  const hash = window.location.hash
+// Parse QR deep link on load (#box=<n>). Hash is injectable for testing.
+export function parsePendingBox(hash: string = window.location.hash): number | null {
   const match = hash.match(/[#&]box=(\d+)/)
   return match ? parseInt(match[1], 10) : null
 }
 
 // Parse share-link deep link on load (#invite=<token>)
-function parsePendingInvite(): string | null {
-  const match = window.location.hash.match(/[#&]invite=([A-Za-z0-9_-]+)/)
+export function parsePendingInvite(hash: string = window.location.hash): string | null {
+  const match = hash.match(/[#&]invite=([A-Za-z0-9_-]+)/)
   return match ? match[1] : null
 }
 
 // Parse password-reset deep link on load (#reset=<token>)
-function parsePendingReset(): string | null {
-  const match = window.location.hash.match(/[#&]reset=([A-Za-z0-9_-]+)/)
+export function parsePendingReset(hash: string = window.location.hash): string | null {
+  const match = hash.match(/[#&]reset=([A-Za-z0-9_-]+)/)
   return match ? match[1] : null
 }
 

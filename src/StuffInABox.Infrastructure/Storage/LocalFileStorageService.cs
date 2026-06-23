@@ -3,7 +3,7 @@ using StuffInABox.Application.Common.Interfaces;
 
 namespace StuffInABox.Infrastructure.Storage;
 
-public class LocalFileStorageService(IConfiguration config) : IStorageService
+public class LocalFileStorageService(IConfiguration config, IPhotoUrlSigner signer) : IStorageService
 {
     private static readonly string[] AllowedExtensions = [".jpg", ".jpeg", ".png", ".webp"];
 
@@ -34,7 +34,8 @@ public class LocalFileStorageService(IConfiguration config) : IStorageService
         return storageKey;
     }
 
-    public string GetUrl(string storageKey) => $"/uploads/{storageKey}";
+    // Signed so the photo can't be fetched from /uploads without a valid, expiring token.
+    public string GetUrl(string storageKey) => $"/uploads/{storageKey}?sig={signer.Sign(storageKey)}";
 
     public Task DeleteAsync(string storageKey, CancellationToken ct = default)
     {

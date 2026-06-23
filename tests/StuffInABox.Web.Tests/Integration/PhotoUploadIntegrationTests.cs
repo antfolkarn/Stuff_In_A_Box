@@ -90,6 +90,28 @@ public class PhotoUploadIntegrationTests : IClassFixture<WebApplicationFactory<P
     }
 
     [Fact]
+    public async Task ServePhoto_WithoutSignature_Returns403()
+    {
+        var (client, _, boxNumber, itemId) = await SetupItemAsync();
+
+        using var content = new MultipartFormDataContent();
+        var file = new ByteArrayContent(Convert.FromBase64String(Png1x1Base64));
+        file.Headers.ContentType = new MediaTypeHeaderValue("image/png");
+        content.Add(file, "file", "photo.png");
+        var resp = await client.PostAsync($"/api/v1/boxes/{boxNumber}/items/{itemId}/photo", content);
+        var url = (await resp.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("photoUrl").GetString()!;
+
+        // Strip the signature — the bare /uploads/{key} must not be world-readable.
+        var keyPath = url.Split('?')[0];
+        var unsigned = await client.GetAsync(keyPath);
+        Assert.Equal(HttpStatusCode.Forbidden, unsigned.StatusCode);
+
+        // A tampered signature is rejected too.
+        var tampered = await client.GetAsync($"{keyPath}?sig=99999999999.deadbeef");
+        Assert.Equal(HttpStatusCode.Forbidden, tampered.StatusCode);
+    }
+
+    [Fact]
     public async Task UploadPhoto_NonImage_Returns400()
     {
         var (client, _, boxNumber, itemId) = await SetupItemAsync();

@@ -46,6 +46,38 @@ public class SettingsHandlerTests
         Assert.Equal(_userId.Value, saved!.UserId);
     }
 
+    [Fact]
+    public async Task Update_StoresTrimmedDisplayName()
+    {
+        _repo.Setup(r => r.GetAsync(_userId.Value, It.IsAny<CancellationToken>())).ReturnsAsync((UserSettings?)null);
+        _repo.Setup(r => r.UpsertAsync(It.IsAny<UserSettings>(), It.IsAny<CancellationToken>())).Returns(Task.CompletedTask);
+
+        var result = await new UpdateSettingsCommandHandler(_repo.Object, _user.Object)
+            .Handle(new UpdateSettingsCommand("system", "standard", "  Anna  "), default);
+
+        Assert.Equal("Anna", result.DisplayName);
+    }
+
+    [Fact]
+    public async Task Update_BlankDisplayName_ClearsToNull()
+    {
+        _repo.Setup(r => r.GetAsync(_userId.Value, It.IsAny<CancellationToken>())).ReturnsAsync((UserSettings?)null);
+        _repo.Setup(r => r.UpsertAsync(It.IsAny<UserSettings>(), It.IsAny<CancellationToken>())).Returns(Task.CompletedTask);
+
+        var result = await new UpdateSettingsCommandHandler(_repo.Object, _user.Object)
+            .Handle(new UpdateSettingsCommand("system", "standard", "   "), default);
+
+        Assert.Null(result.DisplayName);
+    }
+
+    [Fact]
+    public void Validator_RejectsTooLongDisplayName()
+    {
+        var result = new UpdateSettingsCommandValidator()
+            .Validate(new UpdateSettingsCommand("system", "standard", new string('x', 41)));
+        Assert.False(result.IsValid);
+    }
+
     [Theory]
     [InlineData("neon", "standard")]
     [InlineData("dark", "brutalist")]

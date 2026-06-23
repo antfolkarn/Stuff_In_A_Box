@@ -26,17 +26,20 @@ export default function App() {
   // theme + design) before the first paint, including on the login/loading screens.
   useSettingsStore((s) => s.theme)
   const loadSettings = useSettingsStore((s) => s.loadFromServer)
+  const applyLoggedOut = useSettingsStore((s) => s.applyLoggedOut)
   const t = useT()
 
   useEffect(() => {
     bootstrap()
   }, [bootstrap])
 
-  // Once signed in, pull the user's settings from the DB so theme/design follow
-  // them across devices.
+  // Signed in: pull the user's settings from the DB so theme/design follow them across
+  // devices. Signed out: force the branded Pop + light appearance regardless of any
+  // cached preference.
   useEffect(() => {
     if (isAuthenticated) loadSettings()
-  }, [isAuthenticated, loadSettings])
+    else applyLoggedOut()
+  }, [isAuthenticated, loadSettings, applyLoggedOut])
 
   if (!ready) {
     return (

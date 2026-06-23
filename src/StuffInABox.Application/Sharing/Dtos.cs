@@ -8,5 +8,6 @@ public sealed record InvitePreviewDto(Guid SpaceId, string SpaceName, bool Alrea
 
 public sealed record AcceptInviteResult(Guid SpaceId, string SpaceName);
 
-/// <summary>A member of a space. No PII is stored, so only the id + join time.</summary>
-public sealed record MemberDto(Guid UserId, DateTimeOffset JoinedAt);
+/// <summary>A member of a space. <paramref name="DisplayName"/> is the member's nickname,
+/// falling back to their email, or null when neither is known (UI then shows a generic label).</summary>
+public sealed record MemberDto(Guid UserId, DateTimeOffset JoinedAt, string? DisplayName);

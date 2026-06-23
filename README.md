@@ -36,8 +36,8 @@ Gränssnittet finns på **svenska och engelska** och väljs automatiskt efter we
 | Frontend | React 18 + TypeScript + Vite, React Query + Zustand |
 | Tema & design | Ljust/mörkt läge + tre designer (persisterat, följer kontot), respekterar OS-inställning |
 | Språk | Svenska + engelska, webbläsardetektering (lätt egen i18n, inga beroenden) |
-| Delning | Delningslänkar per utrymme + medlemskap (ägare-eller-medlem-auktorisering) |
-| Tester | xUnit + Moq (backend), WebApplicationFactory (integration) — **97 tester** |
+| Delning | Delningslänkar per utrymme + medlemskap (ägare-eller-medlem-auktorisering); medlemmar visas med smeknamn, annars e-post |
+| Tester | xUnit + Moq (backend), WebApplicationFactory (integration) — **106 tester** + Vitest (frontend) |
 | Drift | Dockerfile (multi-stage) + docker-compose, health checks, GitHub Actions CI |
 
 ---
@@ -121,6 +121,8 @@ Alla värden ligger i `src/StuffInABox.Web/appsettings.json` (hemligheter hör h
 | `Database:Provider` | `sqlite` (default). Postgres/SQL Server finns förberett i `Infrastructure/DependencyInjection.cs`. |
 | `ConnectionStrings:Default` | Databasens connection string. |
 | `Storage:LocalPath` | Mapp för uppladdade bilder (tom = `wwwroot/uploads`). |
+| `Storage:UrlSigningKey` | HMAC-nyckel för signerade bild-URL:er. Tom = återanvänder `Jwt:Secret`. |
+| `Storage:UrlValidityMinutes` | Giltighetstid för en signerad bild-URL (default 360 = 6 h). |
 | `Tagging:Provider` | `tokenizer` (default) eller `claude`. |
 | `Tagging:Claude:ApiKey` / `:Model` | Claude API-nyckel och modell (default `claude-haiku-4-5-20251001`). |
 | `ImageRecognition:Provider` | `none` (default) eller `ollama` (lokal vision-modell som för-ifyller föremålsnamn). |
@@ -159,17 +161,30 @@ Backenden POSTar fotot till Ollama (`http://localhost:11434`, modell via `ImageR
 ## Testning
 
 ```bash
-dotnet test StuffInABox.slnx          # alla 97 backend-tester
+dotnet test StuffInABox.slnx          # alla 106 backend-tester
 ```
 
 | Lager | Antal | Vad testas |
 |-------|------:|------------|
 | Domain | 27 | Entitetsinvarianter, value object-validering |
-| Application | 27 | Handler-logik, space-access-auktorisering, validering, service-orkestrering |
-| Infrastructure | 18 | Repository-SQL, EF-config, bildbehandling, Claude-taggning, Ollama-igenkänning |
-| Web | 25 | JWT, refresh-flöde (cookie + mobil-header), **lösenordsåterställning**, OAuth-start, rate limiting, bilduppladdning, **delning (åtkomstgräns)**, **GDPR export/radering**, health checks, fel-mappning |
+| Application | 30 | Handler-logik, space-access-auktorisering, validering (inkl. **smeknamn**), service-orkestrering |
+| Infrastructure | 19 | Repository-SQL (inkl. batch-räkning per låda), EF-config, bildbehandling, Claude-taggning, Ollama-igenkänning |
+| Web | 30 | JWT, refresh-flöde (cookie + mobil-header), **lösenordsåterställning**, OAuth-start, rate limiting, bilduppladdning + **signerad bildåtkomst (403 utan token)**, **delning (åtkomstgräns + medlemsnamn)**, **GDPR export/radering**, **API-versionsrutter (v1, inte SPA-fallback)**, health checks, fel-mappning |
 
 Utvecklat test-drivet: testet skrivs före implementationen.
+
+### Frontend (Vitest)
+
+```bash
+cd src/StuffInABox.Web/ClientApp
+npm test            # kör en gång
+npm run test:watch  # watch-läge
+```
+
+Lätt enhetstestning (jsdom) av ren logik: i18n-översättning/fallback, deep-link-parsing
+(`#invite=`/`#reset=`/`#box=`), medlemsvisning (smeknamn → e-post → fallback) och
+utseende-logik (utloggad → Pop/ljust, inloggad → prefs). Fler komponenttester kan läggas
+till med Testing Library.
 
 ---
 
@@ -180,10 +195,12 @@ Utvecklat test-drivet: testet skrivs före implementationen.
 - **GDPR.** Användaren kan exportera all sin data (`GET /account/export`, JSON) och radera kontot (`DELETE /account`) — radering tar bort allt: utrymmen/lådor/föremål (+ foton), medlemskap/inbjudningar, sessioner, reset-tokens, inställningar och identiteten.
 - **Refresh-tokens** lagras endast som SHA-256-hash, levereras i `HttpOnly; SameSite=Strict`-cookie, roteras vid varje förnyelse och kan återkallas vid utloggning.
 - **Bilduppladdning** valideras via magic bytes (JPEG/PNG/WEBP), max 10 MB, och **EXIF strippas** genom om-kodning (skyddar mot GPS-läckage).
+- **Bildåtkomst** är signerad: `/uploads/{nyckel}` serveras bara med en giltig, tidsbegränsad HMAC-token i query (`?sig=`) — annars `403`. Lagringsnycklarna är dessutom slumpade GUID:er. Modellen speglar presignerade URL:er i R2/S3 (planerad produktionslagring) och låter `<img>` ladda bilden utan Authorization-header.
 - **Rate limiting** på alla `/auth/*` (per IP).
 - **Säkerhetsheaders** (CSP, `X-Frame-Options: DENY`, `X-Content-Type-Options: nosniff`, m.fl.) + HSTS i produktion.
 - **Åtkomstkontroll & delning**: all läsning och skrivning av lådor/föremål går genom `ISpaceAccessService`, som auktoriserar **ägare-eller-medlem** mot utrymmet och annars svarar **403**. Allt innehåll ägs av utrymmets ägare; inbjudna medlemmar kan redigera lådor och föremål men inte hantera utrymmet (byta namn/ikon, flytta lådor, ta bort, bjuda in). En extra kontroll verifierar att en låda faktiskt ligger i det auktoriserade utrymmet, så en medlem aldrig når ägarens andra, icke-delade utrymmen (lådnummer är per ägare och disambigueras med `spaceId`).
 - **Delningslänkar**: slumpade, återkallningsbara tokens — ingen e-posthantering, matchar PII-modellen. Ägaren kan när som helst återkalla länken eller ta bort en medlem.
+- **Medlemsnamn**: en medlem kan sätta ett valfritt **smeknamn** (`UserSettings.DisplayName`) som visas för utrymmets ägare. Saknas smeknamn visas medlemmens **e-postadress** för ägaren (om en sådan finns lagrad, dvs. e-postkonton) — den som inte vill exponera sin e-post sätter ett smeknamn. OAuth-konton utan smeknamn visas med en generisk etikett.
 
 ---
 

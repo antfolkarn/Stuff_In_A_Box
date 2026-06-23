@@ -6,9 +6,14 @@ namespace StuffInABox.Domain.Entities;
 /// </summary>
 public class UserSettings
 {
+    public const int MaxDisplayNameLength = 40;
+
     public Guid UserId { get; private set; }
     public string Theme { get; private set; }   // "light" | "dark" | "system"
     public string Design { get; private set; }  // "standard" | "atelier" | "pop"
+    /// <summary>Optional nickname the user picks. When set it's shown to other members
+    /// instead of their email; null means "no nickname" (callers fall back to email).</summary>
+    public string? DisplayName { get; private set; }
     public DateTimeOffset UpdatedAt { get; private set; }
 
     private UserSettings()
@@ -25,12 +30,15 @@ public class UserSettings
         UpdatedAt = DateTimeOffset.UtcNow,
     };
 
-    public void Update(string theme, string design)
+    public void Update(string theme, string design, string? displayName)
     {
         if (string.IsNullOrWhiteSpace(theme)) throw new ArgumentException("Theme krävs.", nameof(theme));
         if (string.IsNullOrWhiteSpace(design)) throw new ArgumentException("Design krävs.", nameof(design));
         Theme = theme;
         Design = design;
+        // Blank means "clear it"; trim so an all-spaces nickname doesn't masquerade as set.
+        var trimmed = displayName?.Trim();
+        DisplayName = string.IsNullOrEmpty(trimmed) ? null : trimmed;
         UpdatedAt = DateTimeOffset.UtcNow;
     }
 }

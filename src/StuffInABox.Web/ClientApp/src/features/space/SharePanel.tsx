@@ -4,6 +4,7 @@ import { IconCopy, IconCheck, IconTrash, IconUsers, IconLink } from '@tabler/ico
 import {
   getActiveInvite, createInvite, revokeInvite, getMembers, removeMember,
 } from '../../api/invites'
+import { memberLabel, memberInitials } from './memberDisplay'
 import { useT } from '../../i18n'
 
 function inviteUrl(token: string) {
@@ -127,10 +128,17 @@ export default function SharePanel({ spaceId }: { spaceId: string }) {
                   className="icon-tile icon-tile-accent-tint"
                   style={{ width: 32, height: 32, borderRadius: 'var(--r-sm)', fontSize: 13, fontWeight: 600 }}
                 >
-                  {m.userId.slice(0, 2).toUpperCase()}
+                  {memberInitials(m)}
                 </div>
                 <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontSize: 13.5, fontWeight: 500 }}>{t('space.member')}</div>
+                  <div
+                    style={{
+                      fontSize: 13.5, fontWeight: 500,
+                      overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                    }}
+                  >
+                    {memberLabel(m, t('space.member'))}
+                  </div>
                   <div className="mono" style={{ fontSize: 11, color: 'var(--text-4)' }}>
                     {m.userId.slice(0, 8)}
                   </div>

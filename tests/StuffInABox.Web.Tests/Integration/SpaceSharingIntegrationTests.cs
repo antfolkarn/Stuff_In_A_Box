@@ -97,6 +97,33 @@ public class SpaceSharingIntegrationTests : IClassFixture<WebApplicationFactory<
     }
 
     [Fact]
+    public async Task Members_ShowEmailByDefault_AndNicknameWhenSet()
+    {
+        var owner = await SignInAsync("owner-members@test.se");
+        var sp = await owner.PostAsJsonAsync("/api/v1/spaces", new { name = "Garaget", icon = "ti-car" });
+        var spaceId = (await sp.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("spaceId").GetString()!;
+
+        var inviteResp = await owner.PostAsync($"/api/v1/spaces/{spaceId}/invite", null);
+        var token = (await inviteResp.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("token").GetString();
+
+        var member = await SignInAsync("member-members@test.se");
+        await member.PostAsync($"/api/v1/invites/{token}/accept", null);
+
+        // No nickname yet → the owner sees the member's email.
+        var listed = await owner.GetFromJsonAsync<JsonElement>($"/api/v1/spaces/{spaceId}/members");
+        Assert.Equal(1, listed.GetArrayLength());
+        Assert.Equal("member-members@test.se", listed[0].GetProperty("displayName").GetString());
+
+        // Member sets a nickname → that wins over the email.
+        var put = await member.PutAsJsonAsync("/api/v1/settings",
+            new { theme = "system", design = "standard", displayName = "Stina" });
+        Assert.Equal(HttpStatusCode.OK, put.StatusCode);
+
+        var relisted = await owner.GetFromJsonAsync<JsonElement>($"/api/v1/spaces/{spaceId}/members");
+        Assert.Equal("Stina", relisted[0].GetProperty("displayName").GetString());
+    }
+
+    [Fact]
     public async Task RevokedInvite_CannotBeRedeemed()
     {
         var owner = await SignInAsync("owner-revoke@test.se");

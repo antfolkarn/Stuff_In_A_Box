@@ -24,7 +24,7 @@ public static class ItemEndpoints
         group.MapPost("/", async (int boxNumber, AddItemRequest req, IMediator mediator, CancellationToken ct) =>
         {
             var result = await mediator.Send(new AddItemCommand(boxNumber, req.SpaceId, req.Name, req.Tags), ct);
-            return Results.Created($"/api/boxes/{boxNumber}/items/{result.ItemId}", result);
+            return Results.Created($"{ApiRoutes.V1}/boxes/{boxNumber}/items/{result.ItemId}", result);
         }).WithSummary("Lägg till föremål i låda");
 
         group.MapPatch("/{itemId:guid}", async (Guid itemId, UpdateItemRequest req, IMediator mediator, CancellationToken ct) =>

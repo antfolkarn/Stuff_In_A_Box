@@ -2,7 +2,7 @@
 
 Snabb lägesbild för att fortsätta på en annan dator. För djupare info: [README.md](README.md) och [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
 
-_Senast uppdaterad: 2026-06-21._
+_Senast uppdaterad: 2026-06-23._
 
 ---
 
@@ -17,7 +17,7 @@ cd src/StuffInABox.Web && dotnet run
 # Frontend i dev-läge (valfritt) — http://localhost:5173, proxar /api → 5184
 cd src/StuffInABox.Web/ClientApp && npm install && npm run dev
 ```
-- **Tester:** `dotnet test StuffInABox.slnx` — **90 gröna** (Domain 27, Application 27, Infrastructure 18, Web 18).
+- **Tester:** `dotnet test StuffInABox.slnx` — **106 gröna** (Domain 27, Application 30, Infrastructure 19, Web 30). Frontend: `cd …/ClientApp && npm test` (Vitest, 16 tester).
 - **Bygg SPA till wwwroot:** `cd src/StuffInABox.Web/ClientApp && npm run build`.
 
 ## Färdigt och fungerar
@@ -28,9 +28,12 @@ cd src/StuffInABox.Web/ClientApp && npm install && npm run dev
 - **Villkor & integritetspolicy:** tvåspråkiga sidor i `…/ClientApp/src/features/legal/` (`legalContent.ts` + `LegalView.tsx`), nåbara från login och Inställningar. **Platshållare `[Företagsnamn]`/`[kontakt@…]` ska fyllas i + juristgranskas.**
 - **GDPR:** dataexport (`GET /api/v1/account/export`, JSON) + kontoradering (`DELETE /api/v1/account`) via Inställningar → "Konto & data". Radering kaskaderar allt (utrymmen/lådor/föremål + foton, medlemskap/inbjudningar, sessioner, reset-tokens, inställningar, identitet) och drar med delade utrymmen.
 - **Glömt lösenord:** e-postkonton lagrar nu adressen i klartext (`UserIdentity.Email`) för att kunna mejla återställningslänk. `forgot-password` (alltid 200, läcker inte) + `reset-password` (engångs-token, 1 h, återkallar sessioner). E-post via `IEmailService` — **default loggar bara länken** (`LoggingEmailService`); koppla in riktig leverantör (SMTP/SendGrid/Resend/Supabase) bakom `Email:Provider`. Reset-vy via `#reset=<token>`-deeplink.
-- Bilduppladdning (magic-byte + EXIF-strip via SkiaSharp). **Uppladdningar lagras utanför `wwwroot`** (annars raderas de av SPA-bygget).
+- Bilduppladdning (magic-byte + EXIF-strip via SkiaSharp). **Uppladdningar lagras utanför `wwwroot`** (annars raderas de av SPA-bygget). **Bildåtkomst är signerad:** `/uploads/{nyckel}` serveras via `PhotoEndpoints` och kräver en giltig HMAC-token (`?sig=`, tidsbegränsad via `Storage:UrlValidityMinutes`, default 6 h) — annars 403. Signering i `IPhotoUrlSigner`/`PhotoUrlSigner`, URL byggs i `LocalFileStorageService.GetUrl`.
+- **N+1-frågorna fixade:** `GetSpaces`/`GetBoxesBySpace` räknar föremål per låda via en batch-fråga (`IItemRepository.GetCountsByBoxAsync`, en `GROUP BY` per ägare) i stället för en fråga per låda.
 - **Bildigenkänning (Ollama, lokal):** foto → `{ namn, taggar }` (föremål, färger, material, boktitlar). På som default i dev (`ImageRecognition:Provider=ollama`). Se "Ollama" nedan.
-- **Inställningar i databasen (cross-device):** `UserSettings`-tabell + `GET/PUT /api/v1/settings`. Tema (ljus/mörk/system) + design sparas på kontot och följer användaren. Inställningssida via kugghjuls­ikonen i headern. `localStorage` används som cache; flimmerfri init i `index.html`.
+- **Smeknamn:** användare kan sätta ett valfritt smeknamn (`UserSettings.DisplayName`, Inställningar → Smeknamn). I delningspanelen visas smeknamn → annars e-post → annars generisk etikett. Resolvas batchat i `GetSpaceMembersQueryHandler` (smeknamn från `IUserSettingsRepository.GetDisplayNamesAsync`, e-post från `IUserIdentityRepository.GetEmailsAsync`). Migration: `…_AddUserDisplayName.cs`. Frontend: fält i `SettingsView.tsx`, helper `features/space/memberDisplay.ts`.
+- **Utloggat utseende låst till Pop + ljust:** oinloggat läge visar alltid Pop-designen i ljust läge, oavsett cachade prefs (branding på login/reset). Först vid inloggning laddas användarens prefs (`loadFromServer`). Logiken finns i `settingsStore.ts` (`initialAppearance`/`applyLoggedOut`, persist cachar bara när inloggad) + pre-paint-skriptet i `index.html` (kollar `sessionStorage['sib_token']`). **OBS:** ändras index.html-skriptet måste CSP-hashen uppdateras (se Gotchas). Tema-toggeln på login flippar fortfarande ljust/mörkt transient (sparas inte).
+- **Inställningar i databasen (cross-device):** `UserSettings`-tabell + `GET/PUT /api/v1/settings`. Tema (ljus/mörk/system) + design + smeknamn sparas på kontot och följer användaren. Inställningssida via kugghjuls­ikonen i headern. `localStorage` används som cache; flimmerfri init i `index.html`.
 - **Tre designs (token-nivå):** Standard, Atelier (varmt papper, Manrope/Spectral, skarpa hörn), Pop (lila, Plus Jakarta/Bricolage, runda 20px hörn + 2px-kanter). Växlas via `data-design` + `data-theme` på `<html>`. Form-språk tokeniserat: `--bw`, `--r-xl/lg/md/sm/chip` per design i `src/StuffInABox.Web/ClientApp/src/index.css`.
 - Drift: Dockerfile + docker-compose, GitHub Actions CI, health checks (`/health`, `/health/ready`), Serilog (konsol + roterande fil).
 - **Mobil-förberett:** API:t är versionerat (`/api/v1`, prefix i `ApiRoutes.cs`), fel returnerar maskinläsbara `code` i `ProblemDetails`, och auth stöder native-klienter — `X-Client: mobile` ger refresh-token i body (webben behåller HttpOnly-cookien). OAuth native-flöde/universal links/push är medvetet inte byggt än. Se [docs/PRODUKTION.md](docs/PRODUKTION.md).
@@ -50,9 +53,9 @@ Referensprototyper: `design_handoff_stuffinabox/StuffInABox - Atelier.dc.html` o
 - Installerat på **denna** dator (winget: `Ollama.Ollama`, modell `llava` hämtad). På en annan dator: installera Ollama + `ollama pull llava`, **eller** stäng av med `ImageRecognition__Provider=none` (bash) / `$env:ImageRecognition__Provider='none'` (PowerShell) före `dotnet run`.
 
 ## Gotchas (viktigt)
-- **CSP-hash för tema-skriptet:** inline-skriptet i `ClientApp/index.html` sätter tema+design före paint och tillåts av CSP via en SHA-256-hash i `src/StuffInABox.Web/Middleware/SecurityHeadersMiddleware.cs`. **Nuvarande hash: `sha256-44oUjcpwRxvRj5LHU+Rw2hWiyR5rFJQOISEkuLZAE4U=`.** Ändras skriptet: bygg SPA, ta SHA-256 (base64) av exakt texten mellan `<script>`/`</script>` i `wwwroot/index.html`, och uppdatera konstanten — annars blockerar CSP:n skriptet (flimmer/fel tema).
+- **CSP-hash för tema-skriptet:** inline-skriptet i `ClientApp/index.html` sätter tema+design före paint och tillåts av CSP via en SHA-256-hash i `src/StuffInABox.Web/Middleware/SecurityHeadersMiddleware.cs`. **Nuvarande hash: `sha256-3rsySJz2ymADKD1OT95TaKKPyHvxLoWFfbFzorU+xzU=`.** Ändras skriptet: bygg SPA, ta SHA-256 (base64) av exakt texten mellan `<script>`/`</script>` i `wwwroot/index.html`, och uppdatera konstanten — annars blockerar CSP:n skriptet (flimmer/fel tema).
 - **`.slnx`**, inte `.sln`. `dotnet new sln` skapar `.slnx` som default på denna SDK.
-- **API-bas är `/api/v1`** (`ApiRoutes.cs`) — frontend `client.ts` har `baseURL: '/api/v1'`; refresh-cookiens Path och OAuth-redirect-URIs är också `/api/v1/auth`. Lägger du en endpoint, använd `ApiRoutes.V1`.
+- **API-bas är `/api/v1`** (`ApiRoutes.cs`) — frontend `client.ts` har `baseURL: '/api/v1'`; refresh-cookiens Path och OAuth-redirect-URIs är också `/api/v1/auth`. **Lägger du en endpoint: använd ALLTID `ApiRoutes.V1` i `MapGet`/`MapPost` (och i `Results.Created`-Location), aldrig en hårdkodad `"/api/..."`-sträng.** En endpoint på fel prefix matchar inget API, faller igenom till SPA-fallbacken (`MapFallbackToFile`) och returnerar `index.html` (HTTP 200, `text/html`) — frontend försöker tolka HTML som JSON och visar "ett oväntat fel inträffade", inte ett 404. (Detta bet `labels`/`search`/`recognize` som mappades på `/api/...` utan `/v1`; fixat + regressionstest i `ApiVersionRouteIntegrationTests`.) Kollar du snabbt: oautentiserat ska `…/v1/<rutt>` ge `401`, inte `200 text/html`.
 - **SkiaSharp Linux-assets** finns med (annars kraschar bilduppladdning i container/CI).
 - **Windows PowerShell 5.1** manglar icke-ASCII i `Invoke-RestMethod -Body` och `curl -F` (multipart) ger HTTP 000 — använd .NET `HttpClient` eller integrationstest för svenska/multipart.
 - **NU1903 (SQLite, CVE-2025-6965):** `SQLitePCLRaw.lib.e_sqlite3 2.1.11` (transitivt via EF Core Sqlite) flaggas som high. **Ingen patchad version finns ännu** (advisory: `patched: None`, `<= 2.1.11`, 2.1.11 är senaste). Faktisk risk låg: appen kör enbart parametriserad EF Core/LINQ, ingen rå SQL; CI failar inte på varningen. **Beslut: vänta på uppström** — bumpa så fort SQLitePCLRaw släpper en fix.

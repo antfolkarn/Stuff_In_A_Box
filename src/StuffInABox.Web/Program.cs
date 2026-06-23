@@ -149,13 +149,9 @@ app.UseHttpsRedirection();
 app.UseDefaultFiles();
 app.UseStaticFiles();
 
-// Serve uploaded photos from the external uploads directory at /uploads
+// Uploaded photos are served by MapPhotoEndpoints (signed /uploads/{key}) — not as
+// plain static files — so they aren't world-readable. Ensure the directory exists.
 Directory.CreateDirectory(uploadsPath);
-app.UseStaticFiles(new StaticFileOptions
-{
-    FileProvider = new Microsoft.Extensions.FileProviders.PhysicalFileProvider(uploadsPath),
-    RequestPath = "/uploads",
-});
 
 app.UseCors();
 app.UseRateLimiter();
@@ -170,6 +166,7 @@ app.MapInviteEndpoints();
 app.MapBoxEndpoints();
 app.MapItemEndpoints();
 app.MapRecognitionEndpoints();
+app.MapPhotoEndpoints();
 app.MapSearchEndpoints();
 app.MapLabelEndpoints();
 app.MapSettingsEndpoints();

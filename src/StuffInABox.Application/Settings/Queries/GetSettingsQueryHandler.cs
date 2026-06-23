@@ -13,7 +13,7 @@ public sealed class GetSettingsQueryHandler(
     {
         var settings = await repo.GetAsync(currentUser.UserId.Value, ct);
         return settings is null
-            ? new SettingsDto(SettingsOptions.DefaultTheme, SettingsOptions.DefaultDesign)
-            : new SettingsDto(settings.Theme, settings.Design);
+            ? new SettingsDto(SettingsOptions.DefaultTheme, SettingsOptions.DefaultDesign, null)
+            : new SettingsDto(settings.Theme, settings.Design, settings.DisplayName);
     }
 }

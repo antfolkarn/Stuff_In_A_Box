@@ -13,6 +13,16 @@ public class ItemRepository(AppDbContext db) : IItemRepository
     public async Task<IReadOnlyList<Item>> GetByBoxAsync(BoxNumber boxNumber, UserId ownerId, CancellationToken ct = default) =>
         await db.Items.Where(i => i.BoxNumber == boxNumber && i.OwnerId == ownerId).ToListAsync(ct);
 
+    public async Task<IReadOnlyDictionary<int, int>> GetCountsByBoxAsync(UserId ownerId, CancellationToken ct = default)
+    {
+        var rows = await db.Items
+            .Where(i => i.OwnerId == ownerId)
+            .GroupBy(i => i.BoxNumber)
+            .Select(g => new { BoxNumber = g.Key, Count = g.Count() })
+            .ToListAsync(ct);
+        return rows.ToDictionary(r => r.BoxNumber.Value, r => r.Count);
+    }
+
     public async Task<IReadOnlyList<Item>> GetByOwnerAsync(UserId ownerId, CancellationToken ct = default) =>
         await db.Items.Where(i => i.OwnerId == ownerId).ToListAsync(ct);
 

@@ -14,8 +14,8 @@ public sealed class UpdateSettingsCommandHandler(
     {
         var userId = currentUser.UserId.Value;
         var settings = await repo.GetAsync(userId, ct) ?? UserSettings.CreateDefault(userId);
-        settings.Update(request.Theme, request.Design);
+        settings.Update(request.Theme, request.Design, request.DisplayName);
         await repo.UpsertAsync(settings, ct);
-        return new SettingsDto(settings.Theme, settings.Design);
+        return new SettingsDto(settings.Theme, settings.Design, settings.DisplayName);
     }
 }

@@ -30,7 +30,7 @@ public static class SpaceEndpoints
         group.MapPost("/", async (CreateSpaceCommand cmd, IMediator mediator, CancellationToken ct) =>
         {
             var result = await mediator.Send(cmd, ct);
-            return Results.Created($"/api/spaces/{result.SpaceId}", result);
+            return Results.Created($"{ApiRoutes.V1}/spaces/{result.SpaceId}", result);
         }).WithSummary("Skapa nytt utrymme");
 
         group.MapPatch("/{id:guid}/icon", async (Guid id, UpdateIconRequest req, IMediator mediator, CancellationToken ct) =>

@@ -11,7 +11,7 @@ public static class RecognitionEndpoints
     {
         // Called when a photo is chosen in the add-item sheet, to pre-fill the name
         // and suggest tags. Returns { name: null, tags: [] } when no provider is configured.
-        app.MapPost("/api/recognize", async (IFormFile file, IImageRecognitionService recognizer, CancellationToken ct) =>
+        app.MapPost(ApiRoutes.V1 + "/recognize", async (IFormFile file, IImageRecognitionService recognizer, CancellationToken ct) =>
         {
             using var ms = new MemoryStream();
             await file.CopyToAsync(ms, ct);

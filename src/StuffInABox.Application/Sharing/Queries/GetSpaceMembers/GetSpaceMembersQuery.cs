@@ -9,6 +9,8 @@ public sealed record GetSpaceMembersQuery(Guid SpaceId) : IRequest<IReadOnlyList
 
 public sealed class GetSpaceMembersQueryHandler(
     ISpaceMembershipRepository memberships,
+    IUserSettingsRepository userSettings,
+    IUserIdentityRepository identities,
     ISpaceAccessService access)
     : IRequestHandler<GetSpaceMembersQuery, IReadOnlyList<MemberDto>>
 {
@@ -16,9 +18,18 @@ public sealed class GetSpaceMembersQueryHandler(
     {
         await access.RequireSpaceAsync(request.SpaceId, ownerOnly: true, ct);
         var members = await memberships.GetBySpaceAsync(request.SpaceId, ct);
+
+        // Resolve a display label per member: their nickname, else their email, else null.
+        var ids = members.Select(m => m.UserId.Value).ToList();
+        var nicknames = await userSettings.GetDisplayNamesAsync(ids, ct);
+        var emails = await identities.GetEmailsAsync(ids, ct);
+
         return members
             .OrderBy(m => m.CreatedAt)
-            .Select(m => new MemberDto(m.UserId.Value, m.CreatedAt))
+            .Select(m => new MemberDto(
+                m.UserId.Value,
+                m.CreatedAt,
+                nicknames.GetValueOrDefault(m.UserId.Value) ?? emails.GetValueOrDefault(m.UserId.Value)))
             .ToList();
     }
 }

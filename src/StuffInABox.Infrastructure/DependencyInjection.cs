@@ -50,6 +50,7 @@ public static class DependencyInjection
         // provider) or a real provider added later behind this flag.
         services.AddScoped<IEmailService, Email.LoggingEmailService>();
 
+        services.AddSingleton<IPhotoUrlSigner, PhotoUrlSigner>();
         services.AddScoped<IStorageService, LocalFileStorageService>();
         services.AddSingleton<IImageProcessor, Imaging.SkiaImageProcessor>();
 

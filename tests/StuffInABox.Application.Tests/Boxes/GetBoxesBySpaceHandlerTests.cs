@@ -30,10 +30,8 @@ public class GetBoxesBySpaceHandlerTests
         _boxRepo.Setup(r => r.GetBySpaceAsync(_spaceId, _userId, It.IsAny<CancellationToken>()))
                 .ReturnsAsync(new[] { box2, box1 });
 
-        _itemRepo.Setup(r => r.GetByBoxAsync(box1.Number, _userId, It.IsAny<CancellationToken>()))
-                 .ReturnsAsync(new[] { Item.Create(box1.Number, _userId, "Mössa") });
-        _itemRepo.Setup(r => r.GetByBoxAsync(box2.Number, _userId, It.IsAny<CancellationToken>()))
-                 .ReturnsAsync(Array.Empty<Item>());
+        _itemRepo.Setup(r => r.GetCountsByBoxAsync(_userId, It.IsAny<CancellationToken>()))
+                 .ReturnsAsync(new Dictionary<int, int> { [box1.Number.Value] = 1 });
 
         var handler = new GetBoxesBySpaceQueryHandler(_boxRepo.Object, _itemRepo.Object, _access.Object);
         var result = await handler.Handle(new GetBoxesBySpaceQuery(_spaceId), default);

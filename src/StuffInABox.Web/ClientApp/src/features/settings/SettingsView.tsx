@@ -29,10 +29,18 @@ export default function SettingsView() {
   const design = useSettingsStore((s) => s.design)
   const setTheme = useSettingsStore((s) => s.setTheme)
   const setDesign = useSettingsStore((s) => s.setDesign)
+  const displayName = useSettingsStore((s) => s.displayName)
+  const setDisplayName = useSettingsStore((s) => s.setDisplayName)
   const lang = useI18nStore((s) => s.lang)
   const setLang = useI18nStore((s) => s.setLang)
+  const [nameDraft, setNameDraft] = useState(displayName)
   const [exporting, setExporting] = useState(false)
   const [deleting, setDeleting] = useState(false)
+
+  // Commit the nickname when the field loses focus (avoids a save per keystroke).
+  function commitName() {
+    if (nameDraft.trim() !== displayName) setDisplayName(nameDraft)
+  }
 
   async function handleExport() {
     setExporting(true)
@@ -75,6 +83,23 @@ export default function SettingsView() {
       <div style={{ fontSize: 14, color: 'var(--text-2)', marginTop: 4, marginBottom: 28 }}>
         {t('settings.subtitle')}
       </div>
+
+      {/* Nickname */}
+      <section style={{ marginBottom: 32 }}>
+        <div className="field-label" style={{ marginBottom: 10 }}>{t('settings.displayName')}</div>
+        <input
+          className="input"
+          value={nameDraft}
+          maxLength={40}
+          placeholder={t('settings.displayNamePlaceholder')}
+          onChange={(e) => setNameDraft(e.target.value)}
+          onBlur={commitName}
+          style={{ maxWidth: 320 }}
+        />
+        <div style={{ fontSize: 12.5, color: 'var(--text-4)', marginTop: 8 }}>
+          {t('settings.displayNameNote')}
+        </div>
+      </section>
 
       {/* Theme */}
       <section style={{ marginBottom: 32 }}>

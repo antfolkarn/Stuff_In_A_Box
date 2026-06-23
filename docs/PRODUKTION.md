@@ -3,11 +3,11 @@
 Lägesbild över vad som återstår innan appen kan driftsättas, grundat på en
 genomgång av config, auth, `Program.cs`, `docker-compose.yml` och login-flödet.
 
-Appen är **funktionellt komplett och välbyggd**: Clean Architecture, 90 tester,
-säkerhetsheaders, HSTS, rate limiting och health checks finns redan. Det som
-återstår är mest **drift-config**, ett par **funktionsluckor** och **GDPR**.
+Appen är **funktionellt komplett och välbyggd**: Clean Architecture, 106 backend-tester
+(+ Vitest på frontend), säkerhetsheaders, HSTS, rate limiting och health checks finns
+redan. Det som återstår är mest **drift-config** och ett par **funktionsluckor**.
 
-_Senast uppdaterad: 2026-06-21._
+_Senast uppdaterad: 2026-06-23._
 
 ---
 
@@ -51,10 +51,11 @@ Inga kodändringar — men appen startar inte / fungerar inte korrekt utan dessa
 
 ## 🟢 Design / UX att överväga
 
-- **Medlemmar visas som GUID** i delningspanelen
-  (`ClientApp/src/features/space/SharePanel.tsx`) — "Medlem" + de första 8 tecknen av
-  user-id. Ägaren kan inte se *vem* som gått med. Eftersom ingen e-post/namn lagras
-  skulle detta kräva ett valfritt **visningsnamn/smeknamn**.
+- **Medlemsnamn — ✅ byggt.** Användare kan sätta ett **smeknamn** (Inställningar →
+  Smeknamn, `UserSettings.DisplayName`). I delningspanelen visas smeknamnet, annars
+  e-postadressen, annars en generisk etikett. Ägaren ser alltså *vem* som gått med.
+  (E-postkonton lagrar redan adressen; OAuth-konton utan vare sig smeknamn eller e-post
+  faller tillbaka på den generiska etiketten.)
 - **Designtrohet Atelier/Pop** — bara "alt. 2" (utrymmes-korten) är gjort; resten
   ligger på token-nivå. Dokumenterat i [HANDOFF.md](../HANDOFF.md). Inte en blockerare.
 - **Backend-felmeddelanden** vid bilduppladdning är hårdkodad svenska
@@ -64,10 +65,10 @@ Inga kodändringar — men appen startar inte / fungerar inte korrekt utan dessa
 
 Lågrisk-förbättringar som inte försämrar webben:
 
-- **Fixa N+1-frågorna** (störst effekt) — `GetSpacesQueryHandler` loopar utrymmen →
-  lådor → en separat fråga per låda för föremål. Samma mönster i `Search`/`Labels`.
-  Det här är den verkliga effektivitetsvinsten, **oberoende av vilken databas** som
-  körs. Bör göras snart.
+- **N+1-frågorna — ✅ fixat.** `GetSpaces` och `GetBoxesBySpace` räknade tidigare
+  föremål med en separat fråga per låda. De använder nu en batch-fråga
+  (`IItemRepository.GetCountsByBoxAsync`, en `GROUP BY` per ägare) och summerar i minnet.
+  Vinsten är **oberoende av vilken databas** som körs.
 - **Bredare rate limiting** — idag bara på `/auth/*`; en generös global gräns skyddar
   hela API:t mot missbruk.
 - **ETag / `Cache-Control` på GET-svar** — sparar bandbredd (särskilt mobil) via 304.
@@ -102,7 +103,7 @@ Förmodligen onödigt nu (YAGNI): idempotency-nycklar för POST, "hantera enhete
 
 | Alternativ | Skalning | Säkerhet | Pris (nyckel: **egress**) | Kod-insats |
 |---|---|---|---|---|
-| **Lokal disk** (nu) | 1 instans + volym | Filrättigheter, `/uploads` saknar åtkomstkontroll | $0 | — |
+| **Lokal disk** (nu) | 1 instans + volym | Filrättigheter + signerade `/uploads`-URL:er (HMAC-token, 403 utan) | $0 | — |
 | **Cloudflare R2** | Obegränsad | Signerade URL:er, TLS | Billig lagring, **ingen egress-avgift** ✅ | Liten |
 | **Backblaze B2** | Obegränsad | TLS, signerade URL:er | Billigast lagring | Liten |
 | **Azure Blob / S3** | Obegränsad | Moget, IAM/SAS | Lagring billig men **egress kostar** | Liten |

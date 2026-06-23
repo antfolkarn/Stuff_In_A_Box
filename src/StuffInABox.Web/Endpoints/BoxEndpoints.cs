@@ -32,7 +32,7 @@ public static class BoxEndpoints
         group.MapPost("/", async (CreateBoxCommand cmd, IMediator mediator, CancellationToken ct) =>
         {
             var result = await mediator.Send(cmd, ct);
-            return Results.Created($"/api/boxes/{result.BoxNumber}", result);
+            return Results.Created($"{ApiRoutes.V1}/boxes/{result.BoxNumber}", result);
         }).WithSummary("Skapa ny låda");
 
         group.MapPatch("/{number:int}/space", async (int number, MoveBoxRequest req, IMediator mediator, CancellationToken ct) =>

@@ -3,6 +3,7 @@ import { api } from './client'
 export interface Settings {
   theme: string
   design: string
+  displayName?: string | null
 }
 
 export const getSettings = (): Promise<Settings | null> =>

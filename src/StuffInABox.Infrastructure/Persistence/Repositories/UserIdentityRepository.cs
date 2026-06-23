@@ -13,6 +13,17 @@ public class UserIdentityRepository(AppDbContext db) : IUserIdentityRepository
     public async Task<UserIdentity?> FindByIdAsync(Guid internalUserId, CancellationToken ct = default) =>
         await db.UserIdentities.FirstOrDefaultAsync(u => u.InternalUserId == internalUserId, ct);
 
+    public async Task<IReadOnlyDictionary<Guid, string>> GetEmailsAsync(
+        IReadOnlyCollection<Guid> userIds, CancellationToken ct = default)
+    {
+        if (userIds.Count == 0) return new Dictionary<Guid, string>();
+        var rows = await db.UserIdentities
+            .Where(u => userIds.Contains(u.InternalUserId) && u.Email != null)
+            .Select(u => new { u.InternalUserId, u.Email })
+            .ToListAsync(ct);
+        return rows.ToDictionary(r => r.InternalUserId, r => r.Email!);
+    }
+
     public async Task AddAsync(UserIdentity identity, CancellationToken ct = default)
     {
         await db.UserIdentities.AddAsync(identity, ct);

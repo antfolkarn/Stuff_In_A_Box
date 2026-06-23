@@ -28,6 +28,8 @@ export interface AcceptInviteResult {
 export interface MemberDto {
   userId: string
   joinedAt: string
+  // Nickname, else email, else null (UI falls back to a generic label).
+  displayName: string | null
 }
 
 export interface BoxDto {

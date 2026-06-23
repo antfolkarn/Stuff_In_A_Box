@@ -1,6 +1,6 @@
 namespace StuffInABox.Application.Settings;
 
-public sealed record SettingsDto(string Theme, string Design);
+public sealed record SettingsDto(string Theme, string Design, string? DisplayName);
 
 /// <summary>Allowed values, shared by validation and the default factory.</summary>
 public static class SettingsOptions

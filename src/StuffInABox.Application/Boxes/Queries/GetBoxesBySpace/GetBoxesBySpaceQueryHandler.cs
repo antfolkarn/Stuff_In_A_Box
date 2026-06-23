@@ -14,12 +14,13 @@ public class GetBoxesBySpaceQueryHandler(
         var ownerId = await access.RequireSpaceAsync(request.SpaceId, ct: ct);
         var boxList = await boxes.GetBySpaceAsync(request.SpaceId, ownerId, ct);
 
-        var result = new List<BoxDto>();
-        foreach (var box in boxList.OrderBy(b => b.Number.Value))
-        {
-            var boxItems = await items.GetByBoxAsync(box.Number, ownerId, ct);
-            result.Add(new BoxDto(box.Number.Value, box.Label, box.SpaceId, boxItems.Count));
-        }
-        return result;
+        // One query for all the owner's item counts instead of one per box (avoids N+1).
+        var counts = await items.GetCountsByBoxAsync(ownerId, ct);
+
+        return boxList
+            .OrderBy(b => b.Number.Value)
+            .Select(box => new BoxDto(
+                box.Number.Value, box.Label, box.SpaceId, counts.GetValueOrDefault(box.Number.Value)))
+            .ToList();
     }
 }

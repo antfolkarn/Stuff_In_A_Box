@@ -10,7 +10,7 @@ public static class SearchEndpoints
 {
     public static IEndpointRouteBuilder MapSearchEndpoints(this IEndpointRouteBuilder app)
     {
-        app.MapGet("/api/search", async (string q, IMediator mediator, CancellationToken ct) =>
+        app.MapGet(ApiRoutes.V1 + "/search", async (string q, IMediator mediator, CancellationToken ct) =>
         {
             if (string.IsNullOrWhiteSpace(q))
                 return Results.BadRequest(new { error = "Sökfras krävs." });
