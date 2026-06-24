@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Npgsql;
 using StuffInABox.Application.Common.Interfaces;
 using StuffInABox.Domain.Repositories;
 using StuffInABox.Infrastructure.Persistence;
@@ -24,7 +25,7 @@ public static class DependencyInjection
                 case "postgres":
                 case "postgresql":
                     // Production (e.g. Supabase). Migrations live under Persistence/Migrations.
-                    options.UseNpgsql(config.GetConnectionString("Default"));
+                    options.UseNpgsql(BuildNpgsqlConnectionString(config));
                     break;
                 // To add SQL Server: install Microsoft.EntityFrameworkCore.SqlServer and uncomment:
                 // case "sqlserver":
@@ -81,5 +82,22 @@ public static class DependencyInjection
         services.AddHostedService<TagEnrichmentWorker>();
 
         return services;
+    }
+
+    // When the connection string asks Npgsql to verify the server certificate
+    // (SSL Mode=VerifyCA/VerifyFull) but doesn't point at a CA file, fill in the
+    // bundled Supabase root CA. Lets the connection string stay path-agnostic across
+    // dev and the container — it only needs "SSL Mode=VerifyFull".
+    private static string BuildNpgsqlConnectionString(IConfiguration config)
+    {
+        var csb = new NpgsqlConnectionStringBuilder(config.GetConnectionString("Default"));
+        var verifies = csb.SslMode is SslMode.VerifyCA or SslMode.VerifyFull;
+        if (verifies && string.IsNullOrEmpty(csb.RootCertificate))
+        {
+            var caPath = Path.Combine(AppContext.BaseDirectory, "certs", "prod-ca-2021.crt");
+            if (File.Exists(caPath))
+                csb.RootCertificate = caPath;
+        }
+        return csb.ConnectionString;
     }
 }
