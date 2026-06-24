@@ -29,3 +29,6 @@ Thumbs.db
 
 # Temp-uppackning av design-zip (referensfilerna ligger i design_handoff_stuffinabox/)
 design/extracted/
+
+# Generated EF migration scripts (reproducible via dotnet ef migrations script)
+artifacts/
