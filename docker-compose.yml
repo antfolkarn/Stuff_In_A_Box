@@ -3,20 +3,21 @@ services:
     build: .
     ports:
       - "8080:8080"
+    # All secrets + provider selection come from .env (gitignored). See .env.example.
+    # Missing .env, or a missing Jwt__Secret, fails fast on startup.
+    env_file:
+      - .env
     environment:
       - ASPNETCORE_ENVIRONMENT=Production
-      # Required: set a real secret (min 32 chars) in a local .env file (gitignored).
-      # Generate one with:  openssl rand -base64 32
-      - Jwt__Secret=${JWT_SECRET:?set JWT_SECRET in your .env file}
-      # Persist data, uploads and logs on the mounted volume
-      - ConnectionStrings__Default=Data Source=/data/stuffinabox.db
-      - Storage__LocalPath=/data/uploads
       - Logging__File__Path=/data/logs/stuffinabox-.log
+      # If you run local SQLite + local file storage instead of Postgres/R2, also set:
+      #   ConnectionStrings__Default=Data Source=/data/stuffinabox.db
+      #   Storage__LocalPath=/data/uploads
       # Optional: enable local photo recognition via the ollama service below
       # - ImageRecognition__Provider=ollama
       # - ImageRecognition__Ollama__BaseUrl=http://ollama:11434
     volumes:
-      - sib-data:/data
+      - sib-data:/data  # logs (+ DB/uploads only in the local SQLite/disk mode)
     restart: unless-stopped
 
   # Optional local vision model for photo recognition.

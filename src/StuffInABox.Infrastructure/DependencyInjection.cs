@@ -52,7 +52,13 @@ public static class DependencyInjection
         services.AddScoped<IEmailService, Email.LoggingEmailService>();
 
         services.AddSingleton<IPhotoUrlSigner, PhotoUrlSigner>();
-        services.AddScoped<IStorageService, LocalFileStorageService>();
+        // Storage: "local" disk (default, dev) or "r2"/"s3" object storage (production).
+        var storageProvider = config["Storage:Provider"] ?? "local";
+        if (storageProvider.Equals("r2", StringComparison.OrdinalIgnoreCase)
+            || storageProvider.Equals("s3", StringComparison.OrdinalIgnoreCase))
+            services.AddSingleton<IStorageService, R2StorageService>();
+        else
+            services.AddScoped<IStorageService, LocalFileStorageService>();
         services.AddSingleton<IImageProcessor, Imaging.SkiaImageProcessor>();
 
         // Tagging provider: "tokenizer" (default, zero-dependency) or "claude" (LLM API).

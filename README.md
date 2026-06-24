@@ -118,10 +118,12 @@ Alla värden ligger i `src/StuffInABox.Web/appsettings.json` (hemligheter hör h
 | `Email:Provider` | `log` (default — loggar meddelandet så flöden funkar utan leverantör). Riktig SMTP/SendGrid/Resend/Supabase pluggas in här. |
 | `Jwt:Issuer` / `Jwt:Audience` | JWT issuer/audience. |
 | `Jwt:RefreshDays` | Livslängd för refresh-token (default 7). |
-| `Database:Provider` | `sqlite` (default). Postgres/SQL Server finns förberett i `Infrastructure/DependencyInjection.cs`. |
-| `ConnectionStrings:Default` | Databasens connection string. |
-| `Storage:LocalPath` | Mapp för uppladdade bilder (tom = `wwwroot/uploads`). |
-| `Storage:UrlSigningKey` | HMAC-nyckel för signerade bild-URL:er. Tom = återanvänder `Jwt:Secret`. |
+| `Database:Provider` | `sqlite` (default, dev) eller `postgres` (produktion, t.ex. Supabase). |
+| `ConnectionStrings:Default` | Databasens connection string (SQLite-fil eller Postgres-URI). |
+| `Storage:Provider` | `local` (default, disk) eller `r2`/`s3` (Cloudflare R2 / S3-kompatibel objektlagring). |
+| `Storage:LocalPath` | Mapp för uppladdade bilder i `local`-läge (tom = `wwwroot/uploads`). |
+| `Storage:R2:AccountId` / `:AccessKey` / `:SecretKey` / `:Bucket` | R2-uppgifter i `r2`-läge (eller `Storage:R2:ServiceUrl` i stället för `AccountId`). |
+| `Storage:UrlSigningKey` | HMAC-nyckel för signerade `local`-bild-URL:er. Tom = återanvänder `Jwt:Secret`. |
 | `Storage:UrlValidityMinutes` | Giltighetstid för en signerad bild-URL (default 360 = 6 h). |
 | `Tagging:Provider` | `tokenizer` (default) eller `claude`. |
 | `Tagging:Claude:ApiKey` / `:Model` | Claude API-nyckel och modell (default `claude-haiku-4-5-20251001`). |
