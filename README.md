@@ -28,16 +28,16 @@ Gränssnittet finns på **svenska och engelska** och väljs automatiskt efter we
 | Backend | ASP.NET Core Minimal API (.NET 10), Clean Architecture |
 | API | Versionerat under `/api/v1`; maskinläsbara felkoder; mobilvänlig auth (token i body via `X-Client: mobile`) |
 | CQRS | MediatR 14 (Commands/Queries) + FluentValidation pipeline |
-| Databas | EF Core 10 + SQLite (provider-switch för Postgres/SQL Server) |
+| Databas | EF Core 10 — SQLite (dev) / **PostgreSQL/Supabase** (prod), provider-switch via `Database:Provider` |
 | Auth | JWT (15 min) + refresh-token (HttpOnly-cookie, 7 dagar) + Google/Apple OAuth (PKCE) |
-| Bilder | `IStorageService`-abstraktion (lokal disk nu, molnredo) + SkiaSharp (validering & EXIF-strip) |
+| Bilder | `IStorageService` — lokal disk (dev) / **Cloudflare R2** (prod, presignerade URL:er) + SkiaSharp (validering & EXIF-strip) |
 | Taggning | `ITaggingService` — tokenizer (default) eller Claude API (feature-flagga) |
 | Loggning | Serilog → konsol **och** roterande dagsfil |
 | Frontend | React 18 + TypeScript + Vite, React Query + Zustand |
 | Tema & design | Ljust/mörkt läge + tre designer (persisterat, följer kontot), respekterar OS-inställning |
 | Språk | Svenska + engelska, webbläsardetektering (lätt egen i18n, inga beroenden) |
 | Delning | Delningslänkar per utrymme + medlemskap (ägare-eller-medlem-auktorisering); medlemmar visas med smeknamn, annars e-post |
-| Tester | xUnit + Moq (backend), WebApplicationFactory (integration) — **106 tester** + Vitest (frontend) |
+| Tester | xUnit + Moq (backend), WebApplicationFactory (integration) — **108 tester** + Vitest (frontend) |
 | Drift | Dockerfile (multi-stage) + docker-compose, health checks, GitHub Actions CI |
 
 ---
@@ -119,7 +119,7 @@ Alla värden ligger i `src/StuffInABox.Web/appsettings.json` (hemligheter hör h
 | `Jwt:Issuer` / `Jwt:Audience` | JWT issuer/audience. |
 | `Jwt:RefreshDays` | Livslängd för refresh-token (default 7). |
 | `Database:Provider` | `sqlite` (default, dev) eller `postgres` (produktion, t.ex. Supabase). |
-| `ConnectionStrings:Default` | Databasens connection string (SQLite-fil eller Postgres-URI). |
+| `ConnectionStrings:Default` | Databasens connection string. För Postgres: använd `SSL Mode=VerifyFull` — appen pekar Npgsql på den buntade Supabase-root-CA:n (`certs/prod-ca-2021.crt`) automatiskt, så certet verifieras (MITM-skydd). |
 | `Storage:Provider` | `local` (default, disk) eller `r2`/`s3` (Cloudflare R2 / S3-kompatibel objektlagring). |
 | `Storage:LocalPath` | Mapp för uppladdade bilder i `local`-läge (tom = `wwwroot/uploads`). |
 | `Storage:R2:AccountId` / `:AccessKey` / `:SecretKey` / `:Bucket` | R2-uppgifter i `r2`-läge (eller `Storage:R2:ServiceUrl` i stället för `AccountId`). |
@@ -163,7 +163,7 @@ Backenden POSTar fotot till Ollama (`http://localhost:11434`, modell via `ImageR
 ## Testning
 
 ```bash
-dotnet test StuffInABox.slnx          # alla 106 backend-tester
+dotnet test StuffInABox.slnx          # alla 108 backend-tester
 ```
 
 | Lager | Antal | Vad testas |

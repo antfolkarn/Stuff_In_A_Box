@@ -3,7 +3,7 @@
 Lägesbild över vad som återstår innan appen kan driftsättas, grundat på en
 genomgång av config, auth, `Program.cs`, `docker-compose.yml` och login-flödet.
 
-Appen är **funktionellt komplett och välbyggd**: Clean Architecture, 106 backend-tester
+Appen är **funktionellt komplett och välbyggd**: Clean Architecture, 108 backend-tester
 (+ Vitest på frontend), säkerhetsheaders, HSTS, rate limiting och health checks finns
 redan. Det som återstår är mest **drift-config** och ett par **funktionsluckor**.
 
@@ -15,16 +15,17 @@ _Senast uppdaterad: 2026-06-23._
 
 Inga kodändringar — men appen startar inte / fungerar inte korrekt utan dessa:
 
-- **Riktig `Jwt:Secret`** — `docker-compose.yml` har platshållaren
-  `change-me-to-a-real-secret-min-32-characters`. Sätt en riktig (≥32 tecken) via
-  miljövariabel / secret store.
+- **Riktig `Jwt:Secret`** — ✅ wiring klar: `docker-compose.yml` läser `Jwt__Secret`
+  från `.env` (gitignorerad), och samma namn sätts som ACA-hemlighet. **Kvarstår:** sätt
+  ett riktigt värde (`openssl rand -base64 32`).
 - **CORS + OAuth-redirect för produktionsdomänen** — `appsettings.json` har
   `Cors:Origins = http://localhost:5173` och OAuth-redirect-URI:er pekar på
   `localhost:7094`. Måste bytas till den riktiga domänen.
 - **OAuth-nycklar** — Google/Apple `ClientId`/`Secret` är tomma → de knapparna ger
   bara ett felmeddelande tills de konfigureras. (E-post/lösenord fungerar utan dem.)
-- **Backup av `/data`-volymen** — databas, uppladdningar och loggar ligger där.
-  Ingen automatisk backup finns; sätt upp snapshot/cron.
+- **Backup** — ✅ i praktiken löst av stack-valet: Supabase har automatisk DB-backup,
+  R2 är durabelt. Loggar går till stdout i ACA. (Inget `/data`-volym-beroende kvar i
+  prod-stacken.)
 
 ## 🟡 Funktionsluckor användare lär förvänta sig
 
@@ -108,27 +109,32 @@ Förmodligen onödigt nu (YAGNI): idempotency-nycklar för POST, "hantera enhete
 | **Backblaze B2** | Obegränsad | TLS, signerade URL:er | Billigast lagring | Liten |
 | **Azure Blob / S3** | Obegränsad | Moget, IAM/SAS | Lagring billig men **egress kostar** | Liten |
 
-### Beslut / rekommendation
+### Beslut / status — ✅ GENOMFÖRT (branch `prod-migration`)
 
-- **Databas → Supabase (serverless PostgreSQL).** ✅ *Vald väg.* Gratis vid låg trafik,
-  skalar när det behövs, TLS + automatisk backup utan drift, och EF Core-providern är
-  redan förberedd. (Neon är ett likvärdigt serverless-Postgres-alternativ; Turso är
-  frestande för minimal kodändring men Postgres är mer beprövat med EF Core.)
-- **Bilder → Cloudflare R2.** För en bild-tung app är **egress** (utgående trafik när
-  bilder visas) den stora kostnaden — R2 har **noll egress-avgift**, markant billigare
-  än S3/Azure Blob vid frekvent bildvisning. Backblaze B2 är näst billigast.
-- **SQLite-sårbarheten NU1903** (CVE-2025-6965) löser sig på köpet vid byte till
-  Postgres; tills dess: låg risk, dokumenterad i [HANDOFF.md](../HANDOFF.md).
+Eftersom hosten blev **Azure Container Apps** (stateless, flyktigt filsystem) gjordes
+flytten nu i stället för senare. Allt nedan är **byggt och verifierat live mot Supabase**.
 
-**Migrationsskiss när tröskeln nås:**
-1. Skapa ett Supabase-projekt → sätt `Database:Provider=postgres` +
-   `ConnectionStrings:Default` (installera `Npgsql.EntityFrameworkCore.PostgreSQL`,
-   avkommentera grenen i `DependencyInjection.cs`).
-2. Kör `dotnet ef database update` mot Postgres (migrationerna är providerneutrala —
-   verifiera att inget SQLite-specifikt smugit sig in).
-3. Lägg till en `R2StorageService : IStorageService` (S3-kompatibelt API) och
-   registrera den bakom en `Storage:Provider`-flagga; behåll lokal disk som default.
-4. Flytta befintliga bilder från volymen till R2 (engångs-kopiering).
+- **Databas → Supabase (serverless PostgreSQL), `eu-north-1`/Stockholm.** ✅ Byggt:
+  `Npgsql` + `Database:Provider=postgres` aktiverat. Dev förblir SQLite (`EnsureCreated`);
+  prod kör Postgres (`Migrate`). En Postgres-migrationsuppsättning (`InitialCreate` +
+  `EnableRowLevelSecurity`). Schemat är **applicerat och verifierat mot riktig PG17**.
+- **Säkerhet på DB:n:** **RLS påslaget på alla tabeller** — Supabase exponerar
+  public-schemat via PostgREST/anon-nyckeln, och RLS utan policies nekar den vägen
+  (appen kör som ägare → kringgår RLS). Security-advisorn rapporterar inga fel.
+- **Verifierad TLS:** `SSL Mode=VerifyFull` + buntad Supabase root-CA
+  (`certs/prod-ca-2021.crt`, auto-injicerad av DI) — krypterat *och* MITM-skyddat.
+- **Anslutning:** Session pooler (`aws-1-eu-north-1.pooler.supabase.com:5432`) = gratis
+  IPv4, **inget IPv4-tillägg behövs**.
+- **Bilder → Cloudflare R2.** ✅ Byggt: `R2StorageService : IStorageService` (AWSSDK.S3,
+  presignerade URL:er) bakom `Storage:Provider=r2`. R2 har **noll egress-avgift** —
+  stor besparing för en bild-tung app. Dev = lokal disk. *(Återstår: skapa R2-bucket +
+  API-token och sätta nycklarna.)*
+- **SQLite-sårbarheten NU1903** (CVE-2025-6965) är därmed **löst i prod** (Postgres).
+
+**Återstår för deploy (steg D):** bygg image → push till registry → skapa Container App
+(Sweden Central) → sätt hemligheter (`Jwt__Secret`, `ConnectionStrings__Default`,
+`Storage__Provider=r2` + `Storage__R2__*`, `ASPNETCORE_ENVIRONMENT=Production`) →
+CI-deploy via GitHub Actions. Se [HANDOFF.md §Produktionssättning](../HANDOFF.md).
 
 ---
 

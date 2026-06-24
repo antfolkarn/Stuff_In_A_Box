@@ -2,7 +2,7 @@
 
 Snabb lägesbild för att fortsätta på en annan dator. För djupare info: [README.md](README.md) och [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
 
-_Senast uppdaterad: 2026-06-23._
+_Senast uppdaterad: 2026-06-24._
 
 ---
 
@@ -17,8 +17,31 @@ cd src/StuffInABox.Web && dotnet run
 # Frontend i dev-läge (valfritt) — http://localhost:5173, proxar /api → 5184
 cd src/StuffInABox.Web/ClientApp && npm install && npm run dev
 ```
-- **Tester:** `dotnet test StuffInABox.slnx` — **106 gröna** (Domain 27, Application 30, Infrastructure 19, Web 30). Frontend: `cd …/ClientApp && npm test` (Vitest, 16 tester).
+- **Tester:** `dotnet test StuffInABox.slnx` — **108 gröna** (Domain 27, Application 30, Infrastructure 21, Web 30). Frontend: `cd …/ClientApp && npm test` (Vitest, 16 tester).
 - **Bygg SPA till wwwroot:** `cd src/StuffInABox.Web/ClientApp && npm run build`.
+
+> ⚠️ **Pågående arbete på branch `prod-migration`** (ej mergad till `main`). Se [§Produktionssättning](#produktionssättning--pågående-branch-prod-migration) nedan.
+
+## Produktionssättning — pågående (branch `prod-migration`)
+
+**Vald stack:** Azure Container Apps (Sweden Central) + **Supabase** (serverless Postgres, `eu-north-1`/Stockholm) + **Cloudflare R2** (bilder). Appen är stateless i prod (SQLite-filen + lokala bilder överlever inte ACA:s flyktiga filsystem).
+
+**Klart + verifierat live mot Supabase:**
+- **Postgres-stöd** — `Npgsql` + `Database:Provider=postgres`. Dev förblir SQLite (`EnsureCreated`, ingen Docker krävs); prod kör Postgres (`Migrate`). En enda migrationsuppsättning (Postgres) under `Persistence/Migrations` (`InitialCreate` + `EnableRowLevelSecurity`).
+- **Supabase-databasen är uppsatt:** schema applicerat och verifierat mot riktig PG17. **RLS påslaget på alla tabeller** (Supabase exponerar public-schemat via PostgREST/anon-nyckeln — RLS utan policies nekar den vägen; appen kör som ägare och kringgår RLS). Security-advisorn: inga fel.
+- **R2-bildlagring** — `R2StorageService : IStorageService` (AWSSDK.S3, presignerade URL:er) bakom `Storage:Provider=r2`. Dev = lokal disk.
+- **Verifierad TLS-anslutning** — `SSL Mode=VerifyFull` + buntad Supabase root-CA (`src/StuffInABox.Web/certs/prod-ca-2021.crt`), DI pekar Npgsql på den automatiskt. Bevisat: med CA ansluter den, utan CA avvisas certet.
+- **Verifierad anslutningssträng** (lösenord + ev. snurrad nyckel sätts som hemlighet, aldrig i git):
+  `Host=aws-1-eu-north-1.pooler.supabase.com;Port=5432;Database=postgres;Username=postgres.rkoddewfhjbpjwujzwab;Password=<DB-LÖSENORD>;SSL Mode=VerifyFull`
+  (Session pooler = gratis IPv4; **inget IPv4-tillägg behövs**.)
+
+**Återstår:**
+1. **Cloudflare R2** — skapa bucket + API-token (AccountId/AccessKey/SecretKey). Sätt `Storage:Provider=r2` + nycklarna.
+2. **Steg D — Azure Container Apps-deploy:** bygg image, push till registry, skapa Container App (Sweden Central), sätt hemligheter (`Jwt__Secret`, `ConnectionStrings__Default`, `Storage__*`, `ASPNETCORE_ENVIRONMENT=Production`), CI-deploy via GitHub Actions.
+3. **Config-blockerare kvar:** CORS + OAuth-redirect till prod-domänen; e-postleverantör (annars mejlas ingen återställning); juristgranska villkor/policy + fyll i platshållare.
+4. **Städning:** snurra DB-lösenordet (det användes vid lokal test); rensa ev. testdata i Supabase-DB:n.
+
+**Env-kontrakt** dokumenterat i [.env.example](.env.example) med .NET-native namn (`Jwt__Secret`, `Database__Provider`, `ConnectionStrings__Default`, `Storage__Provider`, `Storage__R2__*`) — funkar både för docker-compose (`env_file`) och som ACA-hemligheter.
 
 ## Färdigt och fungerar
 - Kärna: utrymmen/lådor/föremål (CRUD), sök, etiketter med QR, oföränderliga lådnummer (per ägare).
