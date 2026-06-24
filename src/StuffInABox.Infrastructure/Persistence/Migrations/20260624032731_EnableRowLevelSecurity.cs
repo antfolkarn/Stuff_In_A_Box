@@ -20,6 +20,8 @@ namespace StuffInABox.Infrastructure.Persistence.Migrations
         [
             "Boxes", "Items", "PasswordResetTokens", "RefreshTokens", "SpaceInvites",
             "SpaceMemberships", "Spaces", "UserIdentities", "UserSettings",
+            // EF's own bookkeeping table is also in the PostgREST-exposed public schema.
+            "__EFMigrationsHistory",
         ];
 
         /// <inheritdoc />
