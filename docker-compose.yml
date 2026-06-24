@@ -5,8 +5,9 @@ services:
       - "8080:8080"
     environment:
       - ASPNETCORE_ENVIRONMENT=Production
-      # Required: set a real secret (min 32 chars) before deploying
-      - Jwt__Secret=change-me-to-a-real-secret-min-32-characters
+      # Required: set a real secret (min 32 chars) in a local .env file (gitignored).
+      # Generate one with:  openssl rand -base64 32
+      - Jwt__Secret=${JWT_SECRET:?set JWT_SECRET in your .env file}
       # Persist data, uploads and logs on the mounted volume
       - ConnectionStrings__Default=Data Source=/data/stuffinabox.db
       - Storage__LocalPath=/data/uploads

@@ -10,6 +10,11 @@ src/StuffInABox.Web/ClientApp/dist/
 # Generated SPA build output (reproducible via `npm run build`)
 src/StuffInABox.Web/wwwroot/
 
+# Secrets & local environment overrides (never commit real secrets)
+.env
+.env.*
+!.env.example
+
 # Local data & logs
 *.db
 *.db-shm
