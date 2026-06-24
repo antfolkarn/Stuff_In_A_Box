@@ -125,11 +125,16 @@ builder.Services.AddOpenApi();
 
 var app = builder.Build();
 
-// Migrate database on startup
+// Prepare the database on startup. SQLite (dev/tests) builds the schema straight from
+// the model — no migrations to maintain for the throwaway dev DB. Postgres (production)
+// applies the committed migrations.
 using (var scope = app.Services.CreateScope())
 {
     var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-    db.Database.Migrate();
+    if (db.Database.IsSqlite())
+        db.Database.EnsureCreated();
+    else
+        db.Database.Migrate();
 }
 
 app.UseSerilogRequestLogging();

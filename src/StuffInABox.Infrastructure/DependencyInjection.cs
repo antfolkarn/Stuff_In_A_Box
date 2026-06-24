@@ -21,10 +21,11 @@ public static class DependencyInjection
             var provider = config["Database:Provider"] ?? "sqlite";
             switch (provider.ToLowerInvariant())
             {
-                // To add PostgreSQL: install Npgsql.EntityFrameworkCore.PostgreSQL and uncomment:
-                // case "postgres":
-                //     options.UseNpgsql(config.GetConnectionString("Default"));
-                //     break;
+                case "postgres":
+                case "postgresql":
+                    // Production (e.g. Supabase). Migrations live under Persistence/Migrations.
+                    options.UseNpgsql(config.GetConnectionString("Default"));
+                    break;
                 // To add SQL Server: install Microsoft.EntityFrameworkCore.SqlServer and uncomment:
                 // case "sqlserver":
                 //     options.UseSqlServer(config.GetConnectionString("Default"));
