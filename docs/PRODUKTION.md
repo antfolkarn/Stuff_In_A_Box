@@ -1,31 +1,50 @@
-# Vägen till produktion — StuffInABox
+# Produktion — StuffInABox
 
-Lägesbild över vad som återstår innan appen kan driftsättas, grundat på en
-genomgång av config, auth, `Program.cs`, `docker-compose.yml` och login-flödet.
+StuffInABox är **driftsatt i produktion på Azure App Service**, med all infrastruktur som
+kod (Bicep) under [`infra/`](../infra/). Det här dokumentet beskriver den faktiska
+prod-uppsättningen och vad som återstår.
 
-Appen är **funktionellt komplett och välbyggd**: Clean Architecture, 108 backend-tester
-(+ Vitest på frontend), säkerhetsheaders, HSTS, rate limiting och health checks finns
-redan. Det som återstår är mest **drift-config** och ett par **funktionsluckor**.
-
-_Senast uppdaterad: 2026-06-23._
+_Senast uppdaterad: 2026-06-28._
 
 ---
 
-## 🔴 Måste fixas före produktion (config, inte kod)
+## ✅ I produktion nu (Azure App Service)
 
-Inga kodändringar — men appen startar inte / fungerar inte korrekt utan dessa:
+- **URL:** <https://stuffinabox-andree.azurewebsites.net>
+- **Hosting:** Azure App Service (Linux, .NET 10), SKU **F1 (gratis)** i `swedencentral`.
+  Resursgrupp `rg-stuffinabox-prod`, subscription "Stuff in a Box" (personlig tenant).
+  Provisioneras via Bicep (`infra/main.bicep`, subscription-scope). Deploy av kod separat
+  (bygg SPA → `dotnet publish -r linux-x64` → zip-deploy).
+- **Databas:** **Supabase PostgreSQL** (gratis-tier, Stockholm) via **session pooler**
+  (`aws-1-eu-north-1.pooler.supabase.com:5432`, IPv4). `Database:Provider=postgres`;
+  schemat migreras automatiskt vid start (`Migrate()`). Dev = SQLite (`EnsureCreated`).
+  > ⚠️ Supabases *direkt*-host (`db.<ref>.supabase.co`) är IPv6-only → oåtkomlig från App
+  > Service (som bara når utåt via IPv4). Använd **alltid** session-poolern.
+- **Hemligheter:** **Azure Key Vault** (`kv-stuffinabox-andree`, RBAC). Appens
+  system-assigned managed identity läser DB-sträng, JWT, Brevo-nyckel och OAuth-secrets via
+  **Key Vault-referenser** — inget känsligt i kod, repo eller CI/CD-pipeline.
+- **Inloggning:** e-post/lösenord **med e-postverifiering** (mjuk gating: overifierade
+  blockeras från att skapa utrymmen/inbjudningar), **Google** och **Microsoft**.
+- **E-post:** **Brevo SMTP** (gratis, 300/dygn) via utbytbar `SmtpEmailService` (MailKit)
+  bakom `Email:Provider=smtp`. Skickar verifierings- och återställningsmejl.
+- **CI/CD:** GitHub Actions (`.github/workflows/deploy.yml`) deployar via **OIDC** (ingen
+  lagrad Azure-hemlighet). Engångs-behörighet: `infra/setup-github-oidc.ps1`. Pipelinen
+  hanterar **inga** hemlighetsvärden — de bor i Key Vault.
 
-- **Riktig `Jwt:Secret`** — ✅ wiring klar: `docker-compose.yml` läser `Jwt__Secret`
-  från `.env` (gitignorerad), och samma namn sätts som ACA-hemlighet. **Kvarstår:** sätt
-  ett riktigt värde (`openssl rand -base64 32`).
-- **CORS + OAuth-redirect för produktionsdomänen** — `appsettings.json` har
-  `Cors:Origins = http://localhost:5173` och OAuth-redirect-URI:er pekar på
-  `localhost:7094`. Måste bytas till den riktiga domänen.
-- **OAuth-nycklar** — Google/Apple `ClientId`/`Secret` är tomma → de knapparna ger
-  bara ett felmeddelande tills de konfigureras. (E-post/lösenord fungerar utan dem.)
-- **Backup** — ✅ i praktiken löst av stack-valet: Supabase har automatisk DB-backup,
-  R2 är durabelt. Loggar går till stdout i ACA. (Inget `/data`-volym-beroende kvar i
-  prod-stacken.)
+## ⚠️ Återstår / att tänka på
+
+- **Always-On / kallstart:** F1 saknar Always-On → appen kallstartar efter inaktivitet.
+  Sätt `appServiceSku=B1` (~$13/mån) för att slippa det (krävs även för custom-domän-TLS).
+- **Bildlagring:** kör på **lokal disk** på App Service (`Storage:Provider=local`) — instans-
+  bunden, försvinner vid ominstallation. För durabilitet: Azure Blob (kräver en Blob-provider
+  i appen — finns ej än; `storage.bicep` är förberedd) eller Cloudflare R2 (`R2StorageService`
+  finns redan). Notera även: SkiaSharp på App Service Linux kan behöva extra systembibliotek
+  för bildbearbetning — verifiera en uppladdning.
+- **GitHub-pipeline:** sätt secrets/vars i repot (se `infra/github-oidc-setup.md`) för att
+  aktivera auto-deploy vid push till `main`. (OIDC-behörigheten på Azure-sidan är klar.)
+- **Legal:** fyll i `[Företagsnamn]`/`[kontakt@…]` i `legalContent.ts` + ev. juristgranskning.
+- **Övervakning:** bara Serilog till fil idag; överväg Application Insights / Sentry.
+- **Bredare rate limiting** (idag bara `/auth/*`) och **ETag/Cache-Control** — se nedan.
 
 ## 🟡 Funktionsluckor användare lär förvänta sig
 
@@ -109,32 +128,25 @@ Förmodligen onödigt nu (YAGNI): idempotency-nycklar för POST, "hantera enhete
 | **Backblaze B2** | Obegränsad | TLS, signerade URL:er | Billigast lagring | Liten |
 | **Azure Blob / S3** | Obegränsad | Moget, IAM/SAS | Lagring billig men **egress kostar** | Liten |
 
-### Beslut / status — ✅ GENOMFÖRT (branch `prod-migration`)
+### Beslut / status — ✅ DRIFTSATT
 
-Eftersom hosten blev **Azure Container Apps** (stateless, flyktigt filsystem) gjordes
-flytten nu i stället för senare. Allt nedan är **byggt och verifierat live mot Supabase**.
+Hosten blev **Azure App Service** (inte Container Apps) — enklast för en .NET-monolit som
+serverar sin egen SPA. Se "[I produktion nu](#-i-produktion-nu-azure-app-service)" överst för
+den faktiska uppsättningen. Sammanfattat:
 
-- **Databas → Supabase (serverless PostgreSQL), `eu-north-1`/Stockholm.** ✅ Byggt:
-  `Npgsql` + `Database:Provider=postgres` aktiverat. Dev förblir SQLite (`EnsureCreated`);
-  prod kör Postgres (`Migrate`). En Postgres-migrationsuppsättning (`InitialCreate` +
-  `EnableRowLevelSecurity`). Schemat är **applicerat och verifierat mot riktig PG17**.
-- **Säkerhet på DB:n:** **RLS påslaget på alla tabeller** — Supabase exponerar
-  public-schemat via PostgREST/anon-nyckeln, och RLS utan policies nekar den vägen
-  (appen kör som ägare → kringgår RLS). Security-advisorn rapporterar inga fel.
-- **Verifierad TLS:** `SSL Mode=VerifyFull` + buntad Supabase root-CA
-  (`certs/prod-ca-2021.crt`, auto-injicerad av DI) — krypterat *och* MITM-skyddat.
-- **Anslutning:** Session pooler (`aws-1-eu-north-1.pooler.supabase.com:5432`) = gratis
-  IPv4, **inget IPv4-tillägg behövs**.
-- **Bilder → Cloudflare R2.** ✅ Byggt: `R2StorageService : IStorageService` (AWSSDK.S3,
-  presignerade URL:er) bakom `Storage:Provider=r2`. R2 har **noll egress-avgift** —
-  stor besparing för en bild-tung app. Dev = lokal disk. *(Återstår: skapa R2-bucket +
-  API-token och sätta nycklarna.)*
-- **SQLite-sårbarheten NU1903** (CVE-2025-6965) är därmed **löst i prod** (Postgres).
-
-**Återstår för deploy (steg D):** bygg image → push till registry → skapa Container App
-(Sweden Central) → sätt hemligheter (`Jwt__Secret`, `ConnectionStrings__Default`,
-`Storage__Provider=r2` + `Storage__R2__*`, `ASPNETCORE_ENVIRONMENT=Production`) →
-CI-deploy via GitHub Actions. Se [HANDOFF.md §Produktionssättning](../HANDOFF.md).
+- **Databas → Supabase PostgreSQL** (`eu-north-1`/Stockholm), live via **session pooler**
+  (IPv4). `Npgsql` + `Database:Provider=postgres`; schemat migreras vid start. Dev = SQLite.
+  Migrationsuppsättning: `InitialCreate`, `EnableRowLevelSecurity`, `AddItemEnrichmentStatus`,
+  `AddEmailVerification`.
+- **Säkerhet på DB:n:** **RLS påslaget på alla tabeller** (nekar PostgREST/anon-vägen; appen
+  kör som ägare och kringgår RLS).
+- **TLS:** `SSL Mode=Require;Trust Server Certificate=true` mot poolern. (Poolerns cert kedjar
+  inte till den buntade `prod-ca-2021.crt`, så `VerifyFull` används inte mot poolern — den
+  CA:n gäller direkt-anslutningen, som vi ändå inte kan nå pga IPv6.)
+- **Bilder:** lokal disk i prod just nu. `R2StorageService` (Cloudflare R2, presignerade
+  URL:er, noll egress) finns färdig bakom `Storage:Provider=r2` när durabel lagring behövs.
+- **SQLite-sårbarheten NU1903** (CVE-2025-6965) är **löst i prod** (Postgres).
+- **Hemligheter** i Azure Key Vault (se överst), **inte** som ACA-/container-secrets.
 
 ---
 
@@ -164,10 +176,13 @@ gjorda** så att en mobilstart blir smidig utan att försämra webben:
 
 ---
 
-## Rekommenderad ordning
+## Rekommenderad ordning härifrån
 
-1. **Config-blockerarna** (Jwt-secret, CORS/redirect, OAuth, backup) — krävs, snabbt.
-2. **Besluta e-post-frågan** → lås upp lösenordsåterställning (annars är
-   e-postinloggning bräcklig).
-3. **GDPR: kontoradering + export** — viktigt för svenska användare.
-4. Resten är polish/skalning som kan komma efter lansering.
+Allt under "I produktion nu" är driftsatt och verifierat. Återstående, i prioritet:
+
+1. **Aktivera GitHub-pipelinen** — sätt secrets/vars enligt `infra/github-oidc-setup.md`,
+   så deploy sker automatiskt vid push till `main` (OIDC-behörigheten är redan klar).
+2. **F1 → B1** om kallstarter stör (krävs även för egen domän + TLS).
+3. **Durabel bildlagring** (Azure Blob eller R2) innan appen blir bild-tung.
+4. **Legal-platshållare** i `legalContent.ts` + ev. juristgranskning.
+5. Polish/skalning (övervakning, bredare rate limiting, ETag) efter behov.

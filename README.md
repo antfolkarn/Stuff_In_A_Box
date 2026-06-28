@@ -29,16 +29,17 @@ Gränssnittet finns på **svenska och engelska** och väljs automatiskt efter we
 | API | Versionerat under `/api/v1`; maskinläsbara felkoder; mobilvänlig auth (token i body via `X-Client: mobile`) |
 | CQRS | MediatR 14 (Commands/Queries) + FluentValidation pipeline |
 | Databas | EF Core 10 — SQLite (dev) / **PostgreSQL/Supabase** (prod), provider-switch via `Database:Provider` |
-| Auth | JWT (15 min) + refresh-token (HttpOnly-cookie, 7 dagar) + Google/Apple OAuth (PKCE) |
-| Bilder | `IStorageService` — lokal disk (dev) / **Cloudflare R2** (prod, presignerade URL:er) + SkiaSharp (validering & EXIF-strip) |
-| Taggning | `ITaggingService` — tokenizer (default) eller Claude API (feature-flagga) |
+| Auth | JWT (15 min) + refresh-token (HttpOnly-cookie, 7 dagar); **e-postverifiering** (mjuk gating); OAuth (PKCE): **Google, Microsoft**, Apple (förberedd) |
+| E-post | `IEmailService` — loggande (dev) eller **SMTP/MailKit** (prod, utbytbar; kör Brevo) för verifierings- och återställningsmejl |
+| Bilder | `IStorageService` — lokal disk / **Cloudflare R2** (presignerade URL:er) + SkiaSharp (validering & EXIF-strip) |
+| Igenkänning | **Bulk-fotouppladdning** med bakgrundsigenkänning (max 3 parallellt) via lokal vision-modell (Ollama, t.ex. `gemma3`) som fyller i namn + sökbara taggar; `ITaggingService` (tokenizer/Claude) |
 | Loggning | Serilog → konsol **och** roterande dagsfil |
 | Frontend | React 18 + TypeScript + Vite, React Query + Zustand |
-| Tema & design | Ljust/mörkt läge + tre designer (persisterat, följer kontot), respekterar OS-inställning |
+| Tema & design | Ljust/mörkt läge + **sex designer** (Standard, Atelier, Pop, Nord, Console, Ledger; persisterat, följer kontot), respekterar OS-inställning |
 | Språk | Svenska + engelska, webbläsardetektering (lätt egen i18n, inga beroenden) |
 | Delning | Delningslänkar per utrymme + medlemskap (ägare-eller-medlem-auktorisering); medlemmar visas med smeknamn, annars e-post |
-| Tester | xUnit + Moq (backend), WebApplicationFactory (integration) — **108 tester** + Vitest (frontend) |
-| Drift | Dockerfile (multi-stage) + docker-compose, health checks, GitHub Actions CI |
+| Tester | xUnit + Moq (backend), WebApplicationFactory (integration) — **120+ tester** + Vitest (frontend) |
+| Drift | **Azure App Service** via Bicep IaC ([`infra/`](infra/)), hemligheter i **Azure Key Vault**, **OIDC**-deploy med GitHub Actions; även Dockerfile + docker-compose, health checks |
 
 ---
 
@@ -107,6 +108,23 @@ Appen körs då på http://localhost:8080. Data, uppladdningar och loggar persis
 
 ---
 
+## Produktion (Azure)
+
+Appen är **driftsatt på Azure App Service** med all infrastruktur som kod (Bicep) under
+[`infra/`](infra/) — live på <https://stuffinabox-andree.azurewebsites.net>.
+
+- **Hosting:** App Service (Linux, F1) provisionerat via `infra/main.bicep` (subscription-scope).
+- **Databas:** Supabase PostgreSQL via session pooler (IPv4).
+- **Hemligheter:** **Azure Key Vault** — appens managed identity läser DB-sträng, JWT, e-post-
+  och OAuth-secrets via Key Vault-referenser. Inget känsligt i kod, repo eller pipeline.
+- **E-post:** Brevo SMTP. **Inloggning:** e-post (verifierad), Google, Microsoft.
+- **CI/CD:** GitHub Actions med **OIDC** (`.github/workflows/deploy.yml`).
+
+Detaljer i [docs/PRODUKTION.md](docs/PRODUKTION.md), [infra/README.md](infra/README.md) och
+[infra/github-oidc-setup.md](infra/github-oidc-setup.md).
+
+---
+
 ## Konfiguration
 
 Alla värden ligger i `src/StuffInABox.Web/appsettings.json` (hemligheter hör hemma i user-secrets eller miljövariabler i produktion).
@@ -115,7 +133,8 @@ Alla värden ligger i `src/StuffInABox.Web/appsettings.json` (hemligheter hör h
 |--------|-------------|
 | `Jwt:Secret` | HMAC-nyckel (≥32 tecken). **Måste** sättas — finns i `appsettings.Development.json` för dev. |
 | `App:BaseUrl` | Publik bas-URL för länkar i e-post (t.ex. återställning). Tom = härleds från requesten (sätt i produktion bakom proxy). |
-| `Email:Provider` | `log` (default — loggar meddelandet så flöden funkar utan leverantör). Riktig SMTP/SendGrid/Resend/Supabase pluggas in här. |
+| `Email:Provider` | `log` (default — loggar meddelandet så flöden funkar utan leverantör) eller `smtp` (utbytbar SMTP via MailKit; kör Brevo i prod). |
+| `Email:Smtp:Host` / `:Port` / `:User` / `:Password` / `:From` / `:FromName` / `:UseSsl` | SMTP-uppgifter i `smtp`-läge — funkar med valfri leverantör (Brevo `smtp-relay.brevo.com:587`, Resend, Mailtrap …). |
 | `Jwt:Issuer` / `Jwt:Audience` | JWT issuer/audience. |
 | `Jwt:RefreshDays` | Livslängd för refresh-token (default 7). |
 | `Database:Provider` | `sqlite` (default, dev) eller `postgres` (produktion, t.ex. Supabase). |
@@ -129,7 +148,7 @@ Alla värden ligger i `src/StuffInABox.Web/appsettings.json` (hemligheter hör h
 | `Tagging:Claude:ApiKey` / `:Model` | Claude API-nyckel och modell (default `claude-haiku-4-5-20251001`). |
 | `ImageRecognition:Provider` | `none` (default) eller `ollama` (lokal vision-modell som för-ifyller föremålsnamn). |
 | `ImageRecognition:Ollama:BaseUrl` / `:Model` | Ollama-server (default `http://localhost:11434`) och modell (default `llava`). |
-| `OAuth:Google:*` / `OAuth:Apple:*` | Client-id m.m. Tomt = knapparna ger ett vänligt felmeddelande. |
+| `OAuth:Google:*` / `OAuth:Microsoft:*` / `OAuth:Apple:*` | Client-id/secret/redirect-URI per leverantör. Tomt = knappen ger ett vänligt felmeddelande. (Microsoft använder `common` = personliga + jobb-/skolkonton. I prod ligger secrets i Key Vault.) |
 | `Cors:Origins` | Tillåtna origins för SPA:n. |
 | `Logging:File:Path` | Sökväg för loggfil (default `logs/stuffinabox-.log`, roteras dagligen). |
 | `RateLimiting:AuthPermitLimit` | Tillåtna `/auth/*`-anrop per minut och IP (default 10). |
