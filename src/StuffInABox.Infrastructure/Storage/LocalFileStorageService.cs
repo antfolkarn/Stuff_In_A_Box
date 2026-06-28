@@ -37,6 +37,13 @@ public class LocalFileStorageService(IConfiguration config, IPhotoUrlSigner sign
     // Signed so the photo can't be fetched from /uploads without a valid, expiring token.
     public string GetUrl(string storageKey) => $"/uploads/{storageKey}?sig={signer.Sign(storageKey)}";
 
+    public async Task<byte[]?> GetAsync(string storageKey, CancellationToken ct = default)
+    {
+        var fullPath = Path.Combine(UploadsRoot, storageKey);
+        if (!File.Exists(fullPath)) return null;
+        return await File.ReadAllBytesAsync(fullPath, ct);
+    }
+
     public Task DeleteAsync(string storageKey, CancellationToken ct = default)
     {
         var fullPath = Path.Combine(UploadsRoot, storageKey);

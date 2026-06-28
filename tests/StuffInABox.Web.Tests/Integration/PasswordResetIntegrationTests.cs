@@ -25,6 +25,12 @@ public class PasswordResetIntegrationTests : IClassFixture<WebApplicationFactory
             LastLink = resetLink;
             return Task.CompletedTask;
         }
+
+        public Task SendEmailVerificationAsync(string toEmail, string verifyLink, CancellationToken ct = default)
+        {
+            LastLink = verifyLink;
+            return Task.CompletedTask;
+        }
     }
 
     private readonly WebApplicationFactory<Program> _factory;

@@ -1,29 +1,37 @@
 import { useState, useEffect, useRef } from 'react'
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { IconX, IconCamera, IconLoader2, IconCheck, IconSparkles } from '@tabler/icons-react'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { IconX, IconCamera, IconLoader2, IconCheck, IconAlertTriangle, IconRefresh } from '@tabler/icons-react'
 import { getSpaces } from '../../api/spaces'
 import { getBoxesBySpace, getBoxDetail } from '../../api/boxes'
-import { addItem, uploadItemPhoto } from '../../api/items'
-import { recognizeImage } from '../../api/recognize'
+import { createItemFromPhoto } from '../../api/items'
 import { useUiStore } from '../../store/uiStore'
 import { useT } from '../../i18n'
 
-type PhotoState = 'idle' | 'analyzing' | 'done'
+// Cap concurrent uploads so a big batch of photos can't overload the server (and the
+// background recognition that follows). The server enforces its own cap too.
+const MAX_CONCURRENT = 3
+
+type UploadStatus = 'queued' | 'uploading' | 'done' | 'error'
+
+interface UploadTask {
+  id: string
+  file: File
+  previewUrl: string
+  status: UploadStatus
+  // Destination captured when the photo was picked, so changing the selectors
+  // afterwards doesn't redirect in-flight uploads.
+  boxNumber: number
+  spaceId: string
+}
 
 export default function AddItemSheet() {
   const qc = useQueryClient()
   const { closeAdd, boxNum, spaceId: navSpaceId } = useUiStore()
   const t = useT()
 
-  const [photo, setPhoto] = useState<PhotoState>('idle')
-  const [guess, setGuess] = useState('')
-  const [name, setName] = useState('')
   const [spaceId, setSpaceId] = useState<string>('')
   const [selectedBox, setSelectedBox] = useState<number | null>(boxNum)
-  const [recent, setRecent] = useState<string[]>([])
-  const [photoFile, setPhotoFile] = useState<File | null>(null)
-  const [previewUrl, setPreviewUrl] = useState<string | null>(null)
-  const [detectedTags, setDetectedTags] = useState<string[]>([])
+  const [tasks, setTasks] = useState<UploadTask[]>([])
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   const { data: spaces = [] } = useQuery({ queryKey: ['spaces'], queryFn: getSpaces })
@@ -37,8 +45,7 @@ export default function AddItemSheet() {
   })
 
   // Default the space to the opened box's space, falling back to the current
-  // navigation context, then the first space. When a box was passed in, wait
-  // for its detail so we don't briefly land on the wrong space and lose the box.
+  // navigation context, then the first space.
   useEffect(() => {
     if (spaceId || spaces.length === 0) return
     if (boxNum && boxDetail.isPending) return
@@ -58,84 +65,59 @@ export default function AddItemSheet() {
     setSelectedBox(boxes[0].number)
   }, [boxes, selectedBox])
 
-  // Revoke the object URL when it changes or the sheet closes
+  // Revoke object URLs on unmount
   useEffect(() => {
-    return () => { if (previewUrl) URL.revokeObjectURL(previewUrl) }
-  }, [previewUrl])
+    return () => { tasks.forEach((task) => URL.revokeObjectURL(task.previewUrl)) }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
-  const saveMut = useMutation({
-    mutationFn: async () => {
-      // Pass the photo-derived tags so they're stored and searchable
-      const result = await addItem(selectedBox!, spaceId, name.trim(), detectedTags)
-      // Attach the photo (if any) to the freshly created item
-      if (photoFile) {
-        try {
-          await uploadItemPhoto(selectedBox!, result.itemId, photoFile)
-        } catch {
-          // Photo upload failure shouldn't block the item being saved
-        }
-      }
-      return result
-    },
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['items', selectedBox] })
+  // Drive the upload queue: whenever there's spare capacity and a queued task,
+  // start the next one. Flipping its status re-runs this effect, so the queue
+  // fills up to MAX_CONCURRENT and then drains as uploads finish.
+  useEffect(() => {
+    const active = tasks.filter((task) => task.status === 'uploading').length
+    if (active >= MAX_CONCURRENT) return
+    const next = tasks.find((task) => task.status === 'queued')
+    if (!next) return
+
+    setTasks((ts) => ts.map((t) => (t.id === next.id ? { ...t, status: 'uploading' } : t)))
+    void runUpload(next)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tasks])
+
+  async function runUpload(task: UploadTask) {
+    try {
+      await createItemFromPhoto(task.boxNumber, task.spaceId, task.file)
+      setTasks((ts) => ts.map((t) => (t.id === task.id ? { ...t, status: 'done' } : t)))
+      // The new (placeholder) item shows up immediately; recognition fills it in later.
+      qc.invalidateQueries({ queryKey: ['items', task.boxNumber] })
       qc.invalidateQueries({ queryKey: ['boxes'] })
       qc.invalidateQueries({ queryKey: ['spaces'] })
-    },
-  })
-
-  function onFileSelected(file: File | undefined) {
-    if (!file) return
-    setPhotoFile(file)
-    setPreviewUrl((prev) => {
-      if (prev) URL.revokeObjectURL(prev)
-      return URL.createObjectURL(file)
-    })
-    // Ask the server's recognition service for a name + tags. Returns empty when
-    // no provider is configured (or it fails) — then we just keep the photo.
-    setPhoto('analyzing')
-    recognizeImage(file)
-      .then((result) => {
-        setPhoto('done')
-        setGuess(result.name ?? '')
-        setDetectedTags(result.tags)
-        if (result.name) setName((n) => n || result.name!)
-      })
-      .catch(() => {
-        setPhoto('done')
-        setGuess('')
-        setDetectedTags([])
-      })
+    } catch {
+      setTasks((ts) => ts.map((t) => (t.id === task.id ? { ...t, status: 'error' } : t)))
+    }
   }
 
-  function resetItemFields() {
-    setName('')
-    setPhoto('idle')
-    setGuess('')
-    setDetectedTags([])
-    setPhotoFile(null)
-    setPreviewUrl((prev) => {
-      if (prev) URL.revokeObjectURL(prev)
-      return null
-    })
+  function onFilesSelected(files: FileList | null) {
+    if (!files || !canUpload) return
+    const picked = Array.from(files).map<UploadTask>((file) => ({
+      id: crypto.randomUUID(),
+      file,
+      previewUrl: URL.createObjectURL(file),
+      status: 'queued',
+      boxNumber: selectedBox!,
+      spaceId,
+    }))
+    setTasks((ts) => [...ts, ...picked])
     if (fileInputRef.current) fileInputRef.current.value = ''
   }
 
-  async function handleSaveNext() {
-    if (!canSave) return
-    const saved = name.trim()
-    await saveMut.mutateAsync()
-    setRecent((r) => [saved, ...r])
-    resetItemFields()
+  function retry(id: string) {
+    setTasks((ts) => ts.map((t) => (t.id === id ? { ...t, status: 'queued' } : t)))
   }
 
-  async function handleDone() {
-    if (!canSave) return
-    await saveMut.mutateAsync()
-    closeAdd()
-  }
-
-  const canSave = !!name.trim() && !!spaceId && !!selectedBox
+  const canUpload = !!spaceId && !!selectedBox
+  const hasTasks = tasks.length > 0
 
   return (
     <div
@@ -198,159 +180,7 @@ export default function AddItemSheet() {
         </div>
 
         <div style={{ padding: 20 }}>
-          {/* Hidden file input — the photo zone triggers it */}
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept="image/jpeg,image/png,image/webp"
-            style={{ display: 'none' }}
-            onChange={(e) => onFileSelected(e.target.files?.[0])}
-          />
-
-          {/* Photo zone */}
-          <div
-            className={photo === 'idle' ? 'dashed-tile' : 'hatch-bg'}
-            style={{
-              height: 148,
-              borderRadius: 'var(--r-lg)',
-              display: 'flex',
-              flexDirection: 'column',
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: 6,
-              position: 'relative',
-              overflow: 'hidden',
-              cursor: 'pointer',
-              background: photo === 'done' ? 'color-mix(in srgb, var(--success-bg) 70%, #fff)' : undefined,
-              marginBottom: 18,
-            }}
-            onClick={() => { if (photo !== 'analyzing') fileInputRef.current?.click() }}
-          >
-            {/* Preview thumbnail behind the overlay once a file is chosen */}
-            {previewUrl && photo !== 'idle' && (
-              <img
-                src={previewUrl}
-                alt={t('addItem.previewAlt')}
-                style={{
-                  position: 'absolute',
-                  inset: 0,
-                  width: '100%',
-                  height: '100%',
-                  objectFit: 'cover',
-                  opacity: photo === 'done' ? 0.35 : 0.5,
-                }}
-              />
-            )}
-            {photo === 'idle' && (
-              <>
-                <IconCamera size={30} style={{ color: 'var(--text-3)' }} />
-                <div style={{ fontSize: 14.5, fontWeight: 500 }}>{t('addItem.takePhoto')}</div>
-                <div style={{ fontSize: 12.5, color: 'var(--text-4)' }}>
-                  {t('addItem.recognizeHint')}
-                </div>
-              </>
-            )}
-            {photo === 'analyzing' && (
-              <>
-                <div className="scan-line" />
-                <IconLoader2
-                  size={26}
-                  style={{ color: 'var(--accent)', animation: 'spin 1s linear infinite', position: 'relative' }}
-                />
-                <style>{`@keyframes spin { to { transform: rotate(360deg) } }`}</style>
-                <div style={{ fontSize: 14, fontWeight: 500, position: 'relative' }}>{t('addItem.analyzing')}</div>
-              </>
-            )}
-            {photo === 'done' && (
-              <>
-                <div
-                  style={{
-                    width: 40,
-                    height: 40,
-                    borderRadius: '50%',
-                    background: 'var(--success-text)',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    position: 'relative',
-                  }}
-                >
-                  <IconCheck size={22} color="#fff" />
-                </div>
-                <div style={{ fontSize: 14, color: 'var(--success-text)', position: 'relative' }}>
-                  {guess ? <>{t('addItem.recognized')} <strong>{guess}</strong></> : t('addItem.photoAdded')}
-                </div>
-                <button
-                  onClick={(e) => { e.stopPropagation(); fileInputRef.current?.click() }}
-                  style={{ fontSize: 12.5, color: 'var(--accent)', position: 'relative' }}
-                >
-                  {t('addItem.retake')}
-                </button>
-              </>
-            )}
-          </div>
-
-          {/* Name field */}
-          <div style={{ marginBottom: 18 }}>
-            <div className="field-label">{t('addItem.whatIsIt')}</div>
-            <input
-              className="input"
-              style={{ height: 46, fontWeight: 500 }}
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              placeholder={t('addItem.namePlaceholder')}
-            />
-            <div
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: 5,
-                marginTop: 7,
-                fontSize: 12.5,
-                color: 'var(--text-4)',
-              }}
-            >
-              <IconSparkles size={14} />
-              {t('addItem.autoTagHint')}
-            </div>
-
-            {/* Detected tags from the photo (objects, colours, material, …) */}
-            {detectedTags.length > 0 && (
-              <div style={{ marginTop: 10 }}>
-                <div className="mono" style={{ fontSize: 10, color: 'var(--text-4)', letterSpacing: '0.08em', marginBottom: 6 }}>
-                  {t('addItem.detectedTags')}
-                </div>
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-                  {detectedTags.map((tag) => (
-                    <span
-                      key={tag}
-                      style={{
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                        gap: 4,
-                        padding: '3px 6px 3px 10px',
-                        borderRadius: 'var(--r-chip)',
-                        background: 'var(--accent-9)',
-                        color: 'var(--accent)',
-                        fontSize: 12.5,
-                      }}
-                    >
-                      {tag}
-                      <button
-                        onClick={() => setDetectedTags((tags) => tags.filter((x) => x !== tag))}
-                        aria-label={t('addItem.removeTag', { tag })}
-                        style={{ display: 'flex', color: 'inherit', opacity: 0.7 }}
-                      >
-                        <IconX size={13} />
-                      </button>
-                    </span>
-                  ))}
-                </div>
-              </div>
-            )}
-          </div>
-
-          {/* Destination */}
+          {/* Destination — chosen first so picked photos land in the right box */}
           <div style={{ marginBottom: 18 }}>
             <div className="field-label">{t('addItem.destination')}</div>
             <div className="stack-mobile" style={{ display: 'flex', gap: 8 }}>
@@ -385,29 +215,53 @@ export default function AddItemSheet() {
             </div>
           </div>
 
-          {/* Recents */}
-          {recent.length > 0 && (
-            <div style={{ marginBottom: 18 }}>
-              <div className="field-label">{t('addItem.addedNow')}</div>
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-                {recent.map((r, i) => (
-                  <span
-                    key={i}
-                    style={{
-                      display: 'inline-flex',
-                      alignItems: 'center',
-                      gap: 4,
-                      padding: '4px 10px',
-                      borderRadius: 'var(--r-chip)',
-                      background: 'var(--success-bg)',
-                      color: 'var(--success-text)',
-                      fontSize: 12.5,
-                      fontWeight: 500,
-                    }}
-                  >
-                    <IconCheck size={13} />
-                    {r}
-                  </span>
+          {/* Hidden multi-file input — the photo zone triggers it */}
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/jpeg,image/png,image/webp"
+            multiple
+            style={{ display: 'none' }}
+            onChange={(e) => onFilesSelected(e.target.files)}
+          />
+
+          {/* Photo drop zone */}
+          <div
+            className="dashed-tile"
+            style={{
+              minHeight: 120,
+              borderRadius: 'var(--r-lg)',
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: 6,
+              padding: 16,
+              cursor: canUpload ? 'pointer' : 'not-allowed',
+              opacity: canUpload ? 1 : 0.55,
+              marginBottom: hasTasks ? 16 : 4,
+            }}
+            onClick={() => { if (canUpload) fileInputRef.current?.click() }}
+          >
+            <IconCamera size={30} style={{ color: 'var(--text-3)' }} />
+            <div style={{ fontSize: 14.5, fontWeight: 500 }}>
+              {hasTasks ? t('addItem.addMore') : t('addItem.takePhotos')}
+            </div>
+            <div style={{ fontSize: 12.5, color: 'var(--text-4)', textAlign: 'center', maxWidth: 320 }}>
+              {canUpload ? t('addItem.bulkHint') : t('addItem.pickDestinationFirst')}
+            </div>
+          </div>
+
+          {/* Upload tasks */}
+          {hasTasks && (
+            <div>
+              <div className="mono" style={{ fontSize: 10, color: 'var(--text-4)', letterSpacing: '0.08em', marginBottom: 8 }}>
+                {t('addItem.photosHeading')}
+              </div>
+              <style>{`@keyframes spin { to { transform: rotate(360deg) } }`}</style>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                {tasks.map((task) => (
+                  <UploadRow key={task.id} task={task} onRetry={() => retry(task.id)} />
                 ))}
               </div>
             </div>
@@ -426,23 +280,68 @@ export default function AddItemSheet() {
             gap: 10,
           }}
         >
-          <button
-            className="btn btn-outline"
-            style={{ flex: 1 }}
-            onClick={handleSaveNext}
-            disabled={!canSave || saveMut.isPending}
-          >
-            {t('addItem.saveNext')}
-          </button>
-          <button
-            className="btn btn-accent"
-            style={{ flex: 1 }}
-            onClick={handleDone}
-            disabled={!canSave || saveMut.isPending}
-          >
+          <button className="btn btn-accent" style={{ flex: 1 }} onClick={closeAdd}>
             {t('addItem.done')}
           </button>
         </div>
+      </div>
+    </div>
+  )
+}
+
+function UploadRow({ task, onRetry }: { task: UploadTask; onRetry: () => void }) {
+  const t = useT()
+
+  const statusLabel: Record<UploadStatus, string> = {
+    queued: t('addItem.statusQueued'),
+    uploading: t('addItem.statusUploading'),
+    done: t('addItem.statusDone'),
+    error: t('addItem.statusError'),
+  }
+
+  return (
+    <div
+      style={{
+        display: 'flex',
+        alignItems: 'center',
+        gap: 10,
+        padding: 8,
+        border: 'var(--bw) solid var(--border)',
+        borderRadius: 'var(--r-md)',
+        background: task.status === 'done' ? 'color-mix(in srgb, var(--success-bg) 55%, var(--surface))' : 'var(--surface)',
+      }}
+    >
+      <img
+        src={task.previewUrl}
+        alt=""
+        style={{ width: 40, height: 40, borderRadius: 'var(--r-sm)', objectFit: 'cover', flexShrink: 0 }}
+      />
+      <div style={{ flex: 1, minWidth: 0, fontSize: 13, color: 'var(--text-2)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+        {task.file.name}
+      </div>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0, fontSize: 12.5 }}>
+        {task.status === 'uploading' && (
+          <IconLoader2 size={16} style={{ color: 'var(--accent)', animation: 'spin 1s linear infinite' }} />
+        )}
+        {task.status === 'done' && <IconCheck size={16} style={{ color: 'var(--success-text)' }} />}
+        {task.status === 'error' && <IconAlertTriangle size={16} style={{ color: 'var(--danger-text, #c0392b)' }} />}
+        <span
+          style={{
+            color:
+              task.status === 'done'
+                ? 'var(--success-text)'
+                : task.status === 'error'
+                  ? 'var(--danger-text, #c0392b)'
+                  : 'var(--text-4)',
+          }}
+        >
+          {statusLabel[task.status]}
+        </span>
+        {task.status === 'error' && (
+          <button onClick={onRetry} title={t('addItem.retry')} style={{ display: 'flex', color: 'var(--accent)' }}>
+            <IconRefresh size={15} />
+          </button>
+        )}
       </div>
     </div>
   )

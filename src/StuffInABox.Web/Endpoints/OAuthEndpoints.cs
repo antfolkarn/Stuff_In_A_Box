@@ -10,7 +10,7 @@ namespace StuffInABox.Web.Endpoints;
 public static class OAuthEndpoints
 {
     private const string OAuthCookie = "sib_oauth";
-    private static readonly string[] Providers = ["google", "apple"];
+    private static readonly string[] Providers = ["google", "apple", "microsoft"];
 
     public static IEndpointRouteBuilder MapOAuthEndpoints(this IEndpointRouteBuilder app)
     {

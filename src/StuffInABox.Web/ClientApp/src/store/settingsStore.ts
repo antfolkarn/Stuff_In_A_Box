@@ -3,10 +3,10 @@ import { getSettings, updateSettings } from '../api/settings'
 import { useAuthStore } from './authStore'
 
 export type Theme = 'light' | 'dark' | 'system'
-export type Design = 'standard' | 'atelier' | 'pop'
+export type Design = 'standard' | 'atelier' | 'pop' | 'nord' | 'console' | 'ledger'
 
 // Order only — labels/descriptions live in the i18n dictionary (design.* / theme.*).
-export const DESIGNS: Design[] = ['standard', 'atelier', 'pop']
+export const DESIGNS: Design[] = ['standard', 'atelier', 'pop', 'nord', 'console', 'ledger']
 export const THEMES: Theme[] = ['light', 'dark', 'system']
 
 const THEME_KEY = 'sib_theme'

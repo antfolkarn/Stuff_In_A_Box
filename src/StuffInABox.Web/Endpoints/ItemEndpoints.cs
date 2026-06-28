@@ -1,8 +1,10 @@
 using MediatR;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Routing;
 using StuffInABox.Application.Items.Commands.AddItem;
+using StuffInABox.Application.Items.Commands.CreateItemFromPhoto;
 using StuffInABox.Application.Items.Commands.DeleteItem;
 using StuffInABox.Application.Items.Commands.UpdateItem;
 using StuffInABox.Application.Items.Commands.UploadItemPhoto;
@@ -49,6 +51,20 @@ public static class ItemEndpoints
         })
         .DisableAntiforgery()
         .WithSummary("Ladda upp foto för föremål");
+
+        // Fast bulk path: upload a photo and create the item immediately with a placeholder;
+        // name + tags are filled in by background recognition. The client uploads several of
+        // these in parallel (capped) so a batch of photos goes fast.
+        group.MapPost("/photo", async (int boxNumber, IFormFile file, [FromForm] Guid spaceId, IMediator mediator, CancellationToken ct) =>
+        {
+            using var ms = new MemoryStream();
+            await file.CopyToAsync(ms, ct);
+            var result = await mediator.Send(
+                new CreateItemFromPhotoCommand(boxNumber, spaceId, ms.ToArray(), file.FileName), ct);
+            return Results.Created($"{ApiRoutes.V1}/boxes/{boxNumber}/items/{result.ItemId}", result);
+        })
+        .DisableAntiforgery()
+        .WithSummary("Skapa föremål från foto (igenkänning i bakgrunden)");
 
         return app;
     }

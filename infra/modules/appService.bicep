@@ -1,0 +1,115 @@
+// App Service plan + Linux Web App that hosts the StuffInABox .NET app (which also
+// serves the built SPA from wwwroot).
+//
+// Secrets are NOT passed to this template — they live in Key Vault and are wired in as
+// Key Vault references (@Microsoft.KeyVault(...)). The web app's system-assigned managed
+// identity reads them at runtime (it needs the "Key Vault Secrets User" role on the vault;
+// see keyVault.bicep). So the deploy/pipeline never handles secret values.
+//
+// Prerequisite: the Key Vault named by `keyVaultName` must hold these secrets:
+//   Db-Connection, Jwt-Secret, Email-Smtp-Password, OAuth-Google-ClientSecret,
+//   OAuth-Microsoft-ClientSecret
+
+@description('Azure region for the resources.')
+param location string
+
+@description('Globally-unique web app name (becomes <name>.azurewebsites.net).')
+param appName string
+
+@description('App Service plan SKU. F1 = Free (good for testing), B1 = Basic (~$13/mo), etc.')
+param skuName string = 'F1'
+
+@description('Linux runtime stack for the web app.')
+param linuxFxVersion string = 'DOTNETCORE|10.0'
+
+@description('Public base URL of the app — used for OAuth redirect + email links.')
+param appBaseUrl string
+
+@description('EF database provider: "postgres" (Supabase/Azure) or "sqlite".')
+param databaseProvider string = 'postgres'
+
+@description('Photo storage provider: "local", "r2" or "s3".')
+param storageProvider string = 'local'
+
+@description('Name of the Key Vault holding the app secrets.')
+param keyVaultName string
+
+@description('Brevo SMTP login (an id, not a secret).')
+param brevoSmtpUser string
+
+@description('Verified sender address for outgoing email.')
+param emailFrom string
+
+@description('Google OAuth client id (public identifier).')
+param googleClientId string = ''
+
+@description('Microsoft OAuth client id (public identifier).')
+param microsoftClientId string = ''
+
+// Free/Shared tiers don't support Always On; Basic and up do.
+var supportsAlwaysOn = !contains(['F1', 'FREE', 'D1', 'SHARED'], toUpper(skuName))
+
+// Builds a Key Vault reference (latest version) for an app setting value.
+func kvRef(vault string, secret string) string =>
+  '@Microsoft.KeyVault(VaultName=${vault};SecretName=${secret})'
+
+resource plan 'Microsoft.Web/serverfarms@2023-12-01' = {
+  name: 'plan-${appName}'
+  location: location
+  kind: 'linux'
+  sku: {
+    name: skuName
+  }
+  properties: {
+    reserved: true // required for Linux
+  }
+}
+
+resource site 'Microsoft.Web/sites@2023-12-01' = {
+  name: appName
+  location: location
+  kind: 'app,linux'
+  identity: {
+    type: 'SystemAssigned' // used to read the Key Vault references below
+  }
+  properties: {
+    serverFarmId: plan.id
+    httpsOnly: true
+    siteConfig: {
+      linuxFxVersion: linuxFxVersion
+      alwaysOn: supportsAlwaysOn
+      minTlsVersion: '1.2'
+      ftpsState: 'Disabled'
+      http20Enabled: true
+      appSettings: [
+        { name: 'ASPNETCORE_ENVIRONMENT', value: 'Production' }
+        { name: 'Database__Provider', value: databaseProvider }
+        { name: 'App__BaseUrl', value: appBaseUrl }
+        { name: 'Storage__Provider', value: storageProvider }
+        // --- Secrets: Key Vault references (resolved at runtime by the managed identity) ---
+        { name: 'ConnectionStrings__Default', value: kvRef(keyVaultName, 'Db-Connection') }
+        { name: 'Jwt__Secret', value: kvRef(keyVaultName, 'Jwt-Secret') }
+        { name: 'Email__Smtp__Password', value: kvRef(keyVaultName, 'Email-Smtp-Password') }
+        { name: 'OAuth__Google__ClientSecret', value: kvRef(keyVaultName, 'OAuth-Google-ClientSecret') }
+        { name: 'OAuth__Microsoft__ClientSecret', value: kvRef(keyVaultName, 'OAuth-Microsoft-ClientSecret') }
+        // --- Non-secret config ---
+        { name: 'Email__Provider', value: 'smtp' }
+        { name: 'Email__Smtp__Host', value: 'smtp-relay.brevo.com' }
+        { name: 'Email__Smtp__Port', value: '587' }
+        { name: 'Email__Smtp__User', value: brevoSmtpUser }
+        { name: 'Email__Smtp__From', value: emailFrom }
+        { name: 'Email__Smtp__FromName', value: 'StuffInABox' }
+        { name: 'OAuth__Google__ClientId', value: googleClientId }
+        { name: 'OAuth__Google__RedirectUri', value: '${appBaseUrl}/api/v1/auth/google/callback' }
+        { name: 'OAuth__Microsoft__ClientId', value: microsoftClientId }
+        { name: 'OAuth__Microsoft__RedirectUri', value: '${appBaseUrl}/api/v1/auth/microsoft/callback' }
+      ]
+    }
+  }
+}
+
+@description('System-assigned managed identity principal id (for Key Vault access).')
+output principalId string = site.identity.principalId
+
+@description('Default hostname of the web app.')
+output defaultHostname string = site.properties.defaultHostName

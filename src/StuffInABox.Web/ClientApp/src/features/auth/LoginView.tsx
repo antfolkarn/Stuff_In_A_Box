@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { IconSun, IconMoon, IconStack2Filled, IconBrandGoogle, IconBrandAppleFilled } from '@tabler/icons-react'
+import { IconSun, IconMoon, IconStack2Filled, IconBrandGoogle, IconBrandAppleFilled, IconBrandWindows } from '@tabler/icons-react'
 import { useAuthStore } from '../../store/authStore'
 import { useUiStore } from '../../store/uiStore'
 import { useSettingsStore, resolveTheme } from '../../store/settingsStore'
@@ -7,6 +7,10 @@ import { login, register, forgotPassword } from '../../api/auth'
 import { useT, type MessageKey } from '../../i18n'
 
 type Mode = 'login' | 'signup' | 'forgot'
+
+// Apple sign-in is hidden until it's configured (no Apple Developer setup yet).
+// Flip to true once OAuth:Apple:* is set up to bring the button back.
+const SHOW_APPLE = false
 
 // Maps the OAuth callback error code to a message key; resolved to text at render.
 const OAUTH_ERRORS: Record<string, MessageKey> = {
@@ -147,6 +151,15 @@ export default function LoginView() {
               {t('login.continueGoogle')}
             </button>
             <button
+              className="btn btn-outline"
+              style={{ width: '100%', height: 46, borderRadius: 'var(--r-md)' }}
+              onClick={() => { window.location.href = '/api/v1/auth/microsoft/start' }}
+            >
+              <IconBrandWindows size={18} />
+              {t('login.continueMicrosoft')}
+            </button>
+            {SHOW_APPLE && (
+            <button
               style={{
                 width: '100%',
                 height: 46,
@@ -168,6 +181,7 @@ export default function LoginView() {
               <IconBrandAppleFilled size={18} />
               {t('login.continueApple')}
             </button>
+            )}
           </div>
 
           {/* Divider */}

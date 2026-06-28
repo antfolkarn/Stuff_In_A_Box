@@ -16,6 +16,16 @@ public class UserIdentity
     public string? Email { get; private set; }
     public DateTimeOffset CreatedAt { get; private set; }
 
+    /// <summary>
+    /// When the email address was verified (null = not yet). Only meaningful for the
+    /// "email" provider — OAuth identities are always treated as verified since the
+    /// provider has already verified the address. See <see cref="IsEmailVerified"/>.
+    /// </summary>
+    public DateTimeOffset? EmailVerifiedAt { get; private set; }
+
+    /// <summary>True for OAuth identities, or for email identities that have verified.</summary>
+    public bool IsEmailVerified => Provider != "email" || EmailVerifiedAt is not null;
+
     private UserIdentity()
     {
         Provider = null!;
@@ -28,12 +38,14 @@ public class UserIdentity
         if (string.IsNullOrWhiteSpace(externalId))
             throw new ArgumentException("External ID cannot be empty.", nameof(externalId));
 
+        var now = DateTimeOffset.UtcNow;
         return new UserIdentity
         {
             InternalUserId = Guid.NewGuid(),
             Provider = provider.ToLowerInvariant(),
             ExternalId = externalId,
-            CreatedAt = DateTimeOffset.UtcNow
+            CreatedAt = now,
+            EmailVerifiedAt = now // the OAuth provider has already verified the address
         };
     }
 
@@ -63,6 +75,9 @@ public class UserIdentity
             throw new InvalidOperationException("Password can only be set for email provider.");
         PasswordHash = newHash;
     }
+
+    /// <summary>Marks the email address as verified (idempotent).</summary>
+    public void MarkEmailVerified() => EmailVerifiedAt ??= DateTimeOffset.UtcNow;
 
     private static void ValidateProvider(string provider)
     {

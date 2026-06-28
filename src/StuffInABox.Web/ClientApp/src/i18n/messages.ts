@@ -94,6 +94,7 @@ const sv = {
   'box.itemRemove': 'Ta bort',
   'box.confirmDeleteItem': 'Ta bort "{name}"?',
   'box.viewLarger': 'Visa större',
+  'box.analyzing': 'Analyserar…',
 
   // Add item
   'addItem.title': 'Lägg till en sak',
@@ -116,6 +117,16 @@ const sv = {
   'addItem.addedNow': 'TILLAGDA NU',
   'addItem.saveNext': 'Spara & nästa',
   'addItem.done': 'Klart',
+  'addItem.bulkHint': 'Varje foto blir en egen sak. Namn och taggar fylls i automatiskt i bakgrunden.',
+  'addItem.takePhotos': 'Ta eller välj foton',
+  'addItem.addMore': 'Lägg till fler foton',
+  'addItem.photosHeading': 'FOTON',
+  'addItem.statusQueued': 'I kö',
+  'addItem.statusUploading': 'Laddar upp…',
+  'addItem.statusDone': 'Tillagd',
+  'addItem.statusError': 'Misslyckades',
+  'addItem.retry': 'Försök igen',
+  'addItem.pickDestinationFirst': 'Välj utrymme och låda först',
 
   // Search
   'search.title': 'Sökresultat',
@@ -152,6 +163,7 @@ const sv = {
   'login.loginSubtitle': 'Välkommen tillbaka till ditt register.',
   'login.signupSubtitle': 'Börja hålla reda på var allt finns.',
   'login.continueGoogle': 'Fortsätt med Google',
+  'login.continueMicrosoft': 'Fortsätt med Microsoft',
   'login.continueApple': 'Fortsätt med Apple',
   'login.orEmail': 'eller med e-post',
   'login.email': 'E-post',
@@ -189,6 +201,17 @@ const sv = {
   'reset.invalid': 'Återställningslänken är ogiltig eller har gått ut.',
   'reset.toLogin': 'Till inloggning',
 
+  // E-postverifiering
+  'verify.bannerText': 'Bekräfta din e-post ({email}) för att låsa upp alla funktioner.',
+  'verify.bannerSent': 'Mejl skickat',
+  'verify.resend': 'Skicka igen',
+  'verify.gatedHint': 'Verifiera din e-post först',
+  'verify.verifying': 'Verifierar…',
+  'verify.success': 'Din e-postadress är verifierad!',
+  'verify.continue': 'Fortsätt',
+  'verify.failed': 'Verifieringen misslyckades',
+  'verify.failedHint': 'Länken är ogiltig eller har gått ut. Logga in och skicka ett nytt mejl.',
+
   // Settings
   'settings.back': 'Mina utrymmen',
   'settings.title': 'Mina inställningar',
@@ -222,6 +245,12 @@ const sv = {
   'design.atelier.desc': 'Varmt papper, dämpat',
   'design.pop.label': 'Pop',
   'design.pop.desc': 'Lekfullt och färgstarkt',
+  'design.nord.label': 'Nord',
+  'design.nord.desc': 'Skandinaviskt, lugnt papper',
+  'design.console.label': 'Console',
+  'design.console.desc': 'Mörk terminal, neon',
+  'design.ledger.label': 'Ledger',
+  'design.ledger.desc': 'Serif på kraftpapper',
 
   // Error boundary
   'error.title': 'Något gick fel',
@@ -318,6 +347,7 @@ const en: Record<MessageKey, string> = {
   'box.itemRemove': 'Remove',
   'box.confirmDeleteItem': 'Remove "{name}"?',
   'box.viewLarger': 'View larger',
+  'box.analyzing': 'Analysing…',
 
   // Add item
   'addItem.title': 'Add an item',
@@ -340,6 +370,16 @@ const en: Record<MessageKey, string> = {
   'addItem.addedNow': 'ADDED JUST NOW',
   'addItem.saveNext': 'Save & next',
   'addItem.done': 'Done',
+  'addItem.bulkHint': 'Each photo becomes its own item. The name and tags are filled in automatically in the background.',
+  'addItem.takePhotos': 'Take or choose photos',
+  'addItem.addMore': 'Add more photos',
+  'addItem.photosHeading': 'PHOTOS',
+  'addItem.statusQueued': 'Queued',
+  'addItem.statusUploading': 'Uploading…',
+  'addItem.statusDone': 'Added',
+  'addItem.statusError': 'Failed',
+  'addItem.retry': 'Try again',
+  'addItem.pickDestinationFirst': 'Pick a space and box first',
 
   // Search
   'search.title': 'Search results',
@@ -376,6 +416,7 @@ const en: Record<MessageKey, string> = {
   'login.loginSubtitle': 'Welcome back to your index.',
   'login.signupSubtitle': 'Start keeping track of where everything is.',
   'login.continueGoogle': 'Continue with Google',
+  'login.continueMicrosoft': 'Continue with Microsoft',
   'login.continueApple': 'Continue with Apple',
   'login.orEmail': 'or with email',
   'login.email': 'Email',
@@ -413,6 +454,17 @@ const en: Record<MessageKey, string> = {
   'reset.invalid': 'The reset link is invalid or has expired.',
   'reset.toLogin': 'Go to log in',
 
+  // Email verification
+  'verify.bannerText': 'Confirm your email ({email}) to unlock all features.',
+  'verify.bannerSent': 'Email sent',
+  'verify.resend': 'Resend',
+  'verify.gatedHint': 'Verify your email first',
+  'verify.verifying': 'Verifying…',
+  'verify.success': 'Your email address is verified!',
+  'verify.continue': 'Continue',
+  'verify.failed': 'Verification failed',
+  'verify.failedHint': 'The link is invalid or has expired. Log in and send a new email.',
+
   // Settings
   'settings.back': 'My spaces',
   'settings.title': 'My settings',
@@ -446,6 +498,12 @@ const en: Record<MessageKey, string> = {
   'design.atelier.desc': 'Warm paper, muted',
   'design.pop.label': 'Pop',
   'design.pop.desc': 'Playful and colourful',
+  'design.nord.label': 'Nord',
+  'design.nord.desc': 'Nordic, calm paper',
+  'design.console.label': 'Console',
+  'design.console.desc': 'Dark terminal, neon',
+  'design.ledger.label': 'Ledger',
+  'design.ledger.desc': 'Editorial serif on kraft',
 
   // Error boundary
   'error.title': 'Something went wrong',

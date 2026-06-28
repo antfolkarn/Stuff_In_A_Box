@@ -5,6 +5,8 @@ import { useSettingsStore } from './store/settingsStore'
 import { useT } from './i18n'
 import LoginView from './features/auth/LoginView'
 import ResetPasswordView from './features/auth/ResetPasswordView'
+import VerifyEmailView from './features/auth/VerifyEmailView'
+import VerifyEmailBanner from './features/auth/VerifyEmailBanner'
 import LegalView from './features/legal/LegalView'
 import AppHeader from './shared/components/AppHeader'
 import HomeView from './features/home/HomeView'
@@ -21,7 +23,7 @@ export default function App() {
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated)
   const ready = useAuthStore((s) => s.ready)
   const bootstrap = useAuthStore((s) => s.bootstrap)
-  const { view, query, addOpen, pendingInvite, pendingReset, legal } = useUiStore()
+  const { view, query, addOpen, pendingInvite, pendingReset, pendingVerify, legal } = useUiStore()
   // Subscribing here ensures the settings store initializes (and applies the saved
   // theme + design) before the first paint, including on the login/loading screens.
   useSettingsStore((s) => s.theme)
@@ -52,6 +54,9 @@ export default function App() {
   // A password-reset link takes priority over the login gate (works signed-out too).
   if (pendingReset) return <ResetPasswordView token={pendingReset} />
 
+  // An email-verification link likewise works regardless of sign-in state.
+  if (pendingVerify) return <VerifyEmailView token={pendingVerify} />
+
   // Legal pages are reachable signed-out (from login) and signed-in (from settings).
   if (legal) return <LegalView page={legal} />
 
@@ -63,6 +68,7 @@ export default function App() {
     <div className="app-layout">
       <AppHeader />
       <main className="main-content">
+        <VerifyEmailBanner />
         {showSearch ? (
           <SearchView />
         ) : view === 'settings' ? (

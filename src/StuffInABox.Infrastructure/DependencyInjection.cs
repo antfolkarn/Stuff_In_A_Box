@@ -46,11 +46,17 @@ public static class DependencyInjection
         services.AddScoped<IUserIdentityRepository, UserIdentityRepository>();
         services.AddScoped<IRefreshTokenRepository, RefreshTokenRepository>();
         services.AddScoped<IPasswordResetTokenRepository, PasswordResetTokenRepository>();
+        services.AddScoped<IEmailVerificationTokenRepository, EmailVerificationTokenRepository>();
         services.AddScoped<IUserSettingsRepository, UserSettingsRepository>();
 
         // Email: "log" (default — writes the message to the log so flows work without a
-        // provider) or a real provider added later behind this flag.
-        services.AddScoped<IEmailService, Email.LoggingEmailService>();
+        // provider) or "smtp" (any SMTP provider, configured via Email:Smtp:*). Provider-
+        // agnostic, so switching email services is a config change, not a code change.
+        var emailProvider = config["Email:Provider"] ?? "log";
+        if (emailProvider.Equals("smtp", StringComparison.OrdinalIgnoreCase))
+            services.AddScoped<IEmailService, Email.SmtpEmailService>();
+        else
+            services.AddScoped<IEmailService, Email.LoggingEmailService>();
 
         services.AddSingleton<IPhotoUrlSigner, PhotoUrlSigner>();
         // Storage: "local" disk (default, dev) or "r2"/"s3" object storage (production).
@@ -80,6 +86,11 @@ public static class DependencyInjection
         services.AddSingleton<EnrichmentQueue>();
         services.AddSingleton<IEnrichmentQueue>(sp => sp.GetRequiredService<EnrichmentQueue>());
         services.AddHostedService<TagEnrichmentWorker>();
+
+        // Background photo recognition (name + tags), processed with bounded concurrency.
+        services.AddSingleton<ImageRecognitionQueue>();
+        services.AddSingleton<IImageRecognitionQueue>(sp => sp.GetRequiredService<ImageRecognitionQueue>());
+        services.AddHostedService<ImageRecognitionWorker>();
 
         return services;
     }

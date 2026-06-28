@@ -2,6 +2,7 @@ using System.Security.Cryptography;
 using System.Text;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.Extensions.Configuration;
 using StuffInABox.Application.Common.Interfaces;
@@ -42,6 +43,19 @@ public static class AuthEndpoints
             .AllowAnonymous()
             .WithSummary("Återställ lösenord med token");
 
+        group.MapPost("/verify-email", VerifyEmailAsync)
+            .AllowAnonymous()
+            .WithSummary("Verifiera e-postadress med token");
+
+        group.MapPost("/resend-verification", ResendVerificationAsync)
+            .RequireAuthorization()
+            .WithSummary("Skicka nytt verifieringsmejl");
+
+        group.MapGet("/me", MeAsync)
+            .RequireAuthorization()
+            .DisableRateLimiting() // called on load; must not consume the auth limiter
+            .WithSummary("Aktuell användares konto- och verifieringsstatus");
+
         return app;
     }
 
@@ -49,7 +63,10 @@ public static class AuthEndpoints
         RegisterRequest req,
         IUserIdentityRepository repo,
         IRefreshTokenRepository refreshRepo,
+        IEmailVerificationTokenRepository verifyRepo,
+        IEmailService email,
         JwtTokenService jwt,
+        IConfiguration config,
         HttpContext ctx,
         CancellationToken ct)
     {
@@ -61,6 +78,9 @@ public static class AuthEndpoints
         var passwordHash = BCrypt.Net.BCrypt.HashPassword(req.Password);
         var identity = UserIdentity.CreateEmail(externalId, passwordHash, req.Email.Trim());
         await repo.AddAsync(identity, ct);
+
+        // Send the verification email (best-effort — registration still succeeds + logs in).
+        await SendVerificationEmailAsync(identity, verifyRepo, email, config, ctx, ct);
 
         var (token, rawRefresh) = await TokenIssuer.IssueAsync(identity.GetUserId(), jwt, refreshRepo, ctx, ct);
         return TokenResult(ctx, token, rawRefresh);
@@ -193,6 +213,95 @@ public static class AuthEndpoints
         return Results.Ok();
     }
 
+    private static async Task<IResult> VerifyEmailAsync(
+        VerifyEmailRequest req,
+        IUserIdentityRepository userRepo,
+        IEmailVerificationTokenRepository verifyRepo,
+        CancellationToken ct)
+    {
+        if (string.IsNullOrWhiteSpace(req.Token))
+            return Results.BadRequest(new { code = "invalid_token", error = "Verifieringslänken är ogiltig eller har gått ut." });
+
+        var stored = await verifyRepo.FindByHashAsync(JwtTokenService.HashRefreshToken(req.Token), ct);
+        if (stored is null || !stored.IsActive(DateTimeOffset.UtcNow))
+            return Results.BadRequest(new { code = "invalid_token", error = "Verifieringslänken är ogiltig eller har gått ut." });
+
+        var identity = await userRepo.FindByIdAsync(stored.UserId, ct);
+        if (identity is null)
+            return Results.BadRequest(new { code = "invalid_token", error = "Verifieringslänken är ogiltig eller har gått ut." });
+
+        identity.MarkEmailVerified();
+        await userRepo.UpdateAsync(identity, ct);
+
+        stored.Use(DateTimeOffset.UtcNow);
+        await verifyRepo.UpdateAsync(stored, ct);
+        await verifyRepo.InvalidateAllForUserAsync(identity.InternalUserId, ct);
+
+        return Results.Ok();
+    }
+
+    private static async Task<IResult> ResendVerificationAsync(
+        ICurrentUserService currentUser,
+        IUserIdentityRepository userRepo,
+        IEmailVerificationTokenRepository verifyRepo,
+        IEmailService email,
+        IConfiguration config,
+        HttpContext ctx,
+        CancellationToken ct)
+    {
+        var identity = await userRepo.FindByIdAsync(currentUser.UserId.Value, ct);
+        // Only send when there's something to verify — but always 200 (no info leak).
+        if (identity is not null && !identity.IsEmailVerified && !string.IsNullOrEmpty(identity.Email))
+            await SendVerificationEmailAsync(identity, verifyRepo, email, config, ctx, ct);
+
+        return Results.Ok();
+    }
+
+    private static async Task<IResult> MeAsync(
+        ICurrentUserService currentUser,
+        IUserIdentityRepository userRepo,
+        CancellationToken ct)
+    {
+        var identity = await userRepo.FindByIdAsync(currentUser.UserId.Value, ct);
+        if (identity is null) return Results.Unauthorized();
+
+        return Results.Ok(new
+        {
+            provider = identity.Provider,
+            email = identity.Email,
+            emailVerified = identity.IsEmailVerified,
+        });
+    }
+
+    // Issues a fresh single-use verification token and emails the #verify deep link.
+    private static async Task SendVerificationEmailAsync(
+        UserIdentity identity,
+        IEmailVerificationTokenRepository verifyRepo,
+        IEmailService email,
+        IConfiguration config,
+        HttpContext ctx,
+        CancellationToken ct)
+    {
+        if (string.IsNullOrEmpty(identity.Email)) return;
+
+        await verifyRepo.InvalidateAllForUserAsync(identity.InternalUserId, ct);
+
+        var rawToken = JwtTokenService.GenerateRefreshTokenRaw();
+        var entity = EmailVerificationToken.Issue(
+            identity.InternalUserId, JwtTokenService.HashRefreshToken(rawToken), TimeSpan.FromHours(24));
+        await verifyRepo.AddAsync(entity, ct);
+
+        await email.SendEmailVerificationAsync(identity.Email, BuildVerifyLink(config, ctx, rawToken), ct);
+    }
+
+    private static string BuildVerifyLink(IConfiguration config, HttpContext ctx, string token)
+    {
+        var baseUrl = config["App:BaseUrl"];
+        if (string.IsNullOrWhiteSpace(baseUrl))
+            baseUrl = $"{ctx.Request.Scheme}://{ctx.Request.Host}";
+        return $"{baseUrl.TrimEnd('/')}/#verify={token}";
+    }
+
     // Reset links point at the SPA's #reset deep link. Prefer a configured public base
     // URL (correct behind a reverse proxy); fall back to the request's own origin.
     private static string BuildResetLink(IConfiguration config, HttpContext ctx, string token)
@@ -217,4 +326,5 @@ public static class AuthEndpoints
     private record LoginRequest(string Email, string Password);
     private record ForgotPasswordRequest(string Email);
     private record ResetPasswordRequest(string Token, string Password);
+    private record VerifyEmailRequest(string Token);
 }

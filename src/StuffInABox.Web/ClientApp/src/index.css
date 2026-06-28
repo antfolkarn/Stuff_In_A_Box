@@ -1,4 +1,6 @@
 @import url('https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&family=Manrope:wght@400;500;600;700&family=Spectral:ital,wght@0,400;0,500;0,600;1,400&family=Space+Mono:wght@400;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700;12..96,800&display=swap');
+/* Fonts for the Nord / Console / Ledger designs */
+@import url('https://fonts.googleapis.com/css2?family=Familjen+Grotesk:wght@400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&family=DM+Serif+Display:ital@0;1&family=Newsreader:opsz,wght@6..72,400;6..72,500;6..72,600&display=swap');
 
 :root {
   --accent: #2F63E6;
@@ -184,6 +186,191 @@ html[data-design='pop'][data-theme='dark'] {
   --hatch-base: #271E30;
   --hatch-line: rgba(255, 255, 255, 0.06);
   color-scheme: dark;
+}
+
+/* --- Nord: calm Scandinavian paper, terracotta accent --- */
+html[data-design='nord'] {
+  --accent: #9C4A2F;
+  --bg: #F4F3EF;
+  --surface: #FCFBF9;
+  --text: #1B1C1A;
+  --text-2: #74756F;
+  --text-3: #8C8D85;
+  --text-4: #A7A89F;
+  --text-5: #C2C2BA;
+  --text-6: #DBDAD2;
+  --tile: #ECEBE5;
+  --tile-hover: #E6E5DD;
+  --border: rgba(27, 28, 26, 0.11);
+  --border-2: rgba(27, 28, 26, 0.16);
+  --border-3: rgba(27, 28, 26, 0.22);
+  --shadow-card: 0 1px 2px rgba(27, 28, 26, 0.05);
+  --shadow-hover: 0 14px 36px rgba(27, 28, 26, 0.10);
+  --shadow-modal: 0 18px 50px rgba(27, 28, 26, 0.24);
+  --hatch-base: #ECEBE5;
+  --hatch-line: rgba(27, 28, 26, 0.06);
+  --font-ui: 'Familjen Grotesk', system-ui, sans-serif;
+  --font-mono: 'Space Mono', monospace;
+  --font-display: 'Familjen Grotesk', system-ui, sans-serif;
+  /* Airy, editorial form language */
+  --bw: 1px;
+  --r-xl: 14px;
+  --r-lg: 12px;
+  --r-md: 10px;
+  --r-sm: 7px;
+  --r-chip: 6px;
+}
+html[data-design='nord'][data-theme='dark'] {
+  --bg: #17170F;
+  --surface: #201E18;
+  --text: #ECE9E1;
+  --text-2: #B0AB9F;
+  --text-3: #8E8A7E;
+  --text-4: #767163;
+  --text-5: #57534A;
+  --text-6: #3A372F;
+  --tile: #28251E;
+  --tile-hover: #2F2B23;
+  --border: rgba(255, 255, 255, 0.10);
+  --border-2: rgba(255, 255, 255, 0.14);
+  --border-3: rgba(255, 255, 255, 0.18);
+  --accent-9: color-mix(in srgb, var(--accent) 26%, var(--surface));
+  --accent-11: color-mix(in srgb, var(--accent) 30%, var(--surface));
+  --accent-22: color-mix(in srgb, var(--accent) 40%, var(--surface));
+  --hatch-base: #28251E;
+  --hatch-line: rgba(255, 255, 255, 0.06);
+  color-scheme: dark;
+}
+
+/* --- Console: dark terminal with neon accent (its native, dark look); a light
+   variant is derived so the light/dark toggle still works. --- */
+html[data-design='console'] {
+  --accent: #0FA678;
+  --bg: #F2F5F4;
+  --surface: #FFFFFF;
+  --text: #14171D;
+  --text-2: #5A6270;
+  --text-3: #767E8B;
+  --text-4: #939AA6;
+  --text-5: #B6BCC5;
+  --text-6: #D6DAE0;
+  --tile: #EAEEEE;
+  --tile-hover: #E3E8E8;
+  --border: rgba(20, 24, 30, 0.10);
+  --border-2: rgba(20, 24, 30, 0.14);
+  --border-3: rgba(20, 24, 30, 0.18);
+  --shadow-card: 0 1px 2px rgba(20, 24, 30, 0.05);
+  --shadow-hover: 0 12px 30px rgba(20, 24, 30, 0.10);
+  --shadow-modal: 0 18px 50px rgba(20, 24, 30, 0.26);
+  --hatch-base: #EAEEEE;
+  --hatch-line: rgba(20, 24, 30, 0.05);
+  --font-ui: 'Space Grotesk', system-ui, sans-serif;
+  --font-mono: 'JetBrains Mono', monospace;
+  --font-display: 'Space Grotesk', system-ui, sans-serif;
+  /* Techy, slightly rounded form language */
+  --bw: 1px;
+  --r-xl: 14px;
+  --r-lg: 13px;
+  --r-md: 9px;
+  --r-sm: 8px;
+  --r-chip: 6px;
+}
+html[data-design='console'][data-theme='dark'] {
+  --accent: #5FE3B3;
+  --bg: #0C0E12;
+  --surface: #14171D;
+  --text: #EAEDF2;
+  --text-2: #8B93A1;
+  --text-3: #79818F;
+  --text-4: #5A6271;
+  --text-5: #454C59;
+  --text-6: #2C323C;
+  --tile: #1B1F27;
+  --tile-hover: #222732;
+  --border: rgba(255, 255, 255, 0.08);
+  --border-2: rgba(255, 255, 255, 0.12);
+  --border-3: rgba(255, 255, 255, 0.16);
+  --accent-9: color-mix(in srgb, var(--accent) 22%, var(--surface));
+  --accent-11: color-mix(in srgb, var(--accent) 26%, var(--surface));
+  --accent-22: color-mix(in srgb, var(--accent) 34%, var(--surface));
+  --shadow-card: 0 1px 2px rgba(0, 0, 0, 0.40);
+  --shadow-hover: 0 12px 30px rgba(0, 0, 0, 0.55);
+  --shadow-modal: 0 18px 50px rgba(0, 0, 0, 0.65);
+  --hatch-base: #1B1F27;
+  --hatch-line: rgba(255, 255, 255, 0.05);
+  color-scheme: dark;
+}
+/* Console's neon accent needs dark text on filled accent surfaces (per its design) */
+html[data-design='console'] .btn-accent,
+html[data-design='console'] .icon-tile-accent {
+  color: #06281D;
+}
+/* Subtle terminal grid backdrop */
+html[data-design='console'] body {
+  background-image:
+    linear-gradient(var(--hatch-line) 1px, transparent 1px),
+    linear-gradient(90deg, var(--hatch-line) 1px, transparent 1px);
+  background-size: 46px 46px;
+  background-position: center top;
+}
+
+/* --- Ledger: editorial serif on kraft paper, stamp-red accent --- */
+html[data-design='ledger'] {
+  --accent: #A8332A;
+  --bg: #E9E1CF;
+  --surface: #FBF6E9;
+  --text: #2A2117;
+  --text-2: #6F6450;
+  --text-3: #897C64;
+  --text-4: #9C9075;
+  --text-5: #B9AE92;
+  --text-6: #D2C7AC;
+  --tile: #E4DAC2;
+  --tile-hover: #DED3B8;
+  --border: rgba(42, 33, 23, 0.20);
+  --border-2: rgba(42, 33, 23, 0.26);
+  --border-3: rgba(42, 33, 23, 0.34);
+  --shadow-card: 0 1px 2px rgba(42, 33, 23, 0.06);
+  --shadow-hover: 0 14px 34px rgba(42, 33, 23, 0.12);
+  --shadow-modal: 0 18px 50px rgba(42, 33, 23, 0.28);
+  --hatch-base: #E4DAC2;
+  --hatch-line: rgba(42, 33, 23, 0.07);
+  --font-ui: 'Newsreader', Georgia, serif;
+  --font-mono: 'JetBrains Mono', monospace;
+  --font-display: 'DM Serif Display', Georgia, serif;
+  /* Classic, restrained form language */
+  --bw: 1px;
+  --r-xl: 10px;
+  --r-lg: 9px;
+  --r-md: 7px;
+  --r-sm: 6px;
+  --r-chip: 6px;
+}
+html[data-design='ledger'][data-theme='dark'] {
+  --bg: #1E1A12;
+  --surface: #272118;
+  --text: #ECE3D0;
+  --text-2: #B3A88E;
+  --text-3: #938873;
+  --text-4: #786E5B;
+  --text-5: #595142;
+  --text-6: #3C362C;
+  --tile: #2F2819;
+  --tile-hover: #372F1F;
+  --border: rgba(255, 255, 255, 0.12);
+  --border-2: rgba(255, 255, 255, 0.16);
+  --border-3: rgba(255, 255, 255, 0.20);
+  --accent-9: color-mix(in srgb, var(--accent) 28%, var(--surface));
+  --accent-11: color-mix(in srgb, var(--accent) 32%, var(--surface));
+  --accent-22: color-mix(in srgb, var(--accent) 42%, var(--surface));
+  --hatch-base: #2F2819;
+  --hatch-line: rgba(255, 255, 255, 0.06);
+  color-scheme: dark;
+}
+/* Dotted ledger paper backdrop */
+html[data-design='ledger'] body {
+  background-image: radial-gradient(var(--hatch-line) 1px, transparent 1px);
+  background-size: 18px 18px;
 }
 
 *, *::before, *::after {

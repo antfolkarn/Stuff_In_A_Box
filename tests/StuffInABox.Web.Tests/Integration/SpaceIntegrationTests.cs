@@ -39,9 +39,11 @@ public class SpaceIntegrationTests : IClassFixture<WebApplicationFactory<Program
 
     private async Task<string> GetTokenAsync(HttpClient client)
     {
+        const string email = "test@example.com";
         var registerResp = await client.PostAsJsonAsync("/api/v1/auth/register",
-            new { email = "test@example.com", password = "password123" });
+            new { email, password = "password123" });
         registerResp.EnsureSuccessStatusCode();
+        TestVerify.MarkVerified(_factory, email);
         var body = await registerResp.Content.ReadFromJsonAsync<JsonElement>();
         return body.GetProperty("token").GetString()!;
     }

@@ -30,6 +30,8 @@ public sealed class OAuthService(HttpClient http, IConfiguration config)
             // Apple requires response_mode=form_post when any scope is requested,
             // so we request none and still receive `sub` in the id_token.
             "apple" => ("https://appleid.apple.com/auth/authorize", "", "&response_mode=query"),
+            // "common" = both personal Microsoft accounts and work/school (Entra) accounts.
+            "microsoft" => ("https://login.microsoftonline.com/common/oauth2/v2.0/authorize", "openid", ""),
             _ => throw new InvalidOperationException($"Okänd OAuth-leverantör: {provider}"),
         };
 
@@ -57,6 +59,7 @@ public sealed class OAuthService(HttpClient http, IConfiguration config)
         {
             "google" => "https://oauth2.googleapis.com/token",
             "apple" => "https://appleid.apple.com/auth/token",
+            "microsoft" => "https://login.microsoftonline.com/common/oauth2/v2.0/token",
             _ => throw new InvalidOperationException($"Okänd OAuth-leverantör: {provider}"),
         };
 

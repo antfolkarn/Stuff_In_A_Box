@@ -41,6 +41,7 @@ public class AccountIntegrationTests : IClassFixture<WebApplicationFactory<Progr
     {
         var client = _factory.CreateClient();
         var reg = await client.PostAsJsonAsync("/api/v1/auth/register", new { email, password = "password123" });
+        TestVerify.MarkVerified(_factory, email);
         var token = (await reg.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("token").GetString();
         client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
         return client;

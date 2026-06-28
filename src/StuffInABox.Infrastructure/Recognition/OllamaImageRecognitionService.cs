@@ -15,30 +15,60 @@ namespace StuffInABox.Infrastructure.Recognition;
 /// (lowercased, de-duplicated, length- and count-capped). Honors the never-throws
 /// contract — returns null on any failure.
 ///
-/// Extension points: <see cref="Prompt"/> defines what is extracted (objects,
-/// colours, material, book titles, …) and the model is set via config, so new
-/// categories or a stronger model can be added without touching the pipeline.
+/// What is extracted: the model fills a small set of *structured* property fields
+/// (category, objects, colours, materials, brand, visible text, details) so the
+/// answer captures how people actually search for their belongings. Those fields
+/// are then flattened into the flat tag list the rest of the pipeline (storage,
+/// <c>ItemRepository.SearchAsync</c>) already works against — so the richer prompt
+/// needs no schema or search changes. <see cref="Prompt"/> defines the fields and
+/// the model is set via config, so new categories or a stronger model can be added
+/// without touching the pipeline.
 /// </summary>
 public sealed class OllamaImageRecognitionService(
     HttpClient http,
     IConfiguration config,
     ILogger<OllamaImageRecognitionService> logger) : IImageRecognitionService
 {
-    private const int MaxTags = 15;
+    private const int MaxTags = 20;
     private const int MaxTagLength = 40;
     private const int MaxNameLength = 60;
 
+    // Null-ish placeholders models sometimes emit (e.g. "märke":"None") — dropped so they
+    // don't become junk tags or a junk name.
+    private static readonly HashSet<string> JunkValues =
+    [
+        "none", "null", "n/a", "na", "ingen", "inga", "saknas", "okänd", "okänt",
+        "unknown", "ej angivet", "ingen text", "ingen logga", "-",
+    ];
+
+    // The structured property fields we flatten into tags, in priority order
+    // (most identifying first, so the cap keeps the best keywords).
+    private static readonly string[] TagFields =
+        ["föremål", "märke", "färger", "material", "kategori", "text", "detaljer"];
+
     private const string Prompt =
         "Analysera bilden och svara ENDAST med ett JSON-objekt, inget annat, ingen markdown.\n" +
-        "Format: {\"namn\": \"...\", \"taggar\": [\"...\", \"...\"]}\n" +
-        "- \"namn\": en kort svensk rubrik (1–4 ord) för det viktigaste föremålet, gärna med " +
-        "färg eller material om det är tydligt (t.ex. \"Röd jacka\", \"Ekskiva\", \"Motivglas\"). " +
-        "Om bilden visar flera olika föremål, använd en övergripande rubrik (t.ex. \"Blandade saker\").\n" +
-        "- \"taggar\": 4–15 svenska sökord med gemener. Inkludera föremålet eller föremålen, " +
-        "färger, material och kategori. Om det är böcker: ta med boktitlarna. Om det är flera " +
-        "föremål: lista alla som egna taggar.\n" +
-        "Endast svenska. Inga meningar, inga förklaringar, inga dubbletter. " +
-        "Exempel: {\"namn\":\"Röd jacka\",\"taggar\":[\"jacka\",\"röd\",\"ytterkläder\",\"vinter\"]}";
+        "Beskriv föremålet/föremålen så att man senare kan SÖKA på dem efter egenskaper.\n" +
+        "Format (fyll bara i det du faktiskt ser, hoppa över det som inte syns):\n" +
+        "{\n" +
+        "  \"namn\": \"kort svensk rubrik, 1–4 ord, gärna med färg/märke\",\n" +
+        "  \"kategori\": \"övergripande kategori, t.ex. verktyg, kläder, elektronik, kök, leksaker\",\n" +
+        "  \"föremål\": [\"varje föremål för sig\"],\n" +
+        "  \"färger\": [\"synliga färger\"],\n" +
+        "  \"material\": [\"t.ex. trä, metall, plast, glas, tyg\"],\n" +
+        "  \"märke\": \"varumärke/logga om det syns, annars utelämna\",\n" +
+        "  \"text\": [\"text som syns: etiketter, boktitlar, modellnummer\"],\n" +
+        "  \"detaljer\": [\"övriga egenskaper: storlek, skick, t.ex. sladdlös, begagnad, stl m\"]\n" +
+        "}\n" +
+        "Regler: endast svenska, gemener i listorna, inga meningar, inga förklaringar, inga dubbletter. " +
+        "Gissa inte storlek eller mått om det inte tydligt syns. Ange \"märke\" bara om varumärkets namn " +
+        "faktiskt går att läsa i bilden — gissa aldrig ett varumärke utifrån en symbol eller logga. " +
+        "Utelämna \"märke\" annars, och skriv aldrig \"None\", \"ingen\" eller liknande platshållare. " +
+        "Om bilden visar flera olika saker: lista alla under \"föremål\" och välj en övergripande \"namn\" " +
+        "(t.ex. \"Blandade saker\").\n" +
+        "Exempel: {\"namn\":\"Röd Bosch borrmaskin\",\"kategori\":\"verktyg\",\"föremål\":[\"borrmaskin\"," +
+        "\"batteriladdare\"],\"färger\":[\"röd\",\"svart\"],\"material\":[\"plast\",\"metall\"]," +
+        "\"märke\":\"bosch\",\"text\":[\"gsr 18v-50\"],\"detaljer\":[\"sladdlös\"]}";
 
     private string BaseUrl => (config["ImageRecognition:Ollama:BaseUrl"] ?? "http://localhost:11434").TrimEnd('/');
     private string Model => config["ImageRecognition:Ollama:Model"] ?? "llava";
@@ -77,7 +107,11 @@ public sealed class OllamaImageRecognitionService(
         }
     }
 
-    /// <summary>Parses the model's JSON reply into a normalized result, tolerant of surrounding prose.</summary>
+    /// <summary>
+    /// Parses the model's structured JSON reply into a normalized result, tolerant of
+    /// surrounding prose. The structured property fields are flattened into the flat tag
+    /// list (priority order, normalized, de-duplicated, count-capped).
+    /// </summary>
     private static RecognitionResult? Parse(string? text)
     {
         if (string.IsNullOrWhiteSpace(text)) return null;
@@ -93,16 +127,13 @@ public sealed class OllamaImageRecognitionService(
 
             var name = root.TryGetProperty("namn", out var n) ? CleanName(n.GetString()) : null;
 
+            // Flatten every structured field into the tag list, best keywords first.
             var tags = new List<string>();
-            if (root.TryGetProperty("taggar", out var t) && t.ValueKind == JsonValueKind.Array)
+            foreach (var field in TagFields)
             {
-                foreach (var el in t.EnumerateArray())
-                {
-                    var tag = CleanTag(el.ValueKind == JsonValueKind.String ? el.GetString() : null);
-                    if (tag is not null && !tags.Contains(tag))
-                        tags.Add(tag);
-                    if (tags.Count >= MaxTags) break;
-                }
+                if (tags.Count >= MaxTags) break;
+                if (root.TryGetProperty(field, out var el))
+                    AddValues(el, tags);
             }
 
             // Fall back to the first tag as a name if the model omitted one.
@@ -118,11 +149,38 @@ public sealed class OllamaImageRecognitionService(
         }
     }
 
+    /// <summary>Adds a field's value(s) — a string or an array of strings — as normalized tags.</summary>
+    private static void AddValues(JsonElement el, List<string> tags)
+    {
+        switch (el.ValueKind)
+        {
+            case JsonValueKind.String:
+                AddTag(el.GetString(), tags);
+                break;
+            case JsonValueKind.Array:
+                foreach (var item in el.EnumerateArray())
+                {
+                    if (tags.Count >= MaxTags) break;
+                    if (item.ValueKind == JsonValueKind.String)
+                        AddTag(item.GetString(), tags);
+                }
+                break;
+        }
+    }
+
+    private static void AddTag(string? value, List<string> tags)
+    {
+        if (tags.Count >= MaxTags) return;
+        var tag = CleanTag(value);
+        if (tag is not null && !tags.Contains(tag))
+            tags.Add(tag);
+    }
+
     private static string? CleanName(string? value)
     {
         if (string.IsNullOrWhiteSpace(value)) return null;
         var name = value.Trim().Split('\n')[0].Trim().Trim('"', '\'', '.', ' ');
-        if (name.Length == 0) return null;
+        if (name.Length == 0 || JunkValues.Contains(name.ToLowerInvariant())) return null;
         if (name.Length > MaxNameLength) name = name[..MaxNameLength].Trim();
         return char.ToUpperInvariant(name[0]) + name[1..];
     }
@@ -131,7 +189,8 @@ public sealed class OllamaImageRecognitionService(
     {
         if (string.IsNullOrWhiteSpace(value)) return null;
         var tag = value.Trim().Trim('"', '\'', '.', ',', ' ').ToLowerInvariant();
-        if (tag.Length is 0 or > MaxTagLength) return tag.Length == 0 ? null : tag[..MaxTagLength];
+        if (tag.Length == 0 || JunkValues.Contains(tag)) return null;
+        if (tag.Length > MaxTagLength) tag = tag[..MaxTagLength];
         return tag;
     }
 }

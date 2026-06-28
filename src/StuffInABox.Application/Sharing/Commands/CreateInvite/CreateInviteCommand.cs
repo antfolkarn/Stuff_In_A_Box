@@ -1,5 +1,6 @@
 using System.Security.Cryptography;
 using MediatR;
+using StuffInABox.Application.Common.Behaviors;
 using StuffInABox.Application.Common.Interfaces;
 using StuffInABox.Domain.Entities;
 using StuffInABox.Domain.Repositories;
@@ -7,7 +8,7 @@ using StuffInABox.Domain.Repositories;
 namespace StuffInABox.Application.Sharing.Commands.CreateInvite;
 
 /// <summary>Owner creates (or returns the existing) share link for a space.</summary>
-public sealed record CreateInviteCommand(Guid SpaceId) : IRequest<InviteDto>;
+public sealed record CreateInviteCommand(Guid SpaceId) : IRequest<InviteDto>, IRequireVerifiedEmail;
 
 public sealed class CreateInviteCommandHandler(
     ISpaceInviteRepository invites,

@@ -49,4 +49,58 @@ public class ItemTests
 
         Assert.Equal("items/user1/abc123.jpg", item.PhotoStorageKey);
     }
+
+    [Fact]
+    public void Create_IsCompleted_NotPending()
+    {
+        var item = Item.Create(BoxNum, OwnerId, "Hammare");
+        Assert.Equal(ItemEnrichmentStatus.Completed, item.EnrichmentStatus);
+    }
+
+    [Fact]
+    public void CreateFromPhoto_StartsPending_WithPlaceholderName()
+    {
+        var item = Item.CreateFromPhoto(BoxNum, OwnerId);
+
+        Assert.Equal(Item.PhotoPlaceholderName, item.Name);
+        Assert.Equal(ItemEnrichmentStatus.Pending, item.EnrichmentStatus);
+        Assert.Empty(item.Tags);
+    }
+
+    [Fact]
+    public void ApplyRecognition_SetsNameAndTags_AndCompletes()
+    {
+        var item = Item.CreateFromPhoto(BoxNum, OwnerId);
+
+        item.ApplyRecognition("Röd jacka", ["jacka", "röd"]);
+
+        Assert.Equal("Röd jacka", item.Name);
+        Assert.Equal(["jacka", "röd"], item.Tags);
+        Assert.Equal(ItemEnrichmentStatus.Completed, item.EnrichmentStatus);
+    }
+
+    [Fact]
+    public void ApplyRecognition_KeepsUserRename_WhenNoLongerPlaceholder()
+    {
+        var item = Item.CreateFromPhoto(BoxNum, OwnerId);
+        item.Rename("Min egen titel");
+
+        item.ApplyRecognition("Igenkänt namn", ["tagg"]);
+
+        // The user's name wins; tags are still merged and the item completes.
+        Assert.Equal("Min egen titel", item.Name);
+        Assert.Contains("tagg", item.Tags);
+        Assert.Equal(ItemEnrichmentStatus.Completed, item.EnrichmentStatus);
+    }
+
+    [Fact]
+    public void MarkEnriched_CompletesWithoutChangingName()
+    {
+        var item = Item.CreateFromPhoto(BoxNum, OwnerId);
+
+        item.MarkEnriched();
+
+        Assert.Equal(Item.PhotoPlaceholderName, item.Name);
+        Assert.Equal(ItemEnrichmentStatus.Completed, item.EnrichmentStatus);
+    }
 }

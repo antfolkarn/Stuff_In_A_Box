@@ -32,22 +32,24 @@ public class OllamaImageRecognitionServiceTests
     private static readonly byte[] FakeImage = [1, 2, 3, 4];
 
     [Fact]
-    public async Task Recognize_ParsesNameAndTags()
+    public async Task Recognize_FlattensStructuredFieldsIntoTags()
     {
-        var reply = """{"namn":"Röd jacka","taggar":["jacka","röd","ytterkläder"]}""";
+        // Structured reply: fields are flattened into the tag list in priority order
+        // (föremål, märke, färger, material, kategori, text, detaljer).
+        var reply = """{"namn":"Röd jacka","kategori":"kläder","föremål":["jacka"],"färger":["röd"]}""";
         var svc = Create(HttpStatusCode.OK, Envelope(reply));
 
         var result = await svc.RecognizeAsync(FakeImage);
 
         Assert.NotNull(result);
         Assert.Equal("Röd jacka", result!.Name);
-        Assert.Equal(new[] { "jacka", "röd", "ytterkläder" }, result.Tags);
+        Assert.Equal(new[] { "jacka", "röd", "kläder" }, result.Tags);
     }
 
     [Fact]
     public async Task Recognize_NormalizesTags_LowercaseDedupeCapitalizeName()
     {
-        var reply = """{"namn":"böcker","taggar":["Bok","BOK","  Deckare  ",""]}""";
+        var reply = """{"namn":"böcker","föremål":["Bok","BOK","  Deckare  ",""]}""";
         var svc = Create(HttpStatusCode.OK, Envelope(reply));
 
         var result = await svc.RecognizeAsync(FakeImage);
@@ -57,9 +59,22 @@ public class OllamaImageRecognitionServiceTests
     }
 
     [Fact]
+    public async Task Recognize_DedupesAcrossFields()
+    {
+        // The same word can appear in several fields; it should be added only once.
+        var reply = """{"namn":"Ekskiva","föremål":["ekskiva"],"material":["ek","trä"],"detaljer":["ek"]}""";
+        var svc = Create(HttpStatusCode.OK, Envelope(reply));
+
+        var result = await svc.RecognizeAsync(FakeImage);
+
+        Assert.Equal("Ekskiva", result!.Name);
+        Assert.Equal(new[] { "ekskiva", "ek", "trä" }, result.Tags);
+    }
+
+    [Fact]
     public async Task Recognize_ToleratesProseAroundJson()
     {
-        var reply = "Här är resultatet:\n{\"namn\":\"Ekskiva\",\"taggar\":[\"ek\",\"trä\"]}\nTack!";
+        var reply = "Här är resultatet:\n{\"namn\":\"Ekskiva\",\"material\":[\"ek\",\"trä\"]}\nTack!";
         var svc = Create(HttpStatusCode.OK, Envelope(reply));
 
         var result = await svc.RecognizeAsync(FakeImage);
@@ -71,13 +86,40 @@ public class OllamaImageRecognitionServiceTests
     [Fact]
     public async Task Recognize_MissingName_FallsBackToFirstTag()
     {
-        var reply = """{"taggar":["hammare","verktyg"]}""";
+        var reply = """{"föremål":["hammare"],"kategori":"verktyg"}""";
         var svc = Create(HttpStatusCode.OK, Envelope(reply));
 
         var result = await svc.RecognizeAsync(FakeImage);
 
         Assert.Equal("Hammare", result!.Name);
         Assert.Equal(new[] { "hammare", "verktyg" }, result.Tags);
+    }
+
+    [Fact]
+    public async Task Recognize_ReadsBrandAndVisibleText()
+    {
+        var reply = """{"namn":"Bosch borr","märke":"bosch","text":["gsr 18v-50"],"detaljer":["sladdlös"]}""";
+        var svc = Create(HttpStatusCode.OK, Envelope(reply));
+
+        var result = await svc.RecognizeAsync(FakeImage);
+
+        Assert.Equal("Bosch borr", result!.Name);
+        Assert.Contains("bosch", result.Tags);
+        Assert.Contains("gsr 18v-50", result.Tags);
+        Assert.Contains("sladdlös", result.Tags);
+    }
+
+    [Fact]
+    public async Task Recognize_DropsNullishPlaceholders()
+    {
+        // Models sometimes emit "None"/"ingen" for an absent brand — must not become a tag.
+        var reply = """{"namn":"Tröja","föremål":["tröja"],"märke":"None","text":["ingen"]}""";
+        var svc = Create(HttpStatusCode.OK, Envelope(reply));
+
+        var result = await svc.RecognizeAsync(FakeImage);
+
+        Assert.Equal("Tröja", result!.Name);
+        Assert.Equal(new[] { "tröja" }, result.Tags);
     }
 
     [Fact]

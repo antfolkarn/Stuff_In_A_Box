@@ -48,11 +48,17 @@ builder.Services.AddMediatR(cfg =>
 {
     cfg.RegisterServicesFromAssembly(typeof(StuffInABox.Application.Spaces.Commands.CreateSpace.CreateSpaceCommand).Assembly);
     cfg.AddBehavior(typeof(IPipelineBehavior<,>), typeof(ValidationBehavior<,>));
+    cfg.AddBehavior(typeof(IPipelineBehavior<,>), typeof(EmailVerificationBehavior<,>));
 });
 builder.Services.AddValidatorsFromAssembly(typeof(StuffInABox.Application.Spaces.Commands.CreateSpace.CreateSpaceCommandValidator).Assembly);
 
 // Infrastructure (EF Core, repositories, storage, tagging)
 builder.Services.AddInfrastructure(builder.Configuration);
+
+// Serialize enums as their names (e.g. item EnrichmentStatus -> "Pending"/"Completed")
+// so the API contract stays readable instead of leaking integer values.
+builder.Services.ConfigureHttpJsonOptions(o =>
+    o.SerializerOptions.Converters.Add(new System.Text.Json.Serialization.JsonStringEnumConverter()));
 
 // Auth
 builder.Services.AddHttpContextAccessor();
@@ -127,9 +133,11 @@ var app = builder.Build();
 
 // Prepare the database on startup. SQLite (dev/tests) builds the schema straight from
 // the model — no migrations to maintain for the throwaway dev DB. Postgres (production)
-// applies the committed migrations.
-using (var scope = app.Services.CreateScope())
+// applies the committed migrations. Skipped under EF design-time tooling (migrations
+// add/scaffold), which builds this host but must not touch a live database.
+if (!EF.IsDesignTime)
 {
+    using var scope = app.Services.CreateScope();
     var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
     if (db.Database.IsSqlite())
         db.Database.EnsureCreated();
@@ -170,7 +178,6 @@ app.MapSpaceEndpoints();
 app.MapInviteEndpoints();
 app.MapBoxEndpoints();
 app.MapItemEndpoints();
-app.MapRecognitionEndpoints();
 app.MapPhotoEndpoints();
 app.MapSearchEndpoints();
 app.MapLabelEndpoints();

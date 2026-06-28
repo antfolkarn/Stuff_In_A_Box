@@ -18,6 +18,7 @@ interface UiState {
   pendingBox: number | null
   pendingInvite: string | null
   pendingReset: string | null
+  pendingVerify: string | null
   legal: LegalPage | null
 
   goHome: () => void
@@ -31,6 +32,7 @@ interface UiState {
   setPendingBox: (n: number | null) => void
   setPendingInvite: (token: string | null) => void
   setPendingReset: (token: string | null) => void
+  setPendingVerify: (token: string | null) => void
   setLegal: (page: LegalPage | null) => void
 }
 
@@ -52,6 +54,12 @@ export function parsePendingReset(hash: string = window.location.hash): string |
   return match ? match[1] : null
 }
 
+// Parse email-verification deep link on load (#verify=<token>)
+export function parsePendingVerify(hash: string = window.location.hash): string | null {
+  const match = hash.match(/[#&]verify=([A-Za-z0-9_-]+)/)
+  return match ? match[1] : null
+}
+
 export const useUiStore = create<UiState>((set) => ({
   view: 'home',
   spaceId: null,
@@ -62,6 +70,7 @@ export const useUiStore = create<UiState>((set) => ({
   pendingBox: parsePendingBox(),
   pendingInvite: parsePendingInvite(),
   pendingReset: parsePendingReset(),
+  pendingVerify: parsePendingVerify(),
   legal: null,
 
   goHome: () => set({ view: 'home', spaceId: null, boxNum: null, query: '' }),
@@ -87,6 +96,8 @@ export const useUiStore = create<UiState>((set) => ({
   setPendingInvite: (token) => set({ pendingInvite: token }),
 
   setPendingReset: (token) => set({ pendingReset: token }),
+
+  setPendingVerify: (token) => set({ pendingVerify: token }),
 
   setLegal: (page) => set({ legal: page }),
 }))

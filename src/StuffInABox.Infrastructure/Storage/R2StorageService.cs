@@ -78,5 +78,21 @@ public sealed class R2StorageService : IStorageService, IDisposable
     public Task DeleteAsync(string storageKey, CancellationToken ct = default) =>
         _s3.DeleteObjectAsync(new DeleteObjectRequest { BucketName = _bucket, Key = storageKey }, ct);
 
+    public async Task<byte[]?> GetAsync(string storageKey, CancellationToken ct = default)
+    {
+        try
+        {
+            using var resp = await _s3.GetObjectAsync(
+                new GetObjectRequest { BucketName = _bucket, Key = storageKey }, ct);
+            using var ms = new MemoryStream();
+            await resp.ResponseStream.CopyToAsync(ms, ct);
+            return ms.ToArray();
+        }
+        catch (AmazonS3Exception ex) when (ex.StatusCode == System.Net.HttpStatusCode.NotFound)
+        {
+            return null;
+        }
+    }
+
     public void Dispose() => _s3.Dispose();
 }

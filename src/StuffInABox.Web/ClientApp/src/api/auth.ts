@@ -38,3 +38,24 @@ export async function forgotPassword(email: string): Promise<void> {
 export async function resetPassword(token: string, password: string): Promise<void> {
   await api.post('/auth/reset-password', { token, password })
 }
+
+export interface MeDto {
+  provider: string
+  email: string | null
+  emailVerified: boolean
+}
+
+export async function getMe(): Promise<MeDto> {
+  const res = await api.get<MeDto>('/auth/me')
+  return res.data
+}
+
+// Confirms an email address from the #verify=<token> deep link.
+export async function verifyEmail(token: string): Promise<void> {
+  await api.post('/auth/verify-email', { token })
+}
+
+// Re-sends the verification email to the signed-in user. Always resolves.
+export async function resendVerification(): Promise<void> {
+  await api.post('/auth/resend-verification')
+}

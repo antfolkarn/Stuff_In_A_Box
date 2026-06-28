@@ -45,11 +45,22 @@ export interface BoxDetailDto {
   spaceId: string
 }
 
+export type ItemEnrichmentStatus = 'Pending' | 'Completed'
+
 export interface ItemDto {
   id: string
   name: string
   tags: string[]
   photoUrl: string | null
+  // 'Pending' while background photo recognition (name + tags) is still running.
+  status: ItemEnrichmentStatus
+}
+
+export interface CreateItemFromPhotoResult {
+  itemId: string
+  name: string
+  photoUrl: string | null
+  status: ItemEnrichmentStatus
 }
 
 export interface CreateSpaceResult {

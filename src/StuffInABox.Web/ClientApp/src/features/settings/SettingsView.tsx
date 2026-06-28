@@ -12,6 +12,9 @@ const DESIGN_ACCENT: Record<Design, string> = {
   standard: '#2F63E6',
   atelier: '#2C5347',
   pop: '#6C4CF1',
+  nord: '#9C4A2F',
+  console: '#5FE3B3',
+  ledger: '#A8332A',
 }
 
 const THEME_ICON: Record<Theme, typeof IconSun> = {

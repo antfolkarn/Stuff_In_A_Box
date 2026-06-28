@@ -5,6 +5,7 @@ import { getSpaces, createSpace } from '../../api/spaces'
 import { useUiStore } from '../../store/uiStore'
 import { Icon } from '../../shared/components/Icon'
 import SpaceIconPicker from '../../shared/components/SpaceIconPicker'
+import { useVerification } from '../auth/useVerification'
 import { useT } from '../../i18n'
 import type { SpaceDto } from '../../api/types'
 
@@ -15,6 +16,7 @@ export default function HomeView() {
   const [addingSpace, setAddingSpace] = useState(false)
   const [newName, setNewName] = useState('')
   const [newIcon, setNewIcon] = useState('ti-box')
+  const { needsVerification } = useVerification()
 
   const { data: spaces = [], isLoading } = useQuery({
     queryKey: ['spaces'],
@@ -66,6 +68,8 @@ export default function HomeView() {
           <button
             className="btn btn-outline btn-sm"
             onClick={() => setAddingSpace((v) => !v)}
+            disabled={needsVerification}
+            title={needsVerification ? t('verify.gatedHint') : undefined}
           >
             <IconPlus size={16} />
             {t('home.newSpace')}

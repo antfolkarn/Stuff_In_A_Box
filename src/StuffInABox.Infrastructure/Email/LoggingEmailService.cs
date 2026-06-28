@@ -17,4 +17,12 @@ public sealed class LoggingEmailService(ILogger<LoggingEmailService> logger) : I
             toEmail, resetLink);
         return Task.CompletedTask;
     }
+
+    public Task SendEmailVerificationAsync(string toEmail, string verifyLink, CancellationToken ct = default)
+    {
+        logger.LogInformation(
+            "[EMAIL/dev] Email verification for {Email}. No email provider configured — verify link: {VerifyLink}",
+            toEmail, verifyLink);
+        return Task.CompletedTask;
+    }
 }

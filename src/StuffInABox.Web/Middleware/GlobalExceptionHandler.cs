@@ -19,6 +19,7 @@ public class GlobalExceptionHandler : IExceptionHandler
             ValidationException => (HttpStatusCode.BadRequest, "Valideringsfel", "validation_error"),
             InvalidImageException => (HttpStatusCode.BadRequest, "Ogiltig bild", "invalid_image"),
             NotFoundException => (HttpStatusCode.NotFound, "Hittades inte", "not_found"),
+            EmailNotVerifiedException => (HttpStatusCode.Forbidden, "E-post ej verifierad", "email_not_verified"),
             ForbiddenException => (HttpStatusCode.Forbidden, "Åtkomst nekad", "forbidden"),
             UnauthorizedAccessException => (HttpStatusCode.Unauthorized, "Ej autentiserad", "unauthorized"),
             _ => (HttpStatusCode.InternalServerError, "Serverfel", "server_error")

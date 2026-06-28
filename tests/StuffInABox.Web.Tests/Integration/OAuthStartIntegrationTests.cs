@@ -13,6 +13,9 @@ public class OAuthStartIntegrationTests : IClassFixture<WebApplicationFactory<Pr
         {
             b.UseSetting("Jwt:Secret", "test-secret-key-min-32-chars-long!!");
             b.UseSetting("RateLimiting:AuthPermitLimit", "1000");
+            // Force Google "unconfigured" so the test doesn't depend on ambient
+            // machine config (e.g. real OAuth client id in user-secrets).
+            b.UseSetting("OAuth:Google:ClientId", "");
         });
     }
 

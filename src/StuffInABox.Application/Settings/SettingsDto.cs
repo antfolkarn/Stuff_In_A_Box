@@ -6,7 +6,7 @@ public sealed record SettingsDto(string Theme, string Design, string? DisplayNam
 public static class SettingsOptions
 {
     public static readonly string[] Themes = ["light", "dark", "system"];
-    public static readonly string[] Designs = ["standard", "atelier", "pop"];
+    public static readonly string[] Designs = ["standard", "atelier", "pop", "nord", "console", "ledger"];
 
     public const string DefaultTheme = "system";
     public const string DefaultDesign = "standard";

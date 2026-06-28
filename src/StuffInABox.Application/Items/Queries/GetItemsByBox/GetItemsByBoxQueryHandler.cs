@@ -26,7 +26,8 @@ public sealed class GetItemsByBoxQueryHandler(
             i.Id,
             i.Name,
             i.Tags,
-            i.PhotoStorageKey is not null ? storage.GetUrl(i.PhotoStorageKey) : null))
+            i.PhotoStorageKey is not null ? storage.GetUrl(i.PhotoStorageKey) : null,
+            i.EnrichmentStatus))
             .ToList();
     }
 }

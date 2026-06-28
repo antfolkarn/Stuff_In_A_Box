@@ -22,6 +22,15 @@ public class ItemConfiguration : IEntityTypeConfiguration<Item>
         builder.Property(i => i.Name).IsRequired().HasMaxLength(200);
         builder.Property(i => i.PhotoStorageKey).HasMaxLength(500);
 
+        // Stored as int; the DB default backfills existing/manual items as Completed.
+        // The sentinel is Completed (not the CLR default Pending) so that an explicit
+        // Pending — set by Item.CreateFromPhoto — is honoured on insert rather than being
+        // treated as "unset" and overwritten by the store default.
+        builder.Property(i => i.EnrichmentStatus)
+            .HasConversion<int>()
+            .HasDefaultValue(StuffInABox.Domain.Entities.ItemEnrichmentStatus.Completed)
+            .HasSentinel(StuffInABox.Domain.Entities.ItemEnrichmentStatus.Completed);
+
         // Tags stored as JSON TEXT (works for both SQLite and PostgreSQL)
         var tagsComparer = new Microsoft.EntityFrameworkCore.ChangeTracking.ValueComparer<IReadOnlyList<string>>(
             (a, b) => (a == null && b == null) || (a != null && b != null && a.SequenceEqual(b)),

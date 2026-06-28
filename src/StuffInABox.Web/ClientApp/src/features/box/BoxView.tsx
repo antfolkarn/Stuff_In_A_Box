@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import {
   IconTag, IconMapPin, IconPrinter, IconPhoto, IconPackage,
-  IconPencil, IconTrash, IconCheck, IconX, IconArrowLeft, IconCameraPlus,
+  IconPencil, IconTrash, IconCheck, IconX, IconArrowLeft, IconCameraPlus, IconLoader2,
 } from '@tabler/icons-react'
 import { getBoxDetail, moveBox, updateBoxLabel, deleteBox } from '../../api/boxes'
 import { getItemsByBox, deleteItem, updateItem } from '../../api/items'
@@ -32,6 +32,10 @@ export default function BoxView() {
     queryKey: ['items', boxNum, spaceId],
     queryFn: () => getItemsByBox(boxNum!, spaceId!),
     enabled: !!boxNum && !!spaceId,
+    // While any item is still being recognised in the background, poll so its
+    // name, tags and final photo appear without a manual refresh.
+    refetchInterval: (query) =>
+      (query.state.data as ItemDto[] | undefined)?.some((i) => i.status === 'Pending') ? 2500 : false,
   })
 
   const { data: spaces = [] } = useQuery({ queryKey: ['spaces'], queryFn: getSpaces })
@@ -263,6 +267,8 @@ function ItemCard({ item, boxNumber }: { item: ItemDto; boxNumber: number }) {
   const [imgBroken, setImgBroken] = useState(false)
 
   const hasPhoto = !!item.photoUrl && !imgBroken
+  // Still being recognised in the background — show a placeholder until name + tags arrive.
+  const isPending = item.status === 'Pending'
 
   const renameMut = useMutation({
     mutationFn: (name: string) => updateItem(boxNumber, item.id, { name }),
@@ -288,15 +294,15 @@ function ItemCard({ item, boxNumber }: { item: ItemDto; boxNumber: number }) {
         padding: 11, display: 'flex', gap: 10, alignItems: 'flex-start',
       }}
     >
-      {/* Photo — click to enlarge when present */}
+      {/* Photo — click to enlarge when present (disabled while still analysing) */}
       <div
         className="hatch-bg"
-        onClick={() => hasPhoto && openLightbox(item.photoUrl!)}
-        title={hasPhoto ? t('box.viewLarger') : undefined}
+        onClick={() => !isPending && hasPhoto && openLightbox(item.photoUrl!)}
+        title={!isPending && hasPhoto ? t('box.viewLarger') : undefined}
         style={{
-          width: 54, height: 54, borderRadius: 'var(--r-sm)', flexShrink: 0,
+          width: 54, height: 54, borderRadius: 'var(--r-sm)', flexShrink: 0, position: 'relative',
           display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden',
-          cursor: hasPhoto ? 'zoom-in' : 'default',
+          cursor: !isPending && hasPhoto ? 'zoom-in' : 'default',
         }}
       >
         {hasPhoto ? (
@@ -304,10 +310,16 @@ function ItemCard({ item, boxNumber }: { item: ItemDto; boxNumber: number }) {
             src={item.photoUrl!}
             alt={item.name}
             onError={() => setImgBroken(true)}
-            style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+            style={{ width: '100%', height: '100%', objectFit: 'cover', opacity: isPending ? 0.4 : 1 }}
           />
         ) : (
           <IconPhoto size={18} style={{ color: 'var(--text-5)' }} />
+        )}
+        {isPending && (
+          <span style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <IconLoader2 size={18} style={{ color: 'var(--accent)', animation: 'spin 1s linear infinite' }} />
+            <style>{`@keyframes spin { to { transform: rotate(360deg) } }`}</style>
+          </span>
         )}
       </div>
 
@@ -334,11 +346,15 @@ function ItemCard({ item, boxNumber }: { item: ItemDto; boxNumber: number }) {
           </div>
         ) : (
           <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 6, marginBottom: 5 }}>
-            <span style={{ fontSize: 14.5, fontWeight: 500 }}>{item.name}</span>
+            <span style={{ fontSize: 14.5, fontWeight: 500, color: isPending ? 'var(--text-4)' : undefined, fontStyle: isPending ? 'italic' : undefined }}>
+              {isPending ? t('box.analyzing') : item.name}
+            </span>
             <div style={{ display: 'flex', gap: 2, flexShrink: 0 }}>
-              <button onClick={() => { setDraft(item.name); setEditing(true) }} title={t('box.rename')} style={{ color: 'var(--text-5)', display: 'flex', padding: 2 }}>
-                <IconPencil size={14} />
-              </button>
+              {!isPending && (
+                <button onClick={() => { setDraft(item.name); setEditing(true) }} title={t('box.rename')} style={{ color: 'var(--text-5)', display: 'flex', padding: 2 }}>
+                  <IconPencil size={14} />
+                </button>
+              )}
               <button
                 onClick={() => { if (window.confirm(t('box.confirmDeleteItem', { name: item.name }))) deleteMut.mutate() }}
                 title={t('box.itemRemove')}
@@ -349,11 +365,13 @@ function ItemCard({ item, boxNumber }: { item: ItemDto; boxNumber: number }) {
             </div>
           </div>
         )}
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
-          {item.tags.slice(0, 4).map((tag) => (
-            <span key={tag} className="tag-chip">{tag}</span>
-          ))}
-        </div>
+        {!isPending && (
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
+            {item.tags.slice(0, 4).map((tag) => (
+              <span key={tag} className="tag-chip">{tag}</span>
+            ))}
+          </div>
+        )}
       </div>
     </div>
   )

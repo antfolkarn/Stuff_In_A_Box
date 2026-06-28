@@ -5,6 +5,7 @@ import {
   getActiveInvite, createInvite, revokeInvite, getMembers, removeMember,
 } from '../../api/invites'
 import { memberLabel, memberInitials } from './memberDisplay'
+import { useVerification } from '../auth/useVerification'
 import { useT } from '../../i18n'
 
 function inviteUrl(token: string) {
@@ -16,6 +17,7 @@ export default function SharePanel({ spaceId }: { spaceId: string }) {
   const qc = useQueryClient()
   const t = useT()
   const [copied, setCopied] = useState(false)
+  const { needsVerification } = useVerification()
 
   const { data: invite } = useQuery({
     queryKey: ['invite', spaceId],
@@ -102,7 +104,8 @@ export default function SharePanel({ spaceId }: { spaceId: string }) {
         <button
           className="btn btn-accent"
           onClick={() => createMut.mutate()}
-          disabled={createMut.isPending}
+          disabled={createMut.isPending || needsVerification}
+          title={needsVerification ? t('verify.gatedHint') : undefined}
         >
           <IconLink size={16} />
           {t('space.createLink')}

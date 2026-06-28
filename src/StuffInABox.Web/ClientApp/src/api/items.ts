@@ -1,5 +1,5 @@
 import { api } from './client'
-import type { ItemDto, AddItemResult } from './types'
+import type { ItemDto, AddItemResult, CreateItemFromPhotoResult } from './types'
 
 // spaceId identifies which space (and thus owner) the box belongs to — required
 // so invited members reach the shared space's content, not their own box #n.
@@ -23,6 +23,19 @@ export const uploadItemPhoto = (boxNumber: number, itemId: string, file: File) =
   form.append('file', file)
   return api
     .post<{ photoUrl: string }>(`/boxes/${boxNumber}/items/${itemId}/photo`, form, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    })
+    .then((r) => r.data)
+}
+
+// Fast bulk add: uploads a photo and creates the item immediately with a placeholder
+// name. The server fills in the real name + tags via background recognition.
+export const createItemFromPhoto = (boxNumber: number, spaceId: string, file: File) => {
+  const form = new FormData()
+  form.append('file', file)
+  form.append('spaceId', spaceId)
+  return api
+    .post<CreateItemFromPhotoResult>(`/boxes/${boxNumber}/items/photo`, form, {
       headers: { 'Content-Type': 'multipart/form-data' },
     })
     .then((r) => r.data)
