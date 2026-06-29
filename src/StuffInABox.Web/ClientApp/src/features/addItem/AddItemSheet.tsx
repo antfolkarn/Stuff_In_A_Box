@@ -1,9 +1,9 @@
 import { useState, useEffect, useRef } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { IconX, IconCamera, IconLoader2, IconCheck, IconAlertTriangle, IconRefresh } from '@tabler/icons-react'
+import { IconX, IconCamera, IconLoader2, IconCheck, IconAlertTriangle, IconRefresh, IconPencil, IconPlus } from '@tabler/icons-react'
 import { getSpaces } from '../../api/spaces'
 import { getBoxesBySpace, getBoxDetail } from '../../api/boxes'
-import { createItemFromPhoto } from '../../api/items'
+import { createItemFromPhoto, addItem } from '../../api/items'
 import { useUiStore } from '../../store/uiStore'
 import { useT } from '../../i18n'
 
@@ -33,6 +33,15 @@ export default function AddItemSheet() {
   const [selectedBox, setSelectedBox] = useState<number | null>(boxNum)
   const [tasks, setTasks] = useState<UploadTask[]>([])
   const fileInputRef = useRef<HTMLInputElement>(null)
+
+  // Add mode: 'photo' (default — bulk photo + background recognition) or 'manual'
+  // (type the name + optional tags, no photo).
+  const [mode, setMode] = useState<'photo' | 'manual'>('photo')
+  const [manualName, setManualName] = useState('')
+  const [manualTags, setManualTags] = useState<string[]>([])
+  const [tagDraft, setTagDraft] = useState('')
+  const [addingManual, setAddingManual] = useState(false)
+  const [addedManual, setAddedManual] = useState<string[]>([])
 
   const { data: spaces = [] } = useQuery({ queryKey: ['spaces'], queryFn: getSpaces })
 
@@ -119,6 +128,44 @@ export default function AddItemSheet() {
     setTasks((ts) => ts.map((t) => (t.id === id ? { ...t, status: 'queued' } : t)))
   }
 
+  function commitTagDraft(): string[] {
+    const tag = tagDraft.trim().toLowerCase()
+    setTagDraft('')
+    if (!tag || manualTags.includes(tag)) return manualTags
+    const next = [...manualTags, tag]
+    setManualTags(next)
+    return next
+  }
+
+  function onTagKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
+    if (e.key === 'Enter' || e.key === ',') {
+      e.preventDefault()
+      commitTagDraft()
+    } else if (e.key === 'Backspace' && tagDraft === '' && manualTags.length > 0) {
+      setManualTags((ts) => ts.slice(0, -1))
+    }
+  }
+
+  async function submitManual() {
+    if (!canUpload || !manualName.trim() || addingManual) return
+    setAddingManual(true)
+    // Fold a half-typed tag into the list so it isn't silently dropped.
+    const tag = tagDraft.trim().toLowerCase()
+    const tags = tag && !manualTags.includes(tag) ? [...manualTags, tag] : manualTags
+    try {
+      await addItem(selectedBox!, spaceId, manualName.trim(), tags.length ? tags : undefined)
+      setAddedManual((a) => [manualName.trim(), ...a])
+      setManualName('')
+      setManualTags([])
+      setTagDraft('')
+      qc.invalidateQueries({ queryKey: ['items', selectedBox] })
+      qc.invalidateQueries({ queryKey: ['boxes'] })
+      qc.invalidateQueries({ queryKey: ['spaces'] })
+    } finally {
+      setAddingManual(false)
+    }
+  }
+
   const canUpload = !!spaceId && !!selectedBox
   const hasTasks = tasks.length > 0
 
@@ -183,6 +230,48 @@ export default function AddItemSheet() {
         </div>
 
         <div style={{ padding: 20 }}>
+          {/* Mode toggle — photo (default) vs manual entry */}
+          <div
+            style={{
+              display: 'flex',
+              gap: 4,
+              marginBottom: 18,
+              background: 'var(--bg)',
+              border: 'var(--bw) solid var(--border)',
+              borderRadius: 'var(--r-md)',
+              padding: 4,
+            }}
+          >
+            {([
+              { id: 'photo', icon: <IconCamera size={15} />, label: t('addItem.modePhoto') },
+              { id: 'manual', icon: <IconPencil size={15} />, label: t('addItem.modeManual') },
+            ] as const).map((m) => (
+              <button
+                key={m.id}
+                onClick={() => setMode(m.id)}
+                style={{
+                  flex: 1,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: 6,
+                  height: 34,
+                  borderRadius: 'var(--r-sm)',
+                  fontSize: 13.5,
+                  fontWeight: 500,
+                  cursor: 'pointer',
+                  border: 'none',
+                  background: mode === m.id ? 'var(--surface)' : 'transparent',
+                  color: mode === m.id ? 'var(--text-1)' : 'var(--text-4)',
+                  boxShadow: mode === m.id ? 'var(--shadow-sm, 0 1px 2px rgba(0,0,0,0.08))' : 'none',
+                }}
+              >
+                {m.icon}
+                {m.label}
+              </button>
+            ))}
+          </div>
+
           {/* Destination — chosen first so picked photos land in the right box */}
           <div style={{ marginBottom: 18 }}>
             <div className="field-label">{t('addItem.destination')}</div>
@@ -218,6 +307,8 @@ export default function AddItemSheet() {
             </div>
           </div>
 
+          {mode === 'photo' && (
+          <>
           {/* Hidden multi-file input — the photo zone triggers it */}
           <input
             ref={fileInputRef}
@@ -267,6 +358,100 @@ export default function AddItemSheet() {
                   <UploadRow key={task.id} task={task} onRetry={() => retry(task.id)} />
                 ))}
               </div>
+            </div>
+          )}
+          </>
+          )}
+
+          {/* Manual entry — type the name + optional tags, no photo */}
+          {mode === 'manual' && (
+            <div>
+              <div className="field-label">{t('addItem.whatIsIt')}</div>
+              <input
+                className="input"
+                style={{ width: '100%', marginBottom: 16 }}
+                value={manualName}
+                onChange={(e) => setManualName(e.target.value)}
+                onKeyDown={(e) => { if (e.key === 'Enter') submitManual() }}
+                placeholder={t('addItem.namePlaceholder')}
+                disabled={!canUpload}
+                autoFocus
+              />
+
+              <div className="field-label">{t('addItem.tagsLabel')}</div>
+              <div
+                className="input"
+                style={{
+                  width: '100%',
+                  minHeight: 42,
+                  display: 'flex',
+                  flexWrap: 'wrap',
+                  alignItems: 'center',
+                  gap: 6,
+                  padding: '7px 10px',
+                  cursor: 'text',
+                  opacity: canUpload ? 1 : 0.55,
+                }}
+              >
+                {manualTags.map((tag) => (
+                  <span key={tag} className="tag-chip" style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                    {tag}
+                    <button
+                      onClick={() => setManualTags((ts) => ts.filter((x) => x !== tag))}
+                      aria-label={t('addItem.removeTag', { tag })}
+                      style={{ display: 'flex', color: 'inherit', opacity: 0.7 }}
+                    >
+                      <IconX size={12} />
+                    </button>
+                  </span>
+                ))}
+                <input
+                  style={{ flex: 1, minWidth: 100, border: 'none', outline: 'none', background: 'transparent', fontSize: 14, color: 'inherit' }}
+                  value={tagDraft}
+                  onChange={(e) => setTagDraft(e.target.value)}
+                  onKeyDown={onTagKeyDown}
+                  onBlur={commitTagDraft}
+                  placeholder={manualTags.length === 0 ? t('addItem.tagPlaceholder') : ''}
+                  disabled={!canUpload}
+                />
+              </div>
+              <div style={{ fontSize: 12.5, color: 'var(--text-4)', marginTop: 6 }}>
+                {canUpload ? t('addItem.manualHint') : t('addItem.pickDestinationFirst')}
+              </div>
+
+              <button
+                className="btn btn-accent"
+                style={{ width: '100%', marginTop: 16 }}
+                disabled={!canUpload || !manualName.trim() || addingManual}
+                onClick={submitManual}
+              >
+                {addingManual ? <IconLoader2 size={16} style={{ animation: 'spin 1s linear infinite' }} /> : <IconPlus size={16} />}
+                {addingManual ? t('addItem.adding') : t('addItem.addManual')}
+                <style>{`@keyframes spin { to { transform: rotate(360deg) } }`}</style>
+              </button>
+
+              {addedManual.length > 0 && (
+                <div style={{ marginTop: 18 }}>
+                  <div className="mono" style={{ fontSize: 10, color: 'var(--text-4)', letterSpacing: '0.08em', marginBottom: 8 }}>
+                    {t('addItem.addedNow')}
+                  </div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                    {addedManual.map((name, i) => (
+                      <div
+                        key={`${name}-${i}`}
+                        style={{
+                          display: 'flex', alignItems: 'center', gap: 10, padding: 8,
+                          border: 'var(--bw) solid var(--border)', borderRadius: 'var(--r-md)',
+                          background: 'color-mix(in srgb, var(--success-bg) 55%, var(--surface))',
+                        }}
+                      >
+                        <IconCheck size={16} style={{ color: 'var(--success-text)', flexShrink: 0 }} />
+                        <span style={{ fontSize: 13, color: 'var(--text-2)' }}>{name}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
           )}
         </div>

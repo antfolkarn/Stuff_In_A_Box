@@ -127,6 +127,13 @@ const sv = {
   'addItem.statusError': 'Misslyckades',
   'addItem.retry': 'Försök igen',
   'addItem.pickDestinationFirst': 'Välj utrymme och låda först',
+  'addItem.modePhoto': 'Foto',
+  'addItem.modeManual': 'Manuellt',
+  'addItem.manualHint': 'Skriv in vad det är och eventuella taggar – ingen bild behövs.',
+  'addItem.tagsLabel': 'TAGGAR (VALFRITT)',
+  'addItem.tagPlaceholder': 'Skriv en tagg och tryck Enter',
+  'addItem.addManual': 'Lägg till',
+  'addItem.adding': 'Lägger till…',
 
   // Search
   'search.title': 'Sökresultat',
@@ -380,6 +387,13 @@ const en: Record<MessageKey, string> = {
   'addItem.statusError': 'Failed',
   'addItem.retry': 'Try again',
   'addItem.pickDestinationFirst': 'Pick a space and box first',
+  'addItem.modePhoto': 'Photo',
+  'addItem.modeManual': 'Manual',
+  'addItem.manualHint': 'Type what it is and any tags — no photo needed.',
+  'addItem.tagsLabel': 'TAGS (OPTIONAL)',
+  'addItem.tagPlaceholder': 'Type a tag and press Enter',
+  'addItem.addManual': 'Add',
+  'addItem.adding': 'Adding…',
 
   // Search
   'search.title': 'Search results',
