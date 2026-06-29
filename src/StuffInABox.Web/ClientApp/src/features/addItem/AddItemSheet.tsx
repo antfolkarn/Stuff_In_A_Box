@@ -36,11 +36,14 @@ export default function AddItemSheet() {
 
   const { data: spaces = [] } = useQuery({ queryKey: ['spaces'], queryFn: getSpaces })
 
-  // Look up the opened box's own space. Boxes can be reached without a space
-  // context (search results, QR deep links), so we can't rely on navSpaceId.
+  // Look up the opened box's own space. Pass the navigation space context so a
+  // box in a *shared* space (owned by someone else) resolves to that space and
+  // not to the current user's own box with the same number. Same query key as
+  // BoxView so the lookup is served from cache. navSpaceId can still be absent
+  // (search results, QR deep links) — then the server resolves the own box.
   const boxDetail = useQuery({
-    queryKey: ['box', boxNum],
-    queryFn: () => getBoxDetail(boxNum!),
+    queryKey: ['box', boxNum, navSpaceId],
+    queryFn: () => getBoxDetail(boxNum!, navSpaceId ?? undefined),
     enabled: !!boxNum,
   })
 
