@@ -283,11 +283,12 @@ medlemmar behåller åtkomst tills de tas bort eller lämnar.
 | **Databas-swap** | `Infrastructure/DependencyInjection.cs` | `Database:Provider`-switch; entitetskonfig undviker provider-specifika typer. |
 | **Bildlagring** | `IStorageService` | Lokal disk nu; byts mot t.ex. Azure Blob utan schemaändring (nyckel, inte URL, lagras). |
 | **Taggning** | `ITaggingService` | Tokenizer default; Claude API bakom `Tagging:Provider`-flagga. |
-| **Bildigenkänning** | `IImageRecognitionService` | No-op default; lokal Ollama-vision-modell bakom `ImageRecognition:Provider`-flagga. Returnerar `{ namn, taggar }` (föremål, färger, material, boktitlar; flera föremål → blandad rubrik men alla som taggar). Anropas av `POST /api/v1/recognize` när ett foto väljs; taggarna mergas in på föremålet via `AddItemCommand`. Strikta guardrails (JSON-only-prompt + normalisering); kastar aldrig. |
-| **Bakgrundsjobb** | `TagEnrichmentWorker` | In-process `Channel<T>` + `IHostedService`; kastar aldrig, blockerar aldrig sparet. |
+| **Bildigenkänning** | `IImageRecognitionService` | Tre providers bakom `ImageRecognition:Provider`: `none` (no-op), `ollama` (self-hostad vision-modell) och `staik` (hostad, OpenAI-kompatibel vision-API — **prod kör denna**, modell `gemma4:31b`). Den svenska prompten och den toleranta JSON→tagg-parsningen delas av providers i `VisionRecognition`; bara HTTP-transporten skiljer. Returnerar `{ namn, taggar }` (föremål, färger, material, boktitlar; flera föremål → blandad rubrik men alla som taggar). Strikta guardrails (JSON-only-prompt + normalisering); kastar aldrig (null vid fel). Körs i bakgrunden — se §7. |
+| **Bakgrundsjobb** | `TagEnrichmentWorker`, `ImageRecognitionWorker` | In-process `Channel<T>` + `IHostedService`, bounded concurrency (max 3); kastar aldrig, blockerar aldrig sparet. Igenkänningsjobbet markerar alltid föremålet "berikat" (slutar snurra) även när igenkänning är av eller misslyckas. |
 | **Tema** | `ClientApp` `themeStore` | Ljust/mörkt via CSS-variabler och `data-theme`, persisterat i `localStorage`. Flimmerfritt: en liten inline-init i `index.html` sätter temat före första paint, tillåten av CSP via sin SHA-256-hash (ingen `'unsafe-inline'` för skript). Ändras skriptet måste hashen i `SecurityHeadersMiddleware` räknas om. |
 | **Health checks** | `Program.cs` + `DatabaseHealthCheck` | `/health` (liveness) och `/health/ready` (readiness, kollar DB) för orkestrering. |
-| **Drift** | `Dockerfile`, `docker-compose.yml`, `.github/workflows/ci.yml` | Multi-stage-bygge (SPA + .NET → Linux-runtime), CI som bygger och testar. SkiaSharp Linux-native-assets ingår så bildbehandling fungerar i container. |
+| **Drift** | `Dockerfile`, `docker-compose.yml`, `.github/workflows/ci.yml` + `deploy.yml` | Multi-stage-bygge (SPA + .NET → Linux-runtime), CI som bygger och testar; CD deployar till Azure (se §7). SkiaSharp Linux-native-assets ingår så bildbehandling fungerar i container. |
+| **Version** | `VersionEndpoints` + UI-footer | `GET /version` (anonym) returnerar `{ version, commit, buildTimeUtc }`. Commit bakas in vid bygge via `SourceRevisionId` (ett MSBuild-target kör `git rev-parse HEAD`). Gör att man direkt kan se exakt vilken commit som kör — fångar "stale deploy". |
 
 ---
 
@@ -312,3 +313,82 @@ ClientApp/src/
   `spaceId` så delade utrymmen resolvar rätt ägare.
 - **Routing**: tillståndsdriven (ingen URL-router); `#box=N` är en QR-deeplänk,
   `#invite=<token>` öppnar en accept-dialog, och `#token=…` tas emot från OAuth-callbacken.
+- **Lägg till föremål** (`addItem/AddItemSheet`): en toggle väljer **Foto** (default —
+  bulkuppladdning, varje foto blir ett föremål med platshållarnamn som bakgrunds­igen­känningen
+  fyller i) eller **Manuellt** (skriv namn + valfria taggar direkt, inget foto). Båda
+  använder destinationsväljaren; manuellt anropar `AddItemCommand`-endpointen direkt.
+
+---
+
+## 7. Drift & deployment (produktion)
+
+Hostas på **Azure App Service (Linux, F1 Free)** i resursgruppen `rg-stuffinabox-prod`
+(prenumeration "Stuff in a Box"). All infrastruktur är **Bicep** (`infra/`), deployad
+subscription-scoped. Appen serverar både API:t och den byggda SPA:n (wwwroot).
+
+```mermaid
+flowchart LR
+    User["Webbläsare / mobil"] -->|HTTPS| App["Azure App Service (Linux F1)<br/>stuffinabox-andree<br/>ASP.NET Core + SPA"]
+    App -->|"EF Core (SSL VerifyFull)"| DB[("Supabase<br/>Postgres")]
+    App -->|signerade /uploads| Store["Fotolagring<br/>(lokal disk / R2)"]
+    App -->|SMTP| Email["Brevo<br/>(verifierings-/reset-mejl)"]
+    App -->|"bild → namn + taggar"| Staik["Staik vision-API<br/>api.staik.se · gemma4:31b"]
+    App -. "KV-referenser via<br/>managed identity" .-> KV["Key Vault<br/>kv-stuffinabox-andree"]
+```
+
+**Hemligheter:** appen har en system-assigned managed identity med rollen *Key Vault
+Secrets User*. App settings som behöver hemligheter är **Key Vault-referenser**
+(`@Microsoft.KeyVault(...)`) som identiteten löser vid runtime — deploy/pipeline hanterar
+aldrig hemlighetsvärden. Secrets i valvet: `Db-Connection`, `Jwt-Secret`,
+`Email-Smtp-Password`, `OAuth-Google-ClientSecret`, `OAuth-Microsoft-ClientSecret`,
+`Staik-ApiKey`, `Ollama-ApiKey`.
+
+**Bildigenkänning i prod** går till **Staik** (`api.staik.se`), ett hostat,
+OpenAI-kompatibelt vision-API. `StaikImageRecognitionService` skickar fotot som en
+base64-`data:`-URI i ett `image_url`-meddelande till `POST /v1/chat/completions` och
+parsar svaret med den delade `VisionRecognition`-logiken. Flödet är asynkront:
+
+```mermaid
+sequenceDiagram
+    actor U as SPA
+    participant EP as ItemEndpoints
+    participant Q as ImageRecognitionQueue
+    participant W as ImageRecognitionWorker
+    participant S as Staik (gemma4:31b)
+    U->>EP: POST /boxes/{n}/items/photo (foto)
+    EP->>EP: skapa föremål (status Pending, "Nytt föremål")
+    EP-->>U: 201 (platshållaren visas direkt)
+    Q-->>W: läs kö (max 3 parallellt)
+    W->>S: bild + svensk JSON-prompt
+    S-->>W: { namn, kategori, färger, ... }
+    W->>EP: ApplyRecognition(namn, taggar) ELLER MarkEnriched (vid fel)
+```
+
+> **Fallback:** en self-hostad **Ollama** (`gemma3:12b` via Tailscale Funnel + Caddy
+> token-grind) finns kvar som alternativ provider. Man flippar tillbaka genom att sätta
+> `imageRecognitionProvider='ollama'` i `infra/main.bicepparam` och deploya. Den lokala
+> stacken är normalt **avstängd** (inkl. autostart).
+
+### CI/CD — GitHub Actions (OIDC)
+
+Push till `prod-migration` kör `.github/workflows/deploy.yml`. Autentisering sker via
+**GitHub OIDC** (federated credential mot en Entra-app med Contributor på prenumerationen)
+— inget Azure-lösenord lagras i GitHub. Endast icke-hemlig config skickas som GitHub-vars;
+appens hemligheter ligger i Key Vault.
+
+```mermaid
+flowchart LR
+    Push["git push → prod-migration"] --> GH["GitHub Actions: deploy.yml"]
+    GH -->|OIDC-login| AZ["Azure"]
+    GH --> B1["Bygg SPA (npm) +<br/>dotnet publish (-r linux-x64)"]
+    B1 --> B2["az deployment sub create<br/>(Bicep, Staik-params)"]
+    B2 --> B3["az webapp deploy --type zip<br/>(förbyggd zip)"]
+    B3 --> App["App Service"]
+```
+
+**Fallgropar (dokumenterade):** zip-deploy måste vara en *äkta* zip med framåtsnedstreck
+(`shutil.make_archive`/Python `zipfile`) — en Windows-`tar -a -c -f x.zip` blir ett
+tar-arkiv och `azure/webapps-deploy@v3` matad med en mapp triggar en Oryx-build som hänger
+OneDeploy på F1. En avbruten OneDeploy kan lämna ett föräldralöst Kudu-lås
+(`/home/site/locks/deployment/info.lock`) → "Another deployment is in progress"; rensas via
+Kudu VFS. Verifiera alltid efter deploy att `GET /version` visar rätt commit.

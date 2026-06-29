@@ -2,7 +2,7 @@
 
 Snabb lägesbild för att fortsätta på en annan dator. För djupare info: [README.md](README.md) och [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
 
-_Senast uppdaterad: 2026-06-24._
+_Senast uppdaterad: 2026-06-29._
 
 ---
 
@@ -20,28 +20,25 @@ cd src/StuffInABox.Web/ClientApp && npm install && npm run dev
 - **Tester:** `dotnet test StuffInABox.slnx` — **108 gröna** (Domain 27, Application 30, Infrastructure 21, Web 30). Frontend: `cd …/ClientApp && npm test` (Vitest, 16 tester).
 - **Bygg SPA till wwwroot:** `cd src/StuffInABox.Web/ClientApp && npm run build`.
 
-> ⚠️ **Pågående arbete på branch `prod-migration`** (ej mergad till `main`). Se [§Produktionssättning](#produktionssättning--pågående-branch-prod-migration) nedan.
+> ℹ️ **Arbetet ligger på branch `prod-migration`** (ej mergad till `main`). Prod deployar från denna branch via GitHub Actions — se nedan.
 
-## Produktionssättning — pågående (branch `prod-migration`)
+## Produktion — LIVE 🟢
 
-**Vald stack:** Azure Container Apps (Sweden Central) + **Supabase** (serverless Postgres, `eu-north-1`/Stockholm) + **Cloudflare R2** (bilder). Appen är stateless i prod (SQLite-filen + lokala bilder överlever inte ACA:s flyktiga filsystem).
+**URL:** <https://stuffinabox-andree.azurewebsites.net> · **Verifiera körande build:** `GET /version` → `{ version, commit, buildTimeUtc }`.
 
-**Klart + verifierat live mot Supabase:**
-- **Postgres-stöd** — `Npgsql` + `Database:Provider=postgres`. Dev förblir SQLite (`EnsureCreated`, ingen Docker krävs); prod kör Postgres (`Migrate`). En enda migrationsuppsättning (Postgres) under `Persistence/Migrations` (`InitialCreate` + `EnableRowLevelSecurity`).
-- **Supabase-databasen är uppsatt:** schema applicerat och verifierat mot riktig PG17. **RLS påslaget på alla tabeller** (Supabase exponerar public-schemat via PostgREST/anon-nyckeln — RLS utan policies nekar den vägen; appen kör som ägare och kringgår RLS). Security-advisorn: inga fel.
-- **R2-bildlagring** — `R2StorageService : IStorageService` (AWSSDK.S3, presignerade URL:er) bakom `Storage:Provider=r2`. Dev = lokal disk.
-- **Verifierad TLS-anslutning** — `SSL Mode=VerifyFull` + buntad Supabase root-CA (`src/StuffInABox.Web/certs/prod-ca-2021.crt`), DI pekar Npgsql på den automatiskt. Bevisat: med CA ansluter den, utan CA avvisas certet.
-- **Verifierad anslutningssträng** (lösenord + ev. snurrad nyckel sätts som hemlighet, aldrig i git):
-  `Host=aws-1-eu-north-1.pooler.supabase.com;Port=5432;Database=postgres;Username=postgres.rkoddewfhjbpjwujzwab;Password=<DB-LÖSENORD>;SSL Mode=VerifyFull`
-  (Session pooler = gratis IPv4; **inget IPv4-tillägg behövs**.)
+**Stack i prod:** Azure **App Service** (Linux, F1 Free, `rg-stuffinabox-prod`, prenumeration "Stuff in a Box" / gmail-kontot — **inte** Fabege) + **Supabase** Postgres (`eu-north-1`) + **Brevo** SMTP (verifierings-/reset-mejl) + **Staik** bildigenkänning. Bildlagring: lokal disk på instansen (R2-stöd finns men är inte påslaget). All infra är **Bicep** (`infra/`), secrets i **Key Vault** (`kv-stuffinabox-andree`) via managed-identity-referenser. Full bild: [docs/ARCHITECTURE.md §7](docs/ARCHITECTURE.md).
 
-**Återstår:**
-1. **Cloudflare R2** — skapa bucket + API-token (AccountId/AccessKey/SecretKey). Sätt `Storage:Provider=r2` + nycklarna.
-2. **Steg D — Azure Container Apps-deploy:** bygg image, push till registry, skapa Container App (Sweden Central), sätt hemligheter (`Jwt__Secret`, `ConnectionStrings__Default`, `Storage__*`, `ASPNETCORE_ENVIRONMENT=Production`), CI-deploy via GitHub Actions.
-3. **Config-blockerare kvar:** CORS + OAuth-redirect till prod-domänen; e-postleverantör (annars mejlas ingen återställning); juristgranska villkor/policy + fyll i platshållare.
-4. **Städning:** snurra DB-lösenordet (det användes vid lokal test); rensa ev. testdata i Supabase-DB:n.
+**CI/CD (GitHub Actions, OIDC):** push till `prod-migration` → `.github/workflows/deploy.yml` bygger SPA + `dotnet publish` → Bicep-deploy → `az webapp deploy --type zip`. Auth via OIDC (Entra-app `stuffinabox-github-deploy`, federated credential för `prod-migration`, Contributor på suben). GitHub-secrets/vars är satta (se `infra/github-oidc-setup.md`). **Verifiera alltid efter deploy att `/version` visar rätt commit.**
 
-**Env-kontrakt** dokumenterat i [.env.example](.env.example) med .NET-native namn (`Jwt__Secret`, `Database__Provider`, `ConnectionStrings__Default`, `Storage__Provider`, `Storage__R2__*`) — funkar både för docker-compose (`env_file`) och som ACA-hemligheter.
+**Bildigenkänning = Staik** (`api.staik.se`, hostat, OpenAI-kompatibelt, gratis nyckel, modell `gemma4:31b`). Provider väljs med `ImageRecognition:Provider=staik`; nyckel i KV-secret `Staik-ApiKey`. Self-hostad Ollama (`gemma3:12b` via Tailscale Funnel + Caddy) finns kvar som **fallback men är avstängd** (inkl. autostart — Ollama-genvägen flyttad från Startup-mappen till `%LOCALAPPDATA%\StuffInABox-disabled-autostart\`). Flippa tillbaka: `imageRecognitionProvider='ollama'` i `infra/main.bicepparam` + deploy, och starta Ollama/Caddy/Funnel lokalt (se [HANDOFF-stuffinabox-ollama-selfhost.md](../../Dev/Repos/HANDOFF-stuffinabox-ollama-selfhost.md) i Dev-repos).
+
+**Återstår / att tänka på:**
+1. **F1 kallstarts-race:** ingen Always-On → första anropet efter idle kan vara trögt. Robust fix: uppgradera till **B1** (`appServiceSku='B1'` i `main.bicepparam`, ~$13/mån).
+2. **Deploy från `main`:** vill man deploya från `main` också krävs ytterligare en federated credential för den branchen (eller merga `prod-migration`→`main`).
+3. **Config:** verifiera OAuth-redirect-URI:er och CORS mot prod-domänen; juristgranska villkor/policy + fyll i platshållare (`[Företagsnamn]` m.m.).
+4. **Städning:** snurra DB-lösenordet om det använts lokalt; rensa ev. testdata i Supabase.
+
+> **Deploy-fällor (bet oss 2026-06-29, dokumenterade i ARCHITECTURE §7):** Windows-`tar -a -c -f x.zip` ger ett **tar-arkiv**, inte en zip → använd Python `zipfile`/`shutil.make_archive`. `azure/webapps-deploy@v3` matad med en mapp triggar en Oryx-build som hänger OneDeploy på F1 → använd `az webapp deploy --type zip` med förbyggd zip. En avbruten OneDeploy kan lämna ett föräldralöst Kudu-lås (`/home/site/locks/deployment/info.lock`) → "Another deployment is in progress"; rensas via Kudu VFS (`DELETE` med `If-Match: *`).
 
 ## Färdigt och fungerar
 - Kärna: utrymmen/lådor/föremål (CRUD), sök, etiketter med QR, oföränderliga lådnummer (per ägare).
@@ -53,7 +50,9 @@ cd src/StuffInABox.Web/ClientApp && npm install && npm run dev
 - **Glömt lösenord:** e-postkonton lagrar nu adressen i klartext (`UserIdentity.Email`) för att kunna mejla återställningslänk. `forgot-password` (alltid 200, läcker inte) + `reset-password` (engångs-token, 1 h, återkallar sessioner). E-post via `IEmailService` — **default loggar bara länken** (`LoggingEmailService`); koppla in riktig leverantör (SMTP/SendGrid/Resend/Supabase) bakom `Email:Provider`. Reset-vy via `#reset=<token>`-deeplink.
 - Bilduppladdning (magic-byte + EXIF-strip via SkiaSharp). **Uppladdningar lagras utanför `wwwroot`** (annars raderas de av SPA-bygget). **Bildåtkomst är signerad:** `/uploads/{nyckel}` serveras via `PhotoEndpoints` och kräver en giltig HMAC-token (`?sig=`, tidsbegränsad via `Storage:UrlValidityMinutes`, default 6 h) — annars 403. Signering i `IPhotoUrlSigner`/`PhotoUrlSigner`, URL byggs i `LocalFileStorageService.GetUrl`.
 - **N+1-frågorna fixade:** `GetSpaces`/`GetBoxesBySpace` räknar föremål per låda via en batch-fråga (`IItemRepository.GetCountsByBoxAsync`, en `GROUP BY` per ägare) i stället för en fråga per låda.
-- **Bildigenkänning (Ollama, lokal):** foto → `{ namn, taggar }` (föremål, färger, material, boktitlar). På som default i dev (`ImageRecognition:Provider=ollama`). Se "Ollama" nedan.
+- **Bildigenkänning:** foto → `{ namn, taggar }` (föremål, färger, material, boktitlar), asynkront via `ImageRecognitionWorker`. Tre providers bakom `ImageRecognition:Provider`: `none`/`ollama`/`staik`. **Prod kör `staik`** (se Produktion ovan). Prompt + parsning delas i `VisionRecognition`; transporten skiljer per provider. Se "Bildigenkänning – providers" nedan.
+- **Lägg till föremål – foto eller manuellt:** "Lägg till"-rutan (`addItem/AddItemSheet`) har en toggle. **Foto** (default) = bulkuppladdning, igenkänningen fyller i namn+taggar i bakgrunden. **Manuellt** = skriv namn + valfria taggar (chips), inget foto — använder `AddItemCommand`. När man är inne i ett **delat** utrymme defaultas destinationen nu rätt (lådan slås upp med `spaceId` så den inte krockar med en egen låda med samma nummer).
+- **`/version`-endpoint + UI-footer:** visar körande commit + byggtid (commit bakas in via `SourceRevisionId` i ett MSBuild-target). Fångar "stale deploy".
 - **Smeknamn:** användare kan sätta ett valfritt smeknamn (`UserSettings.DisplayName`, Inställningar → Smeknamn). I delningspanelen visas smeknamn → annars e-post → annars generisk etikett. Resolvas batchat i `GetSpaceMembersQueryHandler` (smeknamn från `IUserSettingsRepository.GetDisplayNamesAsync`, e-post från `IUserIdentityRepository.GetEmailsAsync`). Migration: `…_AddUserDisplayName.cs`. Frontend: fält i `SettingsView.tsx`, helper `features/space/memberDisplay.ts`.
 - **Utloggat utseende låst till Pop + ljust:** oinloggat läge visar alltid Pop-designen i ljust läge, oavsett cachade prefs (branding på login/reset). Först vid inloggning laddas användarens prefs (`loadFromServer`). Logiken finns i `settingsStore.ts` (`initialAppearance`/`applyLoggedOut`, persist cachar bara när inloggad) + pre-paint-skriptet i `index.html` (kollar `sessionStorage['sib_token']`). **OBS:** ändras index.html-skriptet måste CSP-hashen uppdateras (se Gotchas). Tema-toggeln på login flippar fortfarande ljust/mörkt transient (sparas inte).
 - **Inställningar i databasen (cross-device):** `UserSettings`-tabell + `GET/PUT /api/v1/settings`. Tema (ljus/mörk/system) + design + smeknamn sparas på kontot och följer användaren. Inställningssida via kugghjuls­ikonen i headern. `localStorage` används som cache; flimmerfri init i `index.html`.
@@ -72,8 +71,10 @@ Designerna byter **färg, typsnitt och form** men matchade tidigare **inte** pro
 
 Referensprototyper: `design_handoff_stuffinabox/StuffInABox - Atelier.dc.html` och `… - Pop.dc.html` (originalet är `StuffInABox.dc.html`). Råpaket: `design/*.zip`.
 
-## Ollama (bildigenkänning)
-- Installerat på **denna** dator (winget: `Ollama.Ollama`, modell `llava` hämtad). På en annan dator: installera Ollama + `ollama pull llava`, **eller** stäng av med `ImageRecognition__Provider=none` (bash) / `$env:ImageRecognition__Provider='none'` (PowerShell) före `dotnet run`.
+## Bildigenkänning – providers
+- **Prod = Staik** (`ImageRecognition:Provider=staik`): hostat OpenAI-kompatibelt vision-API, gratis nyckel, modell `gemma4:31b`. `StaikImageRecognitionService` POSTar fotot som base64-`data:`-URI till `/v1/chat/completions`. Nyckel i KV-secret `Staik-ApiKey`. **Staik tar bara base64 (PNG/JPEG/HEIC), inte fjärr-URL:er och inte WebP.**
+- **Dev:** default är `none` (no-op). För lokal igenkänning kan man köra `ollama` (installera Ollama + `ollama pull gemma3:12b`, sätt `ImageRecognition__Provider=ollama`). Prompt/parsning är gemensam (`VisionRecognition`), så svaren ser likadana ut.
+- **Ollama som prod-fallback** (self-hostad via Tailscale Funnel + Caddy) är avstängd; se Produktion ovan för hur man flippar tillbaka.
 
 ## Gotchas (viktigt)
 - **CSP-hash för tema-skriptet:** inline-skriptet i `ClientApp/index.html` sätter tema+design före paint och tillåts av CSP via en SHA-256-hash i `src/StuffInABox.Web/Middleware/SecurityHeadersMiddleware.cs`. **Nuvarande hash: `sha256-3rsySJz2ymADKD1OT95TaKKPyHvxLoWFfbFzorU+xzU=`.** Ändras skriptet: bygg SPA, ta SHA-256 (base64) av exakt texten mellan `<script>`/`</script>` i `wwwroot/index.html`, och uppdatera konstanten — annars blockerar CSP:n skriptet (flimmer/fel tema).
