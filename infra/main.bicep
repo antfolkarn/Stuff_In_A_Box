@@ -42,8 +42,9 @@ param googleClientId string = ''
 @description('Microsoft OAuth client id (public identifier).')
 param microsoftClientId string = ''
 
-// --- Image recognition (self-hosted Ollama reached via Tailscale Funnel) ---
-@description('Image recognition provider: "ollama" or "none".')
+// --- Image recognition. Either self-hosted Ollama (via Tailscale Funnel) or the
+//     hosted Staik API; `imageRecognitionProvider` selects which. ---
+@description('Image recognition provider: "ollama", "staik" or "none".')
 param imageRecognitionProvider string = 'none'
 @description('Base URL of the Ollama endpoint (Tailscale Funnel address).')
 param ollamaBaseUrl string = ''
@@ -51,6 +52,12 @@ param ollamaBaseUrl string = ''
 param ollamaModel string = ''
 @description('Timeout (seconds) for Ollama recognition calls.')
 param ollamaTimeoutSeconds int = 180
+@description('Base URL of the Staik API.')
+param staikBaseUrl string = 'https://api.staik.se'
+@description('Staik vision model name (e.g. gemma4:31b).')
+param staikModel string = 'gemma4:31b'
+@description('Timeout (seconds) for Staik recognition calls.')
+param staikTimeoutSeconds int = 180
 
 // --- Prepared modules. Key Vault is created/granted only on the one-time bootstrap
 //     (needs Owner / User Access Administrator); normal pipeline deploys leave it false. ---
@@ -92,6 +99,9 @@ module app 'modules/appService.bicep' = {
     ollamaBaseUrl: ollamaBaseUrl
     ollamaModel: ollamaModel
     ollamaTimeoutSeconds: ollamaTimeoutSeconds
+    staikBaseUrl: staikBaseUrl
+    staikModel: staikModel
+    staikTimeoutSeconds: staikTimeoutSeconds
   }
 }
 

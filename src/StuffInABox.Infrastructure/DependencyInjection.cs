@@ -75,15 +75,21 @@ public static class DependencyInjection
         else
             services.AddScoped<ITaggingService, TokenizerTaggingService>();
 
-        // Image recognition: "none" (default, no-op) or "ollama" (vision model — local, or
-        // self-hosted and reached over a tunnel; the model + endpoint + optional auth token
-        // are all config-driven).
+        // Image recognition: "none" (default, no-op), "ollama" (vision model — local, or
+        // self-hosted and reached over a tunnel) or "staik" (hosted, OpenAI-compatible
+        // vision API at api.staik.se). Endpoint, model and auth token are all config-driven.
         var recognitionProvider = config["ImageRecognition:Provider"] ?? "none";
         if (recognitionProvider.Equals("ollama", StringComparison.OrdinalIgnoreCase))
         {
             // Vision inference can be slow (big models, cold start, tunnel latency).
             var timeout = config.GetValue<int?>("ImageRecognition:Ollama:TimeoutSeconds") ?? 180;
             services.AddHttpClient<IImageRecognitionService, Recognition.OllamaImageRecognitionService>(
+                client => client.Timeout = TimeSpan.FromSeconds(timeout));
+        }
+        else if (recognitionProvider.Equals("staik", StringComparison.OrdinalIgnoreCase))
+        {
+            var timeout = config.GetValue<int?>("ImageRecognition:Staik:TimeoutSeconds") ?? 180;
+            services.AddHttpClient<IImageRecognitionService, Recognition.StaikImageRecognitionService>(
                 client => client.Timeout = TimeSpan.FromSeconds(timeout));
         }
         else

@@ -21,9 +21,14 @@ param emailFrom = readEnvironmentVariable('SIB_EMAIL_FROM', 'andree.antfolk@gmai
 param googleClientId = readEnvironmentVariable('SIB_GOOGLE_CLIENT_ID', '')
 param microsoftClientId = readEnvironmentVariable('SIB_MICROSOFT_CLIENT_ID', '')
 
-// --- Image recognition: self-hosted Ollama reached via Tailscale Funnel.
-//     ApiKey lives in Key Vault (secret 'Ollama-ApiKey'); only non-secret config here. ---
-param imageRecognitionProvider = 'ollama'
+// --- Image recognition. Currently the hosted Staik API (free tier); the API key
+//     lives in Key Vault (secret 'Staik-ApiKey'), only non-secret config here.
+//     The Ollama params below are kept so we can flip back to the self-hosted
+//     model by changing `imageRecognitionProvider` to 'ollama'. ---
+param imageRecognitionProvider = 'staik'
+param staikBaseUrl = 'https://api.staik.se'
+param staikModel = 'gemma4:31b'
+param staikTimeoutSeconds = 180
 param ollamaBaseUrl = 'https://antfalk.tail3037e5.ts.net'
 param ollamaModel = 'gemma3:12b'
 param ollamaTimeoutSeconds = 180

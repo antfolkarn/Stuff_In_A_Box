@@ -46,7 +46,7 @@ param googleClientId string = ''
 @description('Microsoft OAuth client id (public identifier).')
 param microsoftClientId string = ''
 
-@description('Image recognition provider: "ollama" or "none".')
+@description('Image recognition provider: "ollama", "staik" or "none".')
 param imageRecognitionProvider string = 'none'
 
 @description('Base URL of the Ollama endpoint (e.g. a Tailscale Funnel address).')
@@ -57,6 +57,15 @@ param ollamaModel string = ''
 
 @description('Request timeout (seconds) for Ollama recognition calls.')
 param ollamaTimeoutSeconds int = 180
+
+@description('Base URL of the Staik API.')
+param staikBaseUrl string = 'https://api.staik.se'
+
+@description('Staik vision model name (e.g. gemma4:31b).')
+param staikModel string = 'gemma4:31b'
+
+@description('Request timeout (seconds) for Staik recognition calls.')
+param staikTimeoutSeconds int = 180
 
 // Free/Shared tiers don't support Always On; Basic and up do.
 var supportsAlwaysOn = !contains(['F1', 'FREE', 'D1', 'SHARED'], toUpper(skuName))
@@ -115,12 +124,19 @@ resource site 'Microsoft.Web/sites@2023-12-01' = {
         { name: 'OAuth__Google__RedirectUri', value: '${appBaseUrl}/api/v1/auth/google/callback' }
         { name: 'OAuth__Microsoft__ClientId', value: microsoftClientId }
         { name: 'OAuth__Microsoft__RedirectUri', value: '${appBaseUrl}/api/v1/auth/microsoft/callback' }
-        // --- Image recognition (self-hosted Ollama reached over a tunnel; ApiKey is a KV reference) ---
+        // --- Image recognition. `Provider` selects which block below is used:
+        //     "ollama" = self-hosted vision model reached over a tunnel;
+        //     "staik"  = hosted OpenAI-compatible vision API (api.staik.se).
+        //     Both API keys are Key Vault references; the unused provider's settings are harmless. ---
         { name: 'ImageRecognition__Provider', value: imageRecognitionProvider }
         { name: 'ImageRecognition__Ollama__BaseUrl', value: ollamaBaseUrl }
         { name: 'ImageRecognition__Ollama__Model', value: ollamaModel }
         { name: 'ImageRecognition__Ollama__TimeoutSeconds', value: string(ollamaTimeoutSeconds) }
         { name: 'ImageRecognition__Ollama__ApiKey', value: kvRef(keyVaultName, 'Ollama-ApiKey') }
+        { name: 'ImageRecognition__Staik__BaseUrl', value: staikBaseUrl }
+        { name: 'ImageRecognition__Staik__Model', value: staikModel }
+        { name: 'ImageRecognition__Staik__TimeoutSeconds', value: string(staikTimeoutSeconds) }
+        { name: 'ImageRecognition__Staik__ApiKey', value: kvRef(keyVaultName, 'Staik-ApiKey') }
       ]
     }
   }
