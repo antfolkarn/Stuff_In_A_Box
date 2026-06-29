@@ -8,7 +8,7 @@ name: Deploy to Azure
 on:
   workflow_dispatch: {}
   push:
-    branches: [main]
+    branches: [prod-migration]
     paths:
       - 'infra/**'
       - 'src/**'
@@ -76,7 +76,11 @@ jobs:
                 brevoSmtpUser="${{ vars.SIB_BREVO_USER }}" \
                 emailFrom="${{ vars.SIB_EMAIL_FROM }}" \
                 googleClientId="${{ vars.SIB_GOOGLE_CLIENT_ID }}" \
-                microsoftClientId="${{ vars.SIB_MICROSOFT_CLIENT_ID }}"
+                microsoftClientId="${{ vars.SIB_MICROSOFT_CLIENT_ID }}" \
+                imageRecognitionProvider="staik" \
+                staikBaseUrl="https://api.staik.se" \
+                staikModel="gemma4:31b" \
+                staikTimeoutSeconds="180"
 
       # --- Deploy the app code to the Web App created above ---
       - name: Deploy app to App Service
