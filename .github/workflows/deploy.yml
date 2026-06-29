@@ -83,8 +83,20 @@ jobs:
                 staikTimeoutSeconds="180"
 
       # --- Deploy the app code to the Web App created above ---
+      # Zip the pre-published output and push it with `az webapp deploy --type zip`.
+      # webapps-deploy@v3 fed a folder triggers an Oryx build ("Running build") that
+      # hangs OneDeploy on the Free (F1) tier; a pre-built zip skips the build. The
+      # zip is made on the Linux runner, so it has forward-slash paths (no Kudu rsync
+      # breakage).
       - name: Deploy app to App Service
-        uses: azure/webapps-deploy@v3
+        uses: azure/cli@v2
         with:
-          app-name: ${{ vars.AZURE_APP_NAME }}
-          package: publish
+          azcliversion: latest
+          inlineScript: |
+            # Zip with Python (always present in the azure-cli image; the `zip` binary
+            # may not be) — zipfile writes forward-slash paths Kudu can rsync.
+            python -c "import shutil; shutil.make_archive('app', 'zip', 'publish')"
+            az webapp deploy \
+              --resource-group "rg-stuffinabox-${{ vars.AZURE_ENV }}" \
+              --name "${{ vars.AZURE_APP_NAME }}" \
+              --src-path app.zip --type zip
