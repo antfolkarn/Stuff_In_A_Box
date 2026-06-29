@@ -1,3 +1,4 @@
+using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Text.Json;
 using Microsoft.Extensions.Configuration;
@@ -73,6 +74,10 @@ public sealed class OllamaImageRecognitionService(
     private string BaseUrl => (config["ImageRecognition:Ollama:BaseUrl"] ?? "http://localhost:11434").TrimEnd('/');
     private string Model => config["ImageRecognition:Ollama:Model"] ?? "llava";
 
+    // Optional bearer token — set when the Ollama endpoint is behind an auth proxy
+    // (e.g. a self-hosted model exposed to the cloud via a tunnel). Empty = no header.
+    private string? ApiKey => config["ImageRecognition:Ollama:ApiKey"];
+
     public async Task<RecognitionResult?> RecognizeAsync(byte[] imageBytes, CancellationToken ct = default)
     {
         if (imageBytes.Length == 0) return null;
@@ -89,7 +94,14 @@ public sealed class OllamaImageRecognitionService(
                 options = new { temperature = 0 },
             };
 
-            using var resp = await http.PostAsJsonAsync($"{BaseUrl}/api/generate", requestBody, ct);
+            using var req = new HttpRequestMessage(HttpMethod.Post, $"{BaseUrl}/api/generate")
+            {
+                Content = JsonContent.Create(requestBody),
+            };
+            if (!string.IsNullOrWhiteSpace(ApiKey))
+                req.Headers.Authorization = new AuthenticationHeaderValue("Bearer", ApiKey);
+
+            using var resp = await http.SendAsync(req, ct);
             if (!resp.IsSuccessStatusCode)
             {
                 logger.LogWarning("Ollama recognition returned {Status}.", resp.StatusCode);

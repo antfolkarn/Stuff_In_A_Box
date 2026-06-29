@@ -75,11 +75,17 @@ public static class DependencyInjection
         else
             services.AddScoped<ITaggingService, TokenizerTaggingService>();
 
-        // Image recognition: "none" (default, no-op) or "ollama" (local vision model).
+        // Image recognition: "none" (default, no-op) or "ollama" (vision model — local, or
+        // self-hosted and reached over a tunnel; the model + endpoint + optional auth token
+        // are all config-driven).
         var recognitionProvider = config["ImageRecognition:Provider"] ?? "none";
         if (recognitionProvider.Equals("ollama", StringComparison.OrdinalIgnoreCase))
+        {
+            // Vision inference can be slow (big models, cold start, tunnel latency).
+            var timeout = config.GetValue<int?>("ImageRecognition:Ollama:TimeoutSeconds") ?? 180;
             services.AddHttpClient<IImageRecognitionService, Recognition.OllamaImageRecognitionService>(
-                client => client.Timeout = TimeSpan.FromSeconds(120)); // local vision inference can be slow
+                client => client.Timeout = TimeSpan.FromSeconds(timeout));
+        }
         else
             services.AddSingleton<IImageRecognitionService, Recognition.NullImageRecognitionService>();
 
