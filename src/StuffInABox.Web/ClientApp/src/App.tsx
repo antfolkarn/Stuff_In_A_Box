@@ -9,6 +9,7 @@ import VerifyEmailView from './features/auth/VerifyEmailView'
 import VerifyEmailBanner from './features/auth/VerifyEmailBanner'
 import LegalView from './features/legal/LegalView'
 import AppHeader from './shared/components/AppHeader'
+import VersionFooter from './shared/components/VersionFooter'
 import HomeView from './features/home/HomeView'
 import SpaceView from './features/space/SpaceView'
 import BoxView from './features/box/BoxView'
@@ -82,6 +83,7 @@ export default function App() {
         ) : (
           <HomeView />
         )}
+        <VersionFooter />
       </main>
       {addOpen && <AddItemSheet />}
       {pendingInvite && <InviteAcceptSheet token={pendingInvite} />}

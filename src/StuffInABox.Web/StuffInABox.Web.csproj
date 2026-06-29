@@ -30,4 +30,20 @@
     <UserSecretsId>2d43a745-3dac-489a-9470-798817153c40</UserSecretsId>
   </PropertyGroup>
 
+  <!-- Bake the git commit into the assembly's informational version (becomes
+       "<version>+<sha>"), so /version can report exactly what's running. Best-effort:
+       if git isn't available the build still succeeds, just without a commit id.
+       Skipped when SourceRevisionId is already provided (e.g. CI passing -p:...). -->
+  <Target Name="SetGitCommit" BeforeTargets="GetAssemblyVersion;GenerateAssemblyInfo"
+          Condition="'$(SourceRevisionId)' == ''">
+    <Exec Command="git rev-parse HEAD" ConsoleToMSBuild="true" IgnoreExitCode="true"
+          StandardOutputImportance="low" ContinueOnError="true">
+      <Output TaskParameter="ConsoleOutput" PropertyName="_GitCommitHash" />
+      <Output TaskParameter="ExitCode" PropertyName="_GitExitCode" />
+    </Exec>
+    <PropertyGroup Condition="'$(_GitExitCode)' == '0' and '$(_GitCommitHash)' != ''">
+      <SourceRevisionId>$(_GitCommitHash.Trim())</SourceRevisionId>
+    </PropertyGroup>
+  </Target>
+
 </Project>

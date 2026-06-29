@@ -183,6 +183,7 @@ app.MapSearchEndpoints();
 app.MapLabelEndpoints();
 app.MapSettingsEndpoints();
 app.MapAccountEndpoints();
+app.MapVersionEndpoints();
 
 // Health endpoints
 app.MapHealthChecks("/health", new Microsoft.AspNetCore.Diagnostics.HealthChecks.HealthCheckOptions
