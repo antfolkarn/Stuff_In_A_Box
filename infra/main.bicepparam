@@ -20,3 +20,10 @@ param brevoSmtpUser = readEnvironmentVariable('SIB_BREVO_USER', 'b0375d001@smtp-
 param emailFrom = readEnvironmentVariable('SIB_EMAIL_FROM', 'andree.antfolk@gmail.com')
 param googleClientId = readEnvironmentVariable('SIB_GOOGLE_CLIENT_ID', '')
 param microsoftClientId = readEnvironmentVariable('SIB_MICROSOFT_CLIENT_ID', '')
+
+// --- Image recognition: self-hosted Ollama reached via Tailscale Funnel.
+//     ApiKey lives in Key Vault (secret 'Ollama-ApiKey'); only non-secret config here. ---
+param imageRecognitionProvider = 'ollama'
+param ollamaBaseUrl = 'https://antfalk.tail3037e5.ts.net'
+param ollamaModel = 'gemma3:12b'
+param ollamaTimeoutSeconds = 180

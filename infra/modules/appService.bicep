@@ -46,6 +46,18 @@ param googleClientId string = ''
 @description('Microsoft OAuth client id (public identifier).')
 param microsoftClientId string = ''
 
+@description('Image recognition provider: "ollama" or "none".')
+param imageRecognitionProvider string = 'none'
+
+@description('Base URL of the Ollama endpoint (e.g. a Tailscale Funnel address).')
+param ollamaBaseUrl string = ''
+
+@description('Ollama vision model name (e.g. gemma3:12b).')
+param ollamaModel string = ''
+
+@description('Request timeout (seconds) for Ollama recognition calls.')
+param ollamaTimeoutSeconds int = 180
+
 // Free/Shared tiers don't support Always On; Basic and up do.
 var supportsAlwaysOn = !contains(['F1', 'FREE', 'D1', 'SHARED'], toUpper(skuName))
 
@@ -103,6 +115,12 @@ resource site 'Microsoft.Web/sites@2023-12-01' = {
         { name: 'OAuth__Google__RedirectUri', value: '${appBaseUrl}/api/v1/auth/google/callback' }
         { name: 'OAuth__Microsoft__ClientId', value: microsoftClientId }
         { name: 'OAuth__Microsoft__RedirectUri', value: '${appBaseUrl}/api/v1/auth/microsoft/callback' }
+        // --- Image recognition (self-hosted Ollama reached over a tunnel; ApiKey is a KV reference) ---
+        { name: 'ImageRecognition__Provider', value: imageRecognitionProvider }
+        { name: 'ImageRecognition__Ollama__BaseUrl', value: ollamaBaseUrl }
+        { name: 'ImageRecognition__Ollama__Model', value: ollamaModel }
+        { name: 'ImageRecognition__Ollama__TimeoutSeconds', value: string(ollamaTimeoutSeconds) }
+        { name: 'ImageRecognition__Ollama__ApiKey', value: kvRef(keyVaultName, 'Ollama-ApiKey') }
       ]
     }
   }

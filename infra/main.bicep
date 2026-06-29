@@ -42,6 +42,16 @@ param googleClientId string = ''
 @description('Microsoft OAuth client id (public identifier).')
 param microsoftClientId string = ''
 
+// --- Image recognition (self-hosted Ollama reached via Tailscale Funnel) ---
+@description('Image recognition provider: "ollama" or "none".')
+param imageRecognitionProvider string = 'none'
+@description('Base URL of the Ollama endpoint (Tailscale Funnel address).')
+param ollamaBaseUrl string = ''
+@description('Ollama vision model name (e.g. gemma3:12b).')
+param ollamaModel string = ''
+@description('Timeout (seconds) for Ollama recognition calls.')
+param ollamaTimeoutSeconds int = 180
+
 // --- Prepared modules. Key Vault is created/granted only on the one-time bootstrap
 //     (needs Owner / User Access Administrator); normal pipeline deploys leave it false. ---
 @description('Create the Key Vault + grant the web app access (one-time bootstrap by an Owner).')
@@ -78,6 +88,10 @@ module app 'modules/appService.bicep' = {
     googleClientId: googleClientId
     microsoftClientId: microsoftClientId
     storageProvider: enableStorage ? 'r2' : 'local'
+    imageRecognitionProvider: imageRecognitionProvider
+    ollamaBaseUrl: ollamaBaseUrl
+    ollamaModel: ollamaModel
+    ollamaTimeoutSeconds: ollamaTimeoutSeconds
   }
 }
 
