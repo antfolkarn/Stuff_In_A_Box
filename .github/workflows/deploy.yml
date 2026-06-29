@@ -95,7 +95,7 @@ jobs:
           inlineScript: |
             # Zip with Python (always present in the azure-cli image; the `zip` binary
             # may not be) — zipfile writes forward-slash paths Kudu can rsync.
-            python -c "import shutil; shutil.make_archive('app', 'zip', 'publish')"
+            python3 -c "import shutil; shutil.make_archive('app', 'zip', 'publish')"
             az webapp deploy \
               --resource-group "rg-stuffinabox-${{ vars.AZURE_ENV }}" \
               --name "${{ vars.AZURE_APP_NAME }}" \
