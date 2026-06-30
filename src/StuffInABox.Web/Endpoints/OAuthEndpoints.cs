@@ -92,6 +92,10 @@ public static class OAuthEndpoints
             identity = UserIdentity.CreateOAuth(provider, subject);
             await userRepo.AddAsync(identity, ct);
         }
+        else if (identity.IsDisabled)
+        {
+            return Results.Redirect($"{redirect}#error=account_disabled");
+        }
 
         // OAuth is a browser redirect flow → refresh stays in the cookie (raw ignored).
         var (accessToken, _) = await TokenIssuer.IssueAsync(identity.GetUserId(), jwt, refreshRepo, ctx, ct);

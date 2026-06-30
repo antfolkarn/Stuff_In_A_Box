@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="sv">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>StuffInABox · Admin</title>
+  <style>
+    :root { --bd:#e3e3df; --mut:#6b6b66; --acc:#185fa5; --bg:#faf9f5; --danger:#a32d2d; --ok:#3b6d11; }
+    * { box-sizing: border-box; }
+    body { margin:0; font-family: system-ui, -apple-system, "Segoe UI", sans-serif; color:#1c1c1a; background:var(--bg); }
+    header { display:flex; align-items:center; gap:12px; padding:12px 20px; border-bottom:1px solid var(--bd); background:#fff; }
+    header h1 { font-size:16px; font-weight:600; margin:0; }
+    header .sp { flex:1; }
+    .mut { color:var(--mut); }
+    main { max-width:1000px; margin:0 auto; padding:24px 20px; }
+    button { font:inherit; border:1px solid var(--bd); background:#fff; border-radius:7px; padding:7px 12px; cursor:pointer; }
+    button:hover { background:#f1efe8; }
+    button.primary { background:var(--acc); color:#fff; border-color:var(--acc); }
+    button.danger { color:var(--danger); border-color:#e6c4c4; }
+    button.danger:hover { background:#fbeaea; }
+    input, select { font:inherit; padding:7px 9px; border:1px solid var(--bd); border-radius:7px; background:#fff; }
+    input:focus, select:focus { outline:2px solid #b5d4f4; }
+    table { width:100%; border-collapse:collapse; background:#fff; border:1px solid var(--bd); border-radius:10px; overflow:hidden; }
+    th, td { text-align:left; padding:10px 12px; border-bottom:1px solid var(--bd); font-size:14px; vertical-align:middle; }
+    th { font-size:12px; text-transform:uppercase; letter-spacing:.04em; color:var(--mut); background:#faf9f5; }
+    tr:last-child td { border-bottom:0; }
+    .pill { display:inline-block; padding:2px 9px; border-radius:20px; font-size:12px; }
+    .pill.active { background:#eaf3de; color:var(--ok); }
+    .pill.disabled { background:#fceaea; color:var(--danger); }
+    .login { max-width:360px; margin:12vh auto; background:#fff; border:1px solid var(--bd); border-radius:12px; padding:28px; text-align:center; }
+    .login h2 { margin:0 0 6px; font-size:18px; }
+    .login button { margin-top:20px; width:100%; padding:10px; }
+    .toolbar { display:flex; gap:10px; margin-bottom:16px; align-items:center; }
+    .toolbar input { flex:1; }
+    .small { font-size:12px; }
+  </style>
+</head>
+<body>
+  <div id="app"></div>
+
+  <script>
+    const $ = (s, r = document) => r.querySelector(s);
+    // Cookie-based auth (Entra sign-in sets an HttpOnly cookie); same-origin requests carry it.
+    const api = (path, opts = {}) => fetch(path, { credentials: "same-origin", ...opts });
+
+    let plans = ["free", "medium", "large"];
+    let me = { name: "", email: "" };
+
+    function esc(s) { return (s ?? "").toString().replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c])); }
+    function fmtDate(s) { try { return new Date(s).toISOString().slice(0, 10); } catch { return ""; } }
+
+    function renderLogin() {
+      $("#app").innerHTML = `
+        <div class="login">
+          <h2>StuffInABox · Admin</h2>
+          <div class="mut small">Logga in med ditt organisationskonto</div>
+          <button class="primary" id="loginBtn">Logga in med Microsoft</button>
+        </div>`;
+      $("#loginBtn").onclick = () => { window.location.href = "/login"; };
+    }
+
+    async function renderApp() {
+      const pr = await api("/api/admin/plans");
+      if (pr.status === 401) { renderLogin(); return; }
+      if (pr.ok) plans = (await pr.json()).tiers;
+
+      $("#app").innerHTML = `
+        <header>
+          <h1>StuffInABox · Admin</h1>
+          <span class="mut small">${esc(me.email || me.name)}</span>
+          <div class="sp"></div>
+          <button id="logout">Logga ut</button>
+        </header>
+        <main>
+          <div class="toolbar">
+            <input id="search" placeholder="Sök på e-post…" />
+            <button id="refresh">Uppdatera</button>
+          </div>
+          <table>
+            <thead><tr>
+              <th>E-post</th><th>Inlogg</th><th>Plan</th><th>Spaces</th><th>Föremål</th>
+              <th>Status</th><th>Skapad</th><th></th>
+            </tr></thead>
+            <tbody id="rows"><tr><td colspan="8" class="mut">Laddar…</td></tr></tbody>
+          </table>
+        </main>`;
+      $("#logout").onclick = () => { window.location.href = "/logout"; };
+      $("#refresh").onclick = loadUsers;
+      let t;
+      $("#search").oninput = () => { clearTimeout(t); t = setTimeout(loadUsers, 250); };
+      await loadUsers();
+    }
+
+    async function loadUsers() {
+      const q = $("#search")?.value?.trim() || "";
+      const res = await api("/api/admin/users?query=" + encodeURIComponent(q));
+      if (res.status === 401) { renderLogin(); return; }
+      const users = await res.json();
+      const rows = $("#rows");
+      if (!users.length) { rows.innerHTML = `<tr><td colspan="8" class="mut">Inga användare.</td></tr>`; return; }
+
+      rows.innerHTML = users.map(u => {
+        const email = u.email ? esc(u.email) : `<span class="mut">(${esc(u.provider)})</span>`;
+        const opts = plans.map(p => `<option value="${esc(p)}" ${p === u.planTier ? "selected" : ""}>${esc(p)}</option>`).join("");
+        const status = u.isDisabled ? `<span class="pill disabled">Avstängd</span>` : `<span class="pill active">Aktiv</span>`;
+        const action = u.isDisabled
+          ? `<button data-act="enable" data-id="${u.userId}">Aktivera</button>`
+          : `<button class="danger" data-act="disable" data-id="${u.userId}">Stäng av</button>`;
+        return `<tr>
+          <td>${email}</td>
+          <td class="mut small">${esc(u.provider)}${u.emailVerified ? "" : " · overifierad"}</td>
+          <td><select data-plan="${u.userId}">${opts}</select></td>
+          <td>${u.spaceCount}</td>
+          <td>${u.itemCount}</td>
+          <td>${status}</td>
+          <td class="mut small">${fmtDate(u.createdAt)}</td>
+          <td>${action}</td>
+        </tr>`;
+      }).join("");
+
+      rows.querySelectorAll("select[data-plan]").forEach(sel => sel.onchange = () => setPlan(sel.dataset.plan, sel.value));
+      rows.querySelectorAll("button[data-act]").forEach(b => b.onclick = () => setDisabled(b.dataset.id, b.dataset.act === "disable"));
+    }
+
+    async function setPlan(id, tier) {
+      const res = await api(`/api/admin/users/${id}/plan`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ tier }) });
+      if (!res.ok) alert("Kunde inte sätta plan.");
+    }
+
+    async function setDisabled(id, disabled) {
+      const res = await api(`/api/admin/users/${id}/${disabled ? "disable" : "enable"}`, { method: "POST" });
+      if (!res.ok) { alert("Åtgärden misslyckades."); return; }
+      await loadUsers();
+    }
+
+    // Boot: ask who we are. 200 → load the console; 401 → show the sign-in button.
+    (async () => {
+      const res = await api("/api/admin/me");
+      if (res.ok) { me = await res.json(); await renderApp(); }
+      else renderLogin();
+    })();
+  </script>
+</body>
+</html>

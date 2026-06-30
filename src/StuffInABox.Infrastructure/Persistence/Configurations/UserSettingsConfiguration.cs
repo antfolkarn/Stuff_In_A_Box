@@ -12,5 +12,9 @@ public class UserSettingsConfiguration : IEntityTypeConfiguration<UserSettings>
         builder.Property(s => s.Theme).IsRequired().HasMaxLength(20);
         builder.Property(s => s.Design).IsRequired().HasMaxLength(40);
         builder.Property(s => s.DisplayName).HasMaxLength(UserSettings.MaxDisplayNameLength);
+        builder.Property(s => s.PlanTier)
+            .IsRequired()
+            .HasMaxLength(UserSettings.MaxPlanTierLength)
+            .HasDefaultValue(UserSettings.DefaultPlanTier);
     }
 }

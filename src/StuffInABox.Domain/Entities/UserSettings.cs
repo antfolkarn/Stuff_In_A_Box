@@ -7,6 +7,8 @@ namespace StuffInABox.Domain.Entities;
 public class UserSettings
 {
     public const int MaxDisplayNameLength = 40;
+    public const int MaxPlanTierLength = 40;
+    public const string DefaultPlanTier = "free";
 
     public Guid UserId { get; private set; }
     public string Theme { get; private set; }   // "light" | "dark" | "system"
@@ -14,6 +16,9 @@ public class UserSettings
     /// <summary>Optional nickname the user picks. When set it's shown to other members
     /// instead of their email; null means "no nickname" (callers fall back to email).</summary>
     public string? DisplayName { get; private set; }
+    /// <summary>Subscription tier the account is on (e.g. "free" | "medium" | "large").
+    /// Validated against the plan catalog by the admin application before it's set.</summary>
+    public string PlanTier { get; private set; } = DefaultPlanTier;
     public DateTimeOffset UpdatedAt { get; private set; }
 
     private UserSettings()
@@ -27,8 +32,18 @@ public class UserSettings
         UserId = userId,
         Theme = "system",
         Design = "standard",
+        PlanTier = DefaultPlanTier,
         UpdatedAt = DateTimeOffset.UtcNow,
     };
+
+    /// <summary>Sets the subscription tier. The caller (admin app) is responsible for
+    /// validating the value against the plan catalog first.</summary>
+    public void SetPlanTier(string tier)
+    {
+        if (string.IsNullOrWhiteSpace(tier)) throw new ArgumentException("Plan krävs.", nameof(tier));
+        PlanTier = tier.Trim().ToLowerInvariant();
+        UpdatedAt = DateTimeOffset.UtcNow;
+    }
 
     public void Update(string theme, string design, string? displayName)
     {

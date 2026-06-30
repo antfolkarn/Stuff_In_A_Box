@@ -26,6 +26,13 @@ public class UserIdentity
     /// <summary>True for OAuth identities, or for email identities that have verified.</summary>
     public bool IsEmailVerified => Provider != "email" || EmailVerifiedAt is not null;
 
+    /// <summary>When the account was disabled (null = active). A disabled account cannot
+    /// log in or refresh its session; its data is left untouched.</summary>
+    public DateTimeOffset? DisabledAt { get; private set; }
+
+    /// <summary>True while <see cref="DisabledAt"/> is set.</summary>
+    public bool IsDisabled => DisabledAt is not null;
+
     private UserIdentity()
     {
         Provider = null!;
@@ -78,6 +85,12 @@ public class UserIdentity
 
     /// <summary>Marks the email address as verified (idempotent).</summary>
     public void MarkEmailVerified() => EmailVerifiedAt ??= DateTimeOffset.UtcNow;
+
+    /// <summary>Disables the account (idempotent). Logging in and refreshing are blocked.</summary>
+    public void Disable() => DisabledAt ??= DateTimeOffset.UtcNow;
+
+    /// <summary>Re-enables a previously disabled account (idempotent).</summary>
+    public void Enable() => DisabledAt = null;
 
     private static void ValidateProvider(string provider)
     {

@@ -101,12 +101,18 @@ public static class AuthEndpoints
             || !BCrypt.Net.BCrypt.Verify(req.Password, identity.PasswordHash))
             return Results.Unauthorized();
 
+        if (identity.IsDisabled)
+            return Results.Json(
+                new { code = "account_disabled", error = "Kontot är avstängt." },
+                statusCode: StatusCodes.Status403Forbidden);
+
         var (token, rawRefresh) = await TokenIssuer.IssueAsync(identity.GetUserId(), jwt, refreshRepo, ctx, ct);
         return TokenResult(ctx, token, rawRefresh);
     }
 
     private static async Task<IResult> RefreshAsync(
         IRefreshTokenRepository refreshRepo,
+        IUserIdentityRepository userRepo,
         JwtTokenService jwt,
         HttpContext ctx,
         CancellationToken ct)
@@ -122,6 +128,16 @@ public static class AuthEndpoints
 
         if (stored is null || !stored.IsActive(DateTimeOffset.UtcNow))
         {
+            TokenIssuer.ClearRefreshCookie(ctx);
+            return Results.Unauthorized();
+        }
+
+        // A disabled account loses its session on next refresh: revoke the token, don't reissue.
+        var identity = await userRepo.FindByIdAsync(stored.UserId, ct);
+        if (identity is null || identity.IsDisabled)
+        {
+            stored.Revoke(DateTimeOffset.UtcNow);
+            await refreshRepo.UpdateAsync(stored, ct);
             TokenIssuer.ClearRefreshCookie(ctx);
             return Results.Unauthorized();
         }

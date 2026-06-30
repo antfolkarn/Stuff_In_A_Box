@@ -107,6 +107,16 @@ public static class DependencyInjection
         return services;
     }
 
+    /// <summary>Registers the admin-only services (subscription catalog + account admin
+    /// operations). Called by the separate admin host on top of <see cref="AddInfrastructure"/>,
+    /// not by the consumer app.</summary>
+    public static IServiceCollection AddAdminCore(this IServiceCollection services)
+    {
+        services.AddSingleton<Application.Admin.IPlanCatalog, Admin.PlanCatalog>();
+        services.AddScoped<Application.Admin.IAdminService, Admin.AdminService>();
+        return services;
+    }
+
     // When the connection string asks Npgsql to verify the server certificate
     // (SSL Mode=VerifyCA/VerifyFull) but doesn't point at a CA file, fill in the
     // bundled Supabase root CA. Lets the connection string stay path-agnostic across
