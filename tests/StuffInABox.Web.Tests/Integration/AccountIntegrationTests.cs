@@ -97,6 +97,7 @@ public class AccountIntegrationTests : IClassFixture<WebApplicationFactory<Progr
     public async Task DeleteAccount_RemovesMembersAccessToSharedSpaces()
     {
         var owner = await SignInAsync("owner-erase@test.se");
+        TestVerify.SetPlan(_factory, "owner-erase@test.se", "large"); // sharing needs a paid tier
         var (spaceId, _) = await SeedSpaceWithItemAsync(owner);
         var inviteResp = await owner.PostAsync($"/api/v1/spaces/{spaceId}/invite", null);
         var inviteToken = (await inviteResp.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("token").GetString();

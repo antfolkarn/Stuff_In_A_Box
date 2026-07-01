@@ -53,6 +53,10 @@ public static class DependencyInjection
         services.AddScoped<Application.Common.Interfaces.IAccountDeletionService,
             Application.Common.Services.AccountDeletionService>();
 
+        // Plan quota enforcement (checked against the space owner).
+        services.AddScoped<Application.Common.Interfaces.IEntitlementService,
+            Application.Common.Services.EntitlementService>();
+
         // Email: "log" (default — writes the message to the log so flows work without a
         // provider) or "smtp" (any SMTP provider, configured via Email:Smtp:*). Provider-
         // agnostic, so switching email services is a config change, not a code change.

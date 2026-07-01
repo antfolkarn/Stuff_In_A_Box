@@ -13,6 +13,7 @@ public sealed class AcceptInviteCommandHandler(
     ISpaceInviteRepository invites,
     ISpaceRepository spaces,
     ISpaceMembershipRepository memberships,
+    IEntitlementService entitlements,
     ICurrentUserService currentUser)
     : IRequestHandler<AcceptInviteCommand, AcceptInviteResult>
 {
@@ -27,7 +28,11 @@ public sealed class AcceptInviteCommandHandler(
         var me = currentUser.UserId;
         // The owner is already in; only add a membership for genuinely new members.
         if (space.OwnerId != me && !await memberships.ExistsAsync(space.Id, me, ct))
+        {
+            // The member cap is a property of the owner's plan (they pay for the space).
+            await entitlements.EnsureCanAddMemberAsync(space.Id, space.OwnerId, ct);
             await memberships.AddAsync(SpaceMembership.Create(space.Id, me), ct);
+        }
 
         return new AcceptInviteResult(space.Id, space.Name);
     }

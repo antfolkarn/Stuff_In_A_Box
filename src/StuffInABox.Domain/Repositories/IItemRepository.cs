@@ -10,6 +10,8 @@ public interface IItemRepository
     /// <summary>Item count per box number for an owner, in a single query (avoids N+1 when listing).</summary>
     Task<IReadOnlyDictionary<int, int>> GetCountsByBoxAsync(UserId ownerId, CancellationToken ct = default);
     Task<IReadOnlyList<Item>> GetByOwnerAsync(UserId ownerId, CancellationToken ct = default);
+    /// <summary>Number of items owned by the user (for quota checks).</summary>
+    Task<int> CountByOwnerAsync(UserId ownerId, CancellationToken ct = default);
     Task<IReadOnlyList<Item>> SearchAsync(UserId ownerId, string query, CancellationToken ct = default);
     Task AddAsync(Item item, CancellationToken ct = default);
     Task UpdateAsync(Item item, CancellationToken ct = default);

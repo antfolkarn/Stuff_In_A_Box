@@ -3,6 +3,13 @@ import { create } from 'zustand'
 type View = 'home' | 'space' | 'box' | 'labels' | 'settings'
 export type LegalPage = 'terms' | 'privacy'
 
+/// Surfaced when the server rejects an action for exceeding the plan's limit.
+export interface QuotaNotice {
+  quota: string   // "spaces" | "items" | "members"
+  limit: number
+  plan: string
+}
+
 interface LabelFilter {
   spaceId?: string
   boxNumber?: number
@@ -20,6 +27,7 @@ interface UiState {
   pendingReset: string | null
   pendingVerify: string | null
   legal: LegalPage | null
+  quotaNotice: QuotaNotice | null
 
   goHome: () => void
   goSpace: (spaceId: string) => void
@@ -34,6 +42,8 @@ interface UiState {
   setPendingReset: (token: string | null) => void
   setPendingVerify: (token: string | null) => void
   setLegal: (page: LegalPage | null) => void
+  showQuotaNotice: (notice: QuotaNotice) => void
+  dismissQuotaNotice: () => void
 }
 
 // Parse QR deep link on load (#box=<n>). Hash is injectable for testing.
@@ -72,6 +82,7 @@ export const useUiStore = create<UiState>((set) => ({
   pendingReset: parsePendingReset(),
   pendingVerify: parsePendingVerify(),
   legal: null,
+  quotaNotice: null,
 
   goHome: () => set({ view: 'home', spaceId: null, boxNum: null, query: '' }),
 
@@ -100,4 +111,8 @@ export const useUiStore = create<UiState>((set) => ({
   setPendingVerify: (token) => set({ pendingVerify: token }),
 
   setLegal: (page) => set({ legal: page }),
+
+  showQuotaNotice: (notice) => set({ quotaNotice: notice }),
+
+  dismissQuotaNotice: () => set({ quotaNotice: null }),
 }))

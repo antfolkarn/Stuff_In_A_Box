@@ -26,6 +26,9 @@ public class ItemRepository(AppDbContext db) : IItemRepository
     public async Task<IReadOnlyList<Item>> GetByOwnerAsync(UserId ownerId, CancellationToken ct = default) =>
         await db.Items.Where(i => i.OwnerId == ownerId).ToListAsync(ct);
 
+    public Task<int> CountByOwnerAsync(UserId ownerId, CancellationToken ct = default) =>
+        db.Items.CountAsync(i => i.OwnerId == ownerId, ct);
+
     public async Task<IReadOnlyList<Item>> SearchAsync(UserId ownerId, string query, CancellationToken ct = default)
     {
         var q = query.ToLowerInvariant();

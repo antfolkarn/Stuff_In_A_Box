@@ -53,8 +53,9 @@ public class SpaceSharingIntegrationTests : IClassFixture<WebApplicationFactory<
     [Fact]
     public async Task NonMember_CannotAccess_UntilInviteAccepted()
     {
-        // Owner sets up a space with a box.
+        // Owner sets up a space with a box. Sharing needs a plan that allows members.
         var owner = await SignInAsync("owner-share@test.se");
+        TestVerify.SetPlan(_factory, "owner-share@test.se", "large");
         var sp = await owner.PostAsJsonAsync("/api/v1/spaces", new { name = "Vinden", icon = "ti-home" });
         var spaceId = (await sp.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("spaceId").GetString()!;
         var bx = await owner.PostAsJsonAsync("/api/v1/boxes", new { spaceId, label = "Jul" });
@@ -101,6 +102,7 @@ public class SpaceSharingIntegrationTests : IClassFixture<WebApplicationFactory<
     public async Task Members_ShowEmailByDefault_AndNicknameWhenSet()
     {
         var owner = await SignInAsync("owner-members@test.se");
+        TestVerify.SetPlan(_factory, "owner-members@test.se", "large");
         var sp = await owner.PostAsJsonAsync("/api/v1/spaces", new { name = "Garaget", icon = "ti-car" });
         var spaceId = (await sp.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("spaceId").GetString()!;
 

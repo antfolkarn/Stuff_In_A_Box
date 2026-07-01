@@ -11,12 +11,14 @@ public sealed class AddItemCommandHandler(
     IItemRepository itemRepo,
     IBoxRepository boxRepo,
     ISpaceAccessService access,
+    IEntitlementService entitlements,
     IEnrichmentQueue enrichmentQueue)
     : IRequestHandler<AddItemCommand, AddItemResult>
 {
     public async Task<AddItemResult> Handle(AddItemCommand request, CancellationToken ct)
     {
         var ownerId = await access.RequireSpaceAsync(request.SpaceId, ct: ct);
+        await entitlements.EnsureCanAddItemAsync(ownerId, ct);
         var boxNumber = new BoxNumber(request.BoxNumber);
 
         var box = await boxRepo.GetByNumberAsync(boxNumber, ownerId, ct);

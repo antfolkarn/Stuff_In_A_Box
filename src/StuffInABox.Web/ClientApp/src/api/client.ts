@@ -1,4 +1,5 @@
 import axios, { AxiosError, type InternalAxiosRequestConfig } from 'axios'
+import { useUiStore } from '../store/uiStore'
 
 export const api = axios.create({
   baseURL: '/api/v1',
@@ -37,6 +38,12 @@ api.interceptors.response.use(
     const original = err.config as (InternalAxiosRequestConfig & { _retried?: boolean }) | undefined
     const url = original?.url ?? ''
     const isAuthCall = url.includes('/auth/refresh') || url.includes('/auth/login') || url.includes('/auth/register')
+
+    // Plan-limit rejections surface a global upgrade prompt (in addition to bubbling up).
+    const data = err.response?.data as { code?: string; quota?: string; limit?: number; plan?: string } | undefined
+    if (err.response?.status === 403 && data?.code === 'quota_exceeded') {
+      useUiStore.getState().showQuotaNotice({ quota: data.quota ?? '', limit: data.limit ?? 0, plan: data.plan ?? '' })
+    }
 
     if (err.response?.status === 401 && original && !original._retried && !isAuthCall) {
       original._retried = true

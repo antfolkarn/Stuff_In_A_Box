@@ -19,6 +19,7 @@ import SettingsView from './features/settings/SettingsView'
 import AddItemSheet from './features/addItem/AddItemSheet'
 import InviteAcceptSheet from './features/invite/InviteAcceptSheet'
 import ImageLightbox from './shared/components/ImageLightbox'
+import QuotaNoticeModal from './shared/components/QuotaNoticeModal'
 
 export default function App() {
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated)
@@ -88,6 +89,7 @@ export default function App() {
       {addOpen && <AddItemSheet />}
       {pendingInvite && <InviteAcceptSheet token={pendingInvite} />}
       <ImageLightbox />
+      <QuotaNoticeModal />
     </div>
   )
 }

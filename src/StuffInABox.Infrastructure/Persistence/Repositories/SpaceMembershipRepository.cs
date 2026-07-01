@@ -16,6 +16,9 @@ public class SpaceMembershipRepository(AppDbContext db) : ISpaceMembershipReposi
     public async Task<IReadOnlyList<SpaceMembership>> GetBySpaceAsync(Guid spaceId, CancellationToken ct = default) =>
         await db.SpaceMemberships.Where(m => m.SpaceId == spaceId).ToListAsync(ct);
 
+    public Task<int> CountBySpaceAsync(Guid spaceId, CancellationToken ct = default) =>
+        db.SpaceMemberships.CountAsync(m => m.SpaceId == spaceId, ct);
+
     public async Task AddAsync(SpaceMembership membership, CancellationToken ct = default)
     {
         await db.SpaceMemberships.AddAsync(membership, ct);

@@ -11,6 +11,7 @@ public class CreateSpaceHandlerTests
 {
     private readonly Mock<ISpaceRepository> _repo = new();
     private readonly Mock<ICurrentUserService> _user = new();
+    private readonly Mock<IEntitlementService> _entitlements = new();
     private readonly UserId _userId = new(Guid.NewGuid());
 
     public CreateSpaceHandlerTests()
@@ -26,7 +27,7 @@ public class CreateSpaceHandlerTests
              .Callback<Space, CancellationToken>((s, _) => saved = s)
              .Returns(Task.CompletedTask);
 
-        var handler = new CreateSpaceCommandHandler(_repo.Object, _user.Object);
+        var handler = new CreateSpaceCommandHandler(_repo.Object, _user.Object, _entitlements.Object);
         var result = await handler.Handle(new CreateSpaceCommand("Garage", "ti-car"), default);
 
         Assert.NotEqual(Guid.Empty, result.SpaceId);

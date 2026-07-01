@@ -264,6 +264,14 @@ const sv = {
   'plan.medium.label': 'Hushåll',
   'plan.large.label': 'Pro/Familj',
 
+  // Quota / limit reached
+  'quota.title': 'Gräns nådd',
+  'quota.spaces': 'Din plan tillåter {limit} utrymmen. Uppgradera för fler.',
+  'quota.items': 'Din plan tillåter {limit} föremål. Uppgradera för fler.',
+  'quota.members': 'Din plan tillåter {limit} medlemmar per utrymme (inklusive dig). Uppgradera för att dela med fler.',
+  'quota.generic': 'Du har nått en gräns på din plan. Uppgradera för mer.',
+  'quota.dismiss': 'Stäng',
+
   // Themes
   'theme.light': 'Ljust',
   'theme.dark': 'Mörkt',
@@ -547,6 +555,14 @@ const en: Record<MessageKey, string> = {
   'plan.free.label': 'Box',
   'plan.medium.label': 'Household',
   'plan.large.label': 'Pro/Family',
+
+  // Quota / limit reached
+  'quota.title': 'Limit reached',
+  'quota.spaces': 'Your plan allows {limit} spaces. Upgrade for more.',
+  'quota.items': 'Your plan allows {limit} items. Upgrade for more.',
+  'quota.members': 'Your plan allows {limit} members per space (including you). Upgrade to share with more.',
+  'quota.generic': "You've hit a limit on your plan. Upgrade for more.",
+  'quota.dismiss': 'Close',
 
   // Themes
   'theme.light': 'Light',

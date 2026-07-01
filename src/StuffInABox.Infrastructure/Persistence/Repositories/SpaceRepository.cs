@@ -21,6 +21,9 @@ public class SpaceRepository(AppDbContext db) : ISpaceRepository
     public async Task<IReadOnlyList<Space>> GetAllAsync(UserId ownerId, CancellationToken ct = default) =>
         await db.Spaces.Where(s => s.OwnerId == ownerId).ToListAsync(ct);
 
+    public Task<int> CountByOwnerAsync(UserId ownerId, CancellationToken ct = default) =>
+        db.Spaces.CountAsync(s => s.OwnerId == ownerId, ct);
+
     public async Task AddAsync(Space space, CancellationToken ct = default)
     {
         await db.Spaces.AddAsync(space, ct);

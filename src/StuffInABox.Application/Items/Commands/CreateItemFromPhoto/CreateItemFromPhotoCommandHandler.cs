@@ -14,12 +14,15 @@ public sealed class CreateItemFromPhotoCommandHandler(
     IImageProcessor imageProcessor,
     IStorageService storage,
     ISpaceAccessService access,
+    IEntitlementService entitlements,
     IImageRecognitionQueue recognitionQueue)
     : IRequestHandler<CreateItemFromPhotoCommand, CreateItemFromPhotoResult>
 {
     public async Task<CreateItemFromPhotoResult> Handle(CreateItemFromPhotoCommand request, CancellationToken ct)
     {
         var ownerId = await access.RequireSpaceAsync(request.SpaceId, ct: ct);
+        // Check the quota before doing any image work or storing the file.
+        await entitlements.EnsureCanAddItemAsync(ownerId, ct);
         var boxNumber = new BoxNumber(request.BoxNumber);
 
         var box = await boxRepo.GetByNumberAsync(boxNumber, ownerId, ct);

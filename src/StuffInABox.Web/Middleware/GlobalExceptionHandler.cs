@@ -20,6 +20,7 @@ public class GlobalExceptionHandler : IExceptionHandler
             InvalidImageException => (HttpStatusCode.BadRequest, "Ogiltig bild", "invalid_image"),
             NotFoundException => (HttpStatusCode.NotFound, "Hittades inte", "not_found"),
             EmailNotVerifiedException => (HttpStatusCode.Forbidden, "E-post ej verifierad", "email_not_verified"),
+            QuotaExceededException => (HttpStatusCode.Forbidden, "Gräns nådd", "quota_exceeded"),
             ForbiddenException => (HttpStatusCode.Forbidden, "Åtkomst nekad", "forbidden"),
             UnauthorizedAccessException => (HttpStatusCode.Unauthorized, "Ej autentiserad", "unauthorized"),
             _ => (HttpStatusCode.InternalServerError, "Serverfel", "server_error")
@@ -33,6 +34,14 @@ public class GlobalExceptionHandler : IExceptionHandler
             Detail = ex.Message,
             Extensions = { ["code"] = code }
         };
+
+        // Give the client the details it needs to show a targeted upgrade prompt.
+        if (ex is QuotaExceededException quota)
+        {
+            problem.Extensions["quota"] = quota.Quota;
+            problem.Extensions["limit"] = quota.Limit;
+            problem.Extensions["plan"] = quota.Plan;
+        }
 
         await ctx.Response.WriteAsJsonAsync(problem, ct);
         return true;

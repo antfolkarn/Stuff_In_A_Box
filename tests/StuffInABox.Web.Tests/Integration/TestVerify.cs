@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.DependencyInjection;
+using StuffInABox.Domain.Entities;
 using StuffInABox.Infrastructure.Persistence;
 
 namespace StuffInABox.Web.Tests.Integration;
@@ -18,6 +19,29 @@ internal static class TestVerify
         var user = db.UserIdentities.FirstOrDefault(u => u.Email == email);
         if (user is null) return;
         user.MarkEmailVerified();
+        db.SaveChanges();
+    }
+
+    /// <summary>Puts a user on a plan tier directly in the DB. Sharing is a paid feature
+    /// (the free tier's member cap is 1 = owner only), so tests that add members set the
+    /// owner to a tier that allows them.</summary>
+    public static void SetPlan(WebApplicationFactory<Program> factory, string email, string tier)
+    {
+        using var scope = factory.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        var user = db.UserIdentities.FirstOrDefault(u => u.Email == email);
+        if (user is null) return;
+        var settings = db.UserSettings.FirstOrDefault(s => s.UserId == user.InternalUserId);
+        if (settings is null)
+        {
+            settings = UserSettings.CreateDefault(user.InternalUserId);
+            settings.SetPlanTier(tier);
+            db.UserSettings.Add(settings);
+        }
+        else
+        {
+            settings.SetPlanTier(tier);
+        }
         db.SaveChanges();
     }
 }

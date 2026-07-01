@@ -414,7 +414,7 @@ Tre lager hålls isär så att en prismodell kan bytas utan att röra affärslog
 |-------|-----|-----|
 | *Vad en nivå innehåller* | **plan-katalog** (`IPlanCatalog`, DB-baserad) | Nivåernas gränser/flaggor. Data, redigeras i admin. |
 | *Vilken nivå en användare har* | `UserSettings.PlanTier` | UserId-nyckel, ingen FK → icke-brytande. |
-| *Var det kontrolleras* | command-handlers (planerat) | Ett fåtal `CheckQuota`/`RequireFlag`-anrop, alltid mot **ägaren**. **Ännu ej inkopplat** (Fas 3). |
+| *Var det kontrolleras* | command-handlers via `IEntitlementService` | `EnsureCanAdd{Space,Item,Member}` mot **ägaren**. Numeriska kvoter inkopplade (Fas 3a); AI-mån/lagring + flaggor = Fas 3b. |
 
 **Delningsmodell (regeln som löser nivåer + delning):** **ägarens nivå styr hela utrymmet.**
 Allt innehåll ägs av `Space.OwnerId`, så kvoten dras alltid från ägaren — aldrig från en
@@ -467,6 +467,15 @@ refresh avvisas, data kvar), och `DeleteUserAsync` = **permanent radering** via 
 `IAccountDeletionService` (samma kaskad som konsumentens egen GDPR-radering: utrymmen, föremål,
 foton, medlemskap, tokens, settings, identitet). Admin och konsument delar Domain/Infrastructure
 och samma databas men är skilda publika ytor.
+
+**Enforcement (Fas 3a):** `IEntitlementService` löser ägarens plan och kastar
+`QuotaExceededException` när en åtgärd skulle överskrida en numerisk gräns. Inkopplat i
+`CreateSpace` (utrymmen), `AddItem`/`CreateItemFromPhoto` (föremål) och `AcceptInvite`
+(medlemmar, inkl. ägaren i taket). `GlobalExceptionHandler` mappar undantaget till **403 med
+`code: "quota_exceeded"`** + `{quota, limit, plan}`; klientens axios-interceptor fångar det och
+visar en global uppgradera-modal (`QuotaNoticeModal`). Kontrollerna är additiva → nedgradering
+blockerar bara nya tillägg, aldrig befintligt (grandfathering). **Fas 3b** lägger till AI-foton/mån
+(förbrukning + månadsreset), lagringsbytes, prioriterad AI-kö och en "Kör AI"-åtgärd per föremål.
 
 De verkliga kostnadshävstängerna som motiverar nivåerna (AI-igenkänning i två steg, worker med
 3-parallell-gräns, R2-lagring, delade spaces) är beskrivna i idéskissen
