@@ -267,10 +267,16 @@ function SubscriptionSection() {
     <section style={{ marginTop: 32, borderTop: 'var(--bw) solid var(--border)', paddingTop: 24 }}>
       <div className="field-label" style={{ marginBottom: 12 }}>{t('subscription.title')}</div>
 
-      {/* Current plan + usage meters */}
-      <div style={{ ...cardStyle(true), flexDirection: 'column', alignItems: 'stretch', gap: 14, cursor: 'default' }}>
+      {/* Current plan + usage meters — accent-framed hero, but text stays readable */}
+      <div
+        style={{
+          display: 'flex', flexDirection: 'column', alignItems: 'stretch', gap: 14,
+          padding: '16px', borderRadius: 'var(--r-md)',
+          border: '1.5px solid var(--accent)', background: 'var(--accent-9)',
+        }}
+      >
         <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 12 }}>
-          <span style={{ fontSize: 16, fontWeight: 600 }}>{planLabel(data.tier)}</span>
+          <span style={{ fontSize: 16, fontWeight: 600, color: 'var(--text)' }}>{planLabel(data.tier)}</span>
           <span style={{ fontSize: 14, color: 'var(--accent)', fontWeight: 600 }}>{price(data.priceSek)}</span>
         </div>
         <div style={{ display: 'grid', gap: 10 }}>
@@ -285,7 +291,7 @@ function SubscriptionSection() {
         {data.plans.map((p) => (
           <div key={p.tier} style={{ ...cardStyle(p.current), flexDirection: 'column', alignItems: 'stretch', gap: 8, cursor: 'default' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              <span style={{ fontSize: 15, fontWeight: 600 }}>{planLabel(p.tier)}</span>
+              <span style={{ fontSize: 15, fontWeight: 600, color: 'var(--text)' }}>{planLabel(p.tier)}</span>
               {p.current && (
                 <span style={{ marginLeft: 'auto', fontSize: 11, fontWeight: 600, color: 'var(--accent)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
                   {t('subscription.currentBadge')}
@@ -322,6 +328,8 @@ function SubscriptionSection() {
 
 function UsageBar({ label, used, max, unlimited }: { label: string; used: number; max: number; unlimited: string }) {
   const pct = max <= 0 ? 0 : Math.min(100, Math.round((used / max) * 100))
+  // Being *at* your allowance is normal (amber nudge); only going *over* is a problem (red).
+  const barColor = max > 0 && used > max ? '#B91C1C' : max > 0 && used >= max ? '#B7791F' : 'var(--accent)'
   return (
     <div>
       <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, marginBottom: 5 }}>
@@ -330,7 +338,7 @@ function UsageBar({ label, used, max, unlimited }: { label: string; used: number
       </div>
       {max >= 0 && (
         <div style={{ height: 6, borderRadius: 999, background: 'var(--border-2)', overflow: 'hidden' }}>
-          <div style={{ height: '100%', width: `${pct}%`, background: pct >= 100 ? '#B91C1C' : 'var(--accent)', transition: 'width 0.2s' }} />
+          <div style={{ height: '100%', width: `${pct}%`, background: barColor, transition: 'width 0.2s' }} />
         </div>
       )}
     </div>
