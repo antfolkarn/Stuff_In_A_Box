@@ -29,11 +29,14 @@ public static class AdminEndpoints
                     ?? user.FindFirstValue(ClaimTypes.Email)
                     ?? user.Identity?.Name,
         }));
-        g.MapGet("/plans", (IPlanCatalog catalog) => Results.Ok(new { tiers = catalog.Tiers }));
+        g.MapGet("/plans", async (IPlanAdminService svc, CancellationToken ct) => Results.Ok(await svc.ListAsync(ct)));
+        g.MapPut("/plans/{tier}", UpsertPlanAsync);
+        g.MapDelete("/plans/{tier}", DeletePlanAsync);
         g.MapGet("/users", ListUsersAsync);
         g.MapPost("/users/{id:guid}/plan", SetPlanAsync);
         g.MapPost("/users/{id:guid}/disable", DisableAsync);
         g.MapPost("/users/{id:guid}/enable", EnableAsync);
+        g.MapDelete("/users/{id:guid}", DeleteUserAsync);
 
         return app;
     }
@@ -60,6 +63,34 @@ public static class AdminEndpoints
 
     private static async Task<IResult> EnableAsync(Guid id, IAdminService svc, CancellationToken ct) =>
         await svc.SetDisabledAsync(id, false, ct) ? Results.Ok() : Results.NotFound();
+
+    private static async Task<IResult> DeleteUserAsync(Guid id, IAdminService svc, CancellationToken ct) =>
+        await svc.DeleteUserAsync(id, ct) ? Results.NoContent() : Results.NotFound();
+
+    private static async Task<IResult> UpsertPlanAsync(string tier, PlanInput body, IPlanAdminService svc, CancellationToken ct)
+    {
+        try
+        {
+            await svc.UpsertAsync(body with { Tier = tier }, ct);
+            return Results.NoContent();
+        }
+        catch (ArgumentException e)
+        {
+            return Results.BadRequest(new { error = e.Message });
+        }
+    }
+
+    private static async Task<IResult> DeletePlanAsync(string tier, IPlanAdminService svc, CancellationToken ct)
+    {
+        try
+        {
+            return await svc.DeleteAsync(tier, ct) ? Results.NoContent() : Results.NotFound();
+        }
+        catch (InvalidOperationException e)
+        {
+            return Results.BadRequest(new { error = e.Message });
+        }
+    }
 
     private record SetPlanRequest(string Tier);
 }

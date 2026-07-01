@@ -143,6 +143,9 @@ if (!EF.IsDesignTime)
         db.Database.EnsureCreated();
     else
         db.Database.Migrate();
+
+    // Fill the plan catalog on first run (idempotent; admin owns it thereafter).
+    await StuffInABox.Infrastructure.Admin.PlanSeeder.SeedAsync(db);
 }
 
 app.UseSerilogRequestLogging();

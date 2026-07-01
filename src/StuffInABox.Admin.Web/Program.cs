@@ -91,7 +91,12 @@ if (!EF.IsDesignTime)
     using var scope = app.Services.CreateScope();
     var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
     if (db.Database.IsSqlite())
+    {
         db.Database.EnsureCreated();
+        // Dev only: seed the shared SQLite DB if the consumer app hasn't yet. On Postgres the
+        // consumer app owns the schema + seed, so we don't touch it here.
+        await StuffInABox.Infrastructure.Admin.PlanSeeder.SeedAsync(db);
+    }
 }
 
 app.UseDefaultFiles();

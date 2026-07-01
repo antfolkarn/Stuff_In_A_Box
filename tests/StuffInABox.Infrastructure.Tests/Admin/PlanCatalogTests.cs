@@ -1,46 +1,86 @@
-using Microsoft.Extensions.Configuration;
+using Microsoft.Data.Sqlite;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
+using StuffInABox.Domain.Entities;
 using StuffInABox.Infrastructure.Admin;
+using StuffInABox.Infrastructure.Persistence;
 
 namespace StuffInABox.Infrastructure.Tests.Admin;
 
-public class PlanCatalogTests
+public class PlanCatalogTests : IDisposable
 {
-    private static IConfiguration Config(Dictionary<string, string?> values) =>
-        new ConfigurationBuilder().AddInMemoryCollection(values).Build();
+    private const string Cs = "Data Source=plancat_test;Mode=Memory;Cache=Shared";
+    private readonly SqliteConnection _keepAlive;
+    private readonly IServiceScopeFactory _scopeFactory;
 
-    [Fact]
-    public void NoConfig_UsesBuiltInDefaults()
+    public PlanCatalogTests()
     {
-        var catalog = new PlanCatalog(Config([]));
+        _keepAlive = new SqliteConnection(Cs);
+        _keepAlive.Open();
+        using (var db = NewDb()) db.Database.EnsureCreated();
+        _scopeFactory = new FakeScopeFactory(NewDb);
+    }
 
-        Assert.Equal(["free", "medium", "large"], catalog.Tiers);
-        Assert.True(catalog.IsValidTier("FREE")); // case-insensitive
-        Assert.False(catalog.IsValidTier("enterprise"));
+    public void Dispose() => _keepAlive.Dispose();
 
-        var free = catalog.GetPlan("free");
-        Assert.NotNull(free);
-        Assert.Equal(0, free!.PriceSek);
-        Assert.Equal(20, free.AiPhotosPerMonth);
+    private static AppDbContext NewDb() =>
+        new(new DbContextOptionsBuilder<AppDbContext>().UseSqlite(Cs).Options);
 
-        Assert.Equal(-1, catalog.GetPlan("large")!.MaxItems); // unlimited
+    private void Seed(params Plan[] plans)
+    {
+        using var db = NewDb();
+        db.Plans.AddRange(plans);
+        db.SaveChanges();
     }
 
     [Fact]
-    public void Config_OverridesCatalogAndPreservesOrder()
+    public void EmptyTable_UsesBuiltInDefaults()
     {
-        var catalog = new PlanCatalog(Config(new Dictionary<string, string?>
-        {
-            ["Plans:starter:priceSek"] = "0",
-            ["Plans:starter:maxSpaces"] = "2",
-            ["Plans:pro:priceSek"] = "129",
-            ["Plans:pro:maxSpaces"] = "-1",
-            ["Plans:pro:claudeEnrichment"] = "true",
-        }));
+        var catalog = new PlanCatalog(_scopeFactory);
 
-        Assert.Equal(["starter", "pro"], catalog.Tiers);
-        Assert.Equal(2, catalog.GetPlan("starter")!.MaxSpaces);
+        Assert.Equal(["free", "medium", "large"], catalog.Tiers);
+        Assert.Equal(5, catalog.GetPlan("free")!.AiPhotosPerMonth);
+        Assert.Equal(-1, catalog.GetPlan("large")!.MaxItems); // unlimited
+        Assert.Equal(5, catalog.GetPlan("large")!.MaxMembers); // capped, not unlimited
+    }
+
+    [Fact]
+    public void ReadsFromDb_InSortOrder()
+    {
+        Seed(
+            Plan.Create("pro", 129, -1, -1, 5, 2000, 20480, true, true, true, 1),
+            Plan.Create("starter", 0, 2, 200, 1, 10, 500, false, false, false, 0));
+
+        var catalog = new PlanCatalog(_scopeFactory);
+
+        Assert.Equal(["starter", "pro"], catalog.Tiers); // by SortOrder
         Assert.Equal(129, catalog.GetPlan("pro")!.PriceSek);
-        Assert.True(catalog.GetPlan("pro")!.ClaudeEnrichment);
-        Assert.False(catalog.IsValidTier("free")); // defaults are replaced, not merged
+        Assert.True(catalog.IsValidTier("STARTER")); // case-insensitive
+        Assert.False(catalog.IsValidTier("free"));   // DB is the source of truth, not defaults
+    }
+
+    [Fact]
+    public void Reload_PicksUpChanges()
+    {
+        var catalog = new PlanCatalog(_scopeFactory);
+        Assert.Equal(["free", "medium", "large"], catalog.Tiers); // defaults (empty table)
+
+        Seed(Plan.Create("solo", 0, 1, 50, 1, 3, 100, false, false, false, 0));
+        catalog.Reload();
+
+        Assert.Equal(["solo"], catalog.Tiers);
+    }
+
+    // Minimal IServiceScopeFactory that hands out a fresh AppDbContext per scope.
+    private sealed class FakeScopeFactory(Func<AppDbContext> factory) : IServiceScopeFactory
+    {
+        public IServiceScope CreateScope() => new Scope(factory());
+
+        private sealed class Scope(AppDbContext db) : IServiceScope, IServiceProvider
+        {
+            public IServiceProvider ServiceProvider => this;
+            public object? GetService(Type serviceType) => serviceType == typeof(AppDbContext) ? db : null;
+            public void Dispose() => db.Dispose();
+        }
     }
 }

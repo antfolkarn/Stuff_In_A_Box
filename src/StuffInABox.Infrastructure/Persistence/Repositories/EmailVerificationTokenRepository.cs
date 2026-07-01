@@ -31,4 +31,11 @@ public class EmailVerificationTokenRepository(AppDbContext db) : IEmailVerificat
             t.Use(now);
         await db.SaveChangesAsync(ct);
     }
+
+    public async Task DeleteAllForUserAsync(Guid userId, CancellationToken ct = default)
+    {
+        var tokens = await db.EmailVerificationTokens.Where(t => t.UserId == userId).ToListAsync(ct);
+        db.EmailVerificationTokens.RemoveRange(tokens);
+        await db.SaveChangesAsync(ct);
+    }
 }

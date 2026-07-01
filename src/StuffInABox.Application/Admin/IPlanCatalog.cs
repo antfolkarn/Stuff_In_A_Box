@@ -32,4 +32,8 @@ public interface IPlanCatalog
 
     /// <summary>The plan for a tier key, or null when it isn't in the catalog.</summary>
     PlanInfo? GetPlan(string tier);
+
+    /// <summary>Drops the cached catalog so the next read reloads it from the store.
+    /// Called by the admin editor after it changes a plan.</summary>
+    void Reload();
 }

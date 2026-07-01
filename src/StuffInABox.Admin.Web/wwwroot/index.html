@@ -43,7 +43,8 @@
     // Cookie-based auth (Entra sign-in sets an HttpOnly cookie); same-origin requests carry it.
     const api = (path, opts = {}) => fetch(path, { credentials: "same-origin", ...opts });
 
-    let plans = ["free", "medium", "large"];
+    let plans = [];            // array of PlanInfo { tier, priceSek, ... }
+    let view = "users";        // "users" | "plans"
     let me = { name: "", email: "" };
 
     function esc(s) { return (s ?? "").toString().replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c])); }
@@ -62,33 +63,47 @@
     async function renderApp() {
       const pr = await api("/api/admin/plans");
       if (pr.status === 401) { renderLogin(); return; }
-      if (pr.ok) plans = (await pr.json()).tiers;
+      if (pr.ok) plans = await pr.json();
 
       $("#app").innerHTML = `
         <header>
           <h1>StuffInABox · Admin</h1>
           <span class="mut small">${esc(me.email || me.name)}</span>
           <div class="sp"></div>
+          <button id="navUsers">Användare</button>
+          <button id="navPlans">Nivåer</button>
           <button id="logout">Logga ut</button>
         </header>
-        <main>
-          <div class="toolbar">
-            <input id="search" placeholder="Sök på e-post…" />
-            <button id="refresh">Uppdatera</button>
-          </div>
-          <table>
-            <thead><tr>
-              <th>E-post</th><th>Inlogg</th><th>Plan</th><th>Spaces</th><th>Föremål</th>
-              <th>Status</th><th>Skapad</th><th></th>
-            </tr></thead>
-            <tbody id="rows"><tr><td colspan="8" class="mut">Laddar…</td></tr></tbody>
-          </table>
-        </main>`;
+        <main id="content"></main>`;
       $("#logout").onclick = () => { window.location.href = "/logout"; };
+      $("#navUsers").onclick = () => { view = "users"; renderView(); };
+      $("#navPlans").onclick = () => { view = "plans"; renderView(); };
+      renderView();
+    }
+
+    function renderView() {
+      $("#navUsers").classList.toggle("primary", view === "users");
+      $("#navPlans").classList.toggle("primary", view === "plans");
+      if (view === "plans") renderPlans(); else renderUsers();
+    }
+
+    function renderUsers() {
+      $("#content").innerHTML = `
+        <div class="toolbar">
+          <input id="search" placeholder="Sök på e-post…" />
+          <button id="refresh">Uppdatera</button>
+        </div>
+        <table>
+          <thead><tr>
+            <th>E-post</th><th>Inlogg</th><th>Plan</th><th>Spaces</th><th>Föremål</th>
+            <th>Status</th><th>Skapad</th><th></th>
+          </tr></thead>
+          <tbody id="rows"><tr><td colspan="8" class="mut">Laddar…</td></tr></tbody>
+        </table>`;
       $("#refresh").onclick = loadUsers;
       let t;
       $("#search").oninput = () => { clearTimeout(t); t = setTimeout(loadUsers, 250); };
-      await loadUsers();
+      loadUsers();
     }
 
     async function loadUsers() {
@@ -101,11 +116,12 @@
 
       rows.innerHTML = users.map(u => {
         const email = u.email ? esc(u.email) : `<span class="mut">(${esc(u.provider)})</span>`;
-        const opts = plans.map(p => `<option value="${esc(p)}" ${p === u.planTier ? "selected" : ""}>${esc(p)}</option>`).join("");
+        const opts = plans.map(p => `<option value="${esc(p.tier)}" ${p.tier === u.planTier ? "selected" : ""}>${esc(p.tier)}</option>`).join("");
         const status = u.isDisabled ? `<span class="pill disabled">Avstängd</span>` : `<span class="pill active">Aktiv</span>`;
         const action = u.isDisabled
           ? `<button data-act="enable" data-id="${u.userId}">Aktivera</button>`
           : `<button class="danger" data-act="disable" data-id="${u.userId}">Stäng av</button>`;
+        const del = `<button class="danger" data-del="${u.userId}" data-email="${esc(u.email || "")}">Radera</button>`;
         return `<tr>
           <td>${email}</td>
           <td class="mut small">${esc(u.provider)}${u.emailVerified ? "" : " · overifierad"}</td>
@@ -114,12 +130,22 @@
           <td>${u.itemCount}</td>
           <td>${status}</td>
           <td class="mut small">${fmtDate(u.createdAt)}</td>
-          <td>${action}</td>
+          <td><div style="display:flex;gap:6px;justify-content:flex-end">${action}${del}</div></td>
         </tr>`;
       }).join("");
 
       rows.querySelectorAll("select[data-plan]").forEach(sel => sel.onchange = () => setPlan(sel.dataset.plan, sel.value));
       rows.querySelectorAll("button[data-act]").forEach(b => b.onclick = () => setDisabled(b.dataset.id, b.dataset.act === "disable"));
+      rows.querySelectorAll("button[data-del]").forEach(b => b.onclick = () => deleteUser(b.dataset.del, b.dataset.email));
+    }
+
+    async function deleteUser(id, email) {
+      // Disable = reversible; this is permanent, so make the operator confirm the address.
+      const who = email || "det här kontot";
+      if (!confirm(`Radera ${who} permanent?\n\nAll data (utrymmen, föremål, foton) tas bort och går INTE att ångra.`)) return;
+      const res = await api(`/api/admin/users/${id}`, { method: "DELETE" });
+      if (!res.ok) { alert("Kunde inte radera kontot."); return; }
+      await loadUsers();
     }
 
     async function setPlan(id, tier) {
@@ -131,6 +157,71 @@
       const res = await api(`/api/admin/users/${id}/${disabled ? "disable" : "enable"}`, { method: "POST" });
       if (!res.ok) { alert("Åtgärden misslyckades."); return; }
       await loadUsers();
+    }
+
+    // --- Plan (tier) editor ---
+    const PLAN_FIELDS = [
+      ["priceSek", "Pris (kr)"], ["maxSpaces", "Utrymmen"], ["maxItems", "Föremål"],
+      ["maxMembers", "Medlemmar"], ["aiPhotosPerMonth", "AI-foton/mån"], ["storageMb", "Lagring (MB)"], ["sortOrder", "Ordning"],
+    ];
+    const PLAN_FLAGS = [["claudeEnrichment", "Claude"], ["priorityQueue", "Prio-kö"], ["allThemes", "Teman"]];
+
+    async function renderPlans() {
+      const res = await api("/api/admin/plans");
+      if (res.status === 401) { renderLogin(); return; }
+      plans = await res.json();
+
+      const head = `<tr><th>Nivå</th>${PLAN_FIELDS.map(f => `<th>${f[1]}</th>`).join("")}${PLAN_FLAGS.map(f => `<th>${f[1]}</th>`).join("")}<th></th></tr>`;
+      const row = (p, isNew) => {
+        const key = isNew ? "__new" : p.tier;
+        const nums = PLAN_FIELDS.map(f => `<td><input type="number" style="width:78px" data-f="${f[0]}" data-k="${key}" value="${p[f[0]] ?? 0}"></td>`).join("");
+        const flags = PLAN_FLAGS.map(f => `<td style="text-align:center"><input type="checkbox" data-f="${f[0]}" data-k="${key}" ${p[f[0]] ? "checked" : ""}></td>`).join("");
+        const tierCell = isNew
+          ? `<input style="width:88px" data-f="tier" data-k="${key}" placeholder="nyckel">`
+          : `<strong>${esc(p.tier)}</strong>`;
+        const actions = isNew
+          ? `<button class="primary" data-save="${key}">Lägg till</button>`
+          : `<button data-save="${key}">Spara</button> <button class="danger" data-del-plan="${esc(p.tier)}">Ta bort</button>`;
+        return `<tr><td>${tierCell}</td>${nums}${flags}<td><div style="display:flex;gap:6px">${actions}</div></td></tr>`;
+      };
+      const blank = { tier: "", priceSek: 0, maxSpaces: 1, maxItems: 100, maxMembers: 1, aiPhotosPerMonth: 0, storageMb: 0, sortOrder: plans.length, claudeEnrichment: false, priorityQueue: false, allThemes: false };
+
+      $("#content").innerHTML = `
+        <p class="mut small">Redigera nivåernas gränser. <strong>−1 = obegränsat.</strong> Ändringar slår igenom direkt.</p>
+        <div style="overflow-x:auto"><table>
+          <thead>${head}</thead>
+          <tbody>${plans.map(p => row(p, false)).join("")}${row(blank, true)}</tbody>
+        </table></div>`;
+      $("#content").querySelectorAll("button[data-save]").forEach(b => b.onclick = () => savePlan(b.dataset.save));
+      $("#content").querySelectorAll("button[data-del-plan]").forEach(b => b.onclick = () => deletePlan(b.dataset.delPlan));
+    }
+
+    function collectPlan(key) {
+      const c = $("#content");
+      const cell = (f) => c.querySelector(`[data-f="${f}"][data-k="${key}"]`);
+      const num = (f) => { const n = parseInt(cell(f).value, 10); return Number.isNaN(n) ? 0 : n; };
+      return {
+        tier: key === "__new" ? cell("tier").value.trim() : key,
+        priceSek: num("priceSek"), maxSpaces: num("maxSpaces"), maxItems: num("maxItems"),
+        maxMembers: num("maxMembers"), aiPhotosPerMonth: num("aiPhotosPerMonth"), storageMb: num("storageMb"),
+        sortOrder: num("sortOrder"),
+        claudeEnrichment: cell("claudeEnrichment").checked, priorityQueue: cell("priorityQueue").checked, allThemes: cell("allThemes").checked,
+      };
+    }
+
+    async function savePlan(key) {
+      const body = collectPlan(key);
+      if (!body.tier) { alert("Ange en nyckel för nivån."); return; }
+      const res = await api(`/api/admin/plans/${encodeURIComponent(body.tier)}`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+      if (!res.ok) { alert("Kunde inte spara nivån."); return; }
+      await renderPlans();
+    }
+
+    async function deletePlan(tier) {
+      if (!confirm(`Ta bort nivån "${tier}"?`)) return;
+      const res = await api(`/api/admin/plans/${encodeURIComponent(tier)}`, { method: "DELETE" });
+      if (!res.ok) { let m = "Kunde inte ta bort nivån."; try { m = (await res.json()).error || m; } catch { } alert(m); return; }
+      await renderPlans();
     }
 
     // Boot: ask who we are. 200 → load the console; 401 → show the sign-in button.

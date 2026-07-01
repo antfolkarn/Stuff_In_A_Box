@@ -9,4 +9,6 @@ public interface IEmailVerificationTokenRepository
     Task UpdateAsync(EmailVerificationToken token, CancellationToken ct = default);
     /// <summary>Invalidate any outstanding verification tokens for a user (e.g. before issuing a new one).</summary>
     Task InvalidateAllForUserAsync(Guid userId, CancellationToken ct = default);
+    /// <summary>Permanently remove all verification tokens for a user (account deletion).</summary>
+    Task DeleteAllForUserAsync(Guid userId, CancellationToken ct = default);
 }

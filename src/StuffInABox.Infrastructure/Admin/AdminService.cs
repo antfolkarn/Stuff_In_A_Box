@@ -1,13 +1,15 @@
 using Microsoft.EntityFrameworkCore;
 using StuffInABox.Application.Admin;
+using StuffInABox.Application.Common.Interfaces;
 using StuffInABox.Domain.Entities;
+using StuffInABox.Domain.ValueObjects;
 using StuffInABox.Infrastructure.Persistence;
 
 namespace StuffInABox.Infrastructure.Admin;
 
 /// <summary>Admin operations against accounts and subscriptions, backed directly by the
 /// shared <see cref="AppDbContext"/>. Consumed only by the separate admin host.</summary>
-public sealed class AdminService(AppDbContext db, IPlanCatalog catalog) : IAdminService
+public sealed class AdminService(AppDbContext db, IPlanCatalog catalog, IAccountDeletionService deletion) : IAdminService
 {
     private const int ListCap = 500;
 
@@ -87,6 +89,15 @@ public sealed class AdminService(AppDbContext db, IPlanCatalog catalog) : IAdmin
         else identity.Enable();
 
         await db.SaveChangesAsync(ct);
+        return true;
+    }
+
+    public async Task<bool> DeleteUserAsync(Guid userId, CancellationToken ct = default)
+    {
+        var exists = await db.UserIdentities.AnyAsync(u => u.InternalUserId == userId, ct);
+        if (!exists) return false;
+
+        await deletion.DeleteAsync(new UserId(userId), ct);
         return true;
     }
 }

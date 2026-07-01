@@ -13,4 +13,8 @@ public interface IAdminService
 
     /// <summary>Enables or disables a user account. Returns false if the user doesn't exist.</summary>
     Task<bool> SetDisabledAsync(Guid userId, bool disabled, CancellationToken ct = default);
+
+    /// <summary>Permanently deletes a user and all their data (not reversible, unlike disable).
+    /// Returns false if the user doesn't exist.</summary>
+    Task<bool> DeleteUserAsync(Guid userId, CancellationToken ct = default);
 }

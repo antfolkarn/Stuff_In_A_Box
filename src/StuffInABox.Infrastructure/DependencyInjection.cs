@@ -49,6 +49,10 @@ public static class DependencyInjection
         services.AddScoped<IEmailVerificationTokenRepository, EmailVerificationTokenRepository>();
         services.AddScoped<IUserSettingsRepository, UserSettingsRepository>();
 
+        // Account deletion cascade, shared by the consumer self-service delete and admin delete.
+        services.AddScoped<Application.Common.Interfaces.IAccountDeletionService,
+            Application.Common.Services.AccountDeletionService>();
+
         // Email: "log" (default — writes the message to the log so flows work without a
         // provider) or "smtp" (any SMTP provider, configured via Email:Smtp:*). Provider-
         // agnostic, so switching email services is a config change, not a code change.
@@ -118,6 +122,7 @@ public static class DependencyInjection
     {
         // IPlanCatalog is registered in AddInfrastructure (shared with the consumer app).
         services.AddScoped<Application.Admin.IAdminService, Admin.AdminService>();
+        services.AddScoped<Application.Admin.IPlanAdminService, Admin.PlanAdminService>();
         return services;
     }
 

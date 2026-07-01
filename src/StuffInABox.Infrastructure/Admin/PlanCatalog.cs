@@ -1,66 +1,69 @@
-using Microsoft.Extensions.Configuration;
+using System.Data.Common;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
 using StuffInABox.Application.Admin;
+using StuffInABox.Domain.Entities;
+using StuffInABox.Infrastructure.Persistence;
 
 namespace StuffInABox.Infrastructure.Admin;
 
-/// <summary>Reads the tiers and their limits from the "Plans" configuration section (each
-/// child key is a tier). Falls back to a built-in free/medium/large catalog when nothing is
-/// configured. This is the seam where a future DB-backed, admin-editable catalog would slot
-/// in — callers use <see cref="IPlanCatalog"/>.</summary>
-public sealed class PlanCatalog : IPlanCatalog
+/// <summary>Reads the tiers and their limits from the database (the <c>Plans</c> table, edited
+/// live by the admin app), with an in-memory cache. Falls back to <see cref="PlanDefaults"/>
+/// only when the table is empty. Callers depend on <see cref="IPlanCatalog"/>; this is a
+/// singleton, so it reaches the scoped <see cref="AppDbContext"/> via a scope factory.</summary>
+public sealed class PlanCatalog(IServiceScopeFactory scopeFactory) : IPlanCatalog
 {
-    private readonly IReadOnlyList<PlanInfo> _plans;
-    private readonly Dictionary<string, PlanInfo> _byTier;
+    private readonly object _lock = new();
+    private IReadOnlyList<PlanInfo>? _cache;
 
-    public PlanCatalog(IConfiguration config)
-    {
-        var configured = config.GetSection("Plans").GetChildren()
-            .Select(BindPlan)
-            .Where(p => p is not null)
-            .Select(p => p!)
-            .ToList();
+    public IReadOnlyList<string> Tiers => Current().Select(p => p.Tier).ToList();
 
-        // Config children come back sorted by key, not declaration order, so impose a
-        // stable display order ourselves: cheapest first.
-        _plans = (configured.Count > 0 ? configured : DefaultPlans())
-            .OrderBy(p => p.PriceSek)
-            .ToList();
-        _byTier = _plans.ToDictionary(p => p.Tier, StringComparer.OrdinalIgnoreCase);
-    }
-
-    public IReadOnlyList<string> Tiers => _plans.Select(p => p.Tier).ToList();
-
-    public IReadOnlyList<PlanInfo> Plans => _plans;
+    public IReadOnlyList<PlanInfo> Plans => Current();
 
     public bool IsValidTier(string tier) =>
-        !string.IsNullOrWhiteSpace(tier) && _byTier.ContainsKey(tier.Trim());
+        !string.IsNullOrWhiteSpace(tier)
+        && Current().Any(p => string.Equals(p.Tier, tier.Trim(), StringComparison.OrdinalIgnoreCase));
 
     public PlanInfo? GetPlan(string tier) =>
-        string.IsNullOrWhiteSpace(tier) ? null : _byTier.GetValueOrDefault(tier.Trim());
+        string.IsNullOrWhiteSpace(tier)
+            ? null
+            : Current().FirstOrDefault(p => string.Equals(p.Tier, tier.Trim(), StringComparison.OrdinalIgnoreCase));
 
-    private static PlanInfo? BindPlan(IConfigurationSection s)
+    public void Reload()
     {
-        var tier = s.Key.Trim().ToLowerInvariant();
-        if (tier.Length == 0) return null;
-        return new PlanInfo(
-            Tier: tier,
-            PriceSek: s.GetValue("priceSek", 0),
-            MaxSpaces: s.GetValue("maxSpaces", -1),
-            MaxItems: s.GetValue("maxItems", -1),
-            MaxMembers: s.GetValue("maxMembers", -1),
-            AiPhotosPerMonth: s.GetValue("aiPhotosPerMonth", 0),
-            StorageMb: s.GetValue<long>("storageMb", 0),
-            ClaudeEnrichment: s.GetValue("claudeEnrichment", false),
-            PriorityQueue: s.GetValue("priorityQueue", false),
-            AllThemes: s.GetValue("allThemes", false));
+        lock (_lock) { _cache = Load(); }
     }
 
-    // Built-in fallback (the tier sketch) so the catalog works out of the box; appsettings
-    // "Plans" overrides it wholesale when present.
-    private static List<PlanInfo> DefaultPlans() =>
-    [
-        new("free",   0,  MaxSpaces: 1,  MaxItems: 100,  MaxMembers: 1,  AiPhotosPerMonth: 20,   StorageMb: 250,   ClaudeEnrichment: false, PriorityQueue: false, AllThemes: false),
-        new("medium", 49, MaxSpaces: 5,  MaxItems: 5000, MaxMembers: 4,  AiPhotosPerMonth: 500,  StorageMb: 5000,  ClaudeEnrichment: true,  PriorityQueue: false, AllThemes: true),
-        new("large",  99, MaxSpaces: -1, MaxItems: -1,   MaxMembers: -1, AiPhotosPerMonth: 5000, StorageMb: 50000, ClaudeEnrichment: true,  PriorityQueue: true,  AllThemes: true),
-    ];
+    private IReadOnlyList<PlanInfo> Current()
+    {
+        if (_cache is not null) return _cache;
+        lock (_lock) { _cache ??= Load(); }
+        return _cache;
+    }
+
+    private IReadOnlyList<PlanInfo> Load()
+    {
+        using var scope = scopeFactory.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+
+        List<PlanInfo> plans;
+        try
+        {
+            plans = db.Plans.AsNoTracking().ToList()
+                .OrderBy(p => p.SortOrder).ThenBy(p => p.PriceSek)
+                .Select(ToInfo).ToList();
+        }
+        catch (DbException)
+        {
+            // Stale dev SQLite DB without the Plans table — fall back to the built-in defaults
+            // until it's recreated. Postgres always has the table (migration), so this is dev-only.
+            plans = [];
+        }
+
+        return plans.Count > 0 ? plans : PlanDefaults.All().Select(ToInfo).ToList();
+    }
+
+    private static PlanInfo ToInfo(Plan p) => new(
+        p.Tier, p.PriceSek, p.MaxSpaces, p.MaxItems, p.MaxMembers,
+        p.AiPhotosPerMonth, p.StorageMb, p.ClaudeEnrichment, p.PriorityQueue, p.AllThemes);
 }

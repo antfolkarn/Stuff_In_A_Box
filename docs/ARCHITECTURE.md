@@ -407,22 +407,28 @@ Kudu VFS. Verifiera alltid efter deploy att `GET /version` visar rätt commit.
 
 ## 8. Prenumerationsnivåer (plan-katalog & entitlements)
 
-StuffInABox är på väg mot tre nivåer (**Free / Medium / Large**). Tre lager hålls isär så
-att en prismodell kan bytas utan att röra affärslogiken:
+StuffInABox har tre nivåer (**Låda / Hushåll / PRO**, interna nycklar `free`/`medium`/`large`).
+Tre lager hålls isär så att en prismodell kan bytas utan att röra affärslogiken:
 
 | Fråga | Var | Not |
 |-------|-----|-----|
-| *Vad en nivå innehåller* | **plan-katalog** (`IPlanCatalog`) | Nivåernas gränser/flaggor. Data, inte hårdkodade fält. |
-| *Vilken nivå en användare har* | `UserSettings.PlanTier` | UserId-nyckel, ingen FK → icke-brytande. Följer `Space.OwnerId` (medlemmar ärver ägarens nivå). |
-| *Var det kontrolleras* | command-handlers (planerat) | Ett fåtal `CheckQuota`/`RequireFlag`-anrop. **Ännu ej inkopplat.** |
+| *Vad en nivå innehåller* | **plan-katalog** (`IPlanCatalog`, DB-baserad) | Nivåernas gränser/flaggor. Data, redigeras i admin. |
+| *Vilken nivå en användare har* | `UserSettings.PlanTier` | UserId-nyckel, ingen FK → icke-brytande. |
+| *Var det kontrolleras* | command-handlers (planerat) | Ett fåtal `CheckQuota`/`RequireFlag`-anrop, alltid mot **ägaren**. **Ännu ej inkopplat** (Fas 3). |
+
+**Delningsmodell (regeln som löser nivåer + delning):** **ägarens nivå styr hela utrymmet.**
+Allt innehåll ägs av `Space.OwnerId`, så kvoten dras alltid från ägaren — aldrig från en
+medlem. En medlem kan alltså vara på gratisnivå och ändå gå med i en betald ägares utrymme
+(gästen kostar inget), medan medlems*gränsen* (inkl. ägaren: 1 / 2 / 5) styrs av ägarens nivå,
+så en gratisägare inte kan dela. Nedgradering är icke-destruktiv: befintlig data/medlemmar
+behålls, bara nya tillägg spärras (grandfathering).
 
 **Plan-katalogen** (`IPlanCatalog` i `Application.Admin`, implementation `PlanCatalog` i
-Infrastructure) läser `Plans`-avsnittet i konfig och faller tillbaka på en inbyggd
-free/medium/large-uppsättning. Planerna sorteras **på pris** (billigast först) — konfig-barn
-kommer i nyckelordning, inte deklarationsordning, så ordningen måste påtvingas. Katalogen är
-registrerad i `AddInfrastructure` och **delas av både konsument-appen och admin-hosten**.
-Detta är sömmen där en framtida DB-baserad, admin-redigerbar katalog slår in — anroparna beror
-bara på gränssnittet.
+Infrastructure) läser nivåerna från **DB-tabellen `Plans`** med en minnescache (`Reload()` efter
+admin-ändringar), och faller tillbaka på en inbyggd uppsättning (`PlanDefaults`, som även är
+seed-källan) om tabellen är tom. `PlanSeeder` fyller tabellen vid uppstart (idempotent). Planerna
+sorteras på `SortOrder`. Katalogen är registrerad i `AddInfrastructure` (singleton, når scoped
+`AppDbContext` via en scope-factory) och **delas av både konsument-appen och admin-hosten**.
 
 ```mermaid
 flowchart LR
@@ -431,15 +437,18 @@ flowchart LR
         UI["SettingsView → SubscriptionSection<br/>plan · förbrukning · jämför-nivåer"]
     end
     subgraph Admin["Admin-host (StuffInABox.Admin.Web, Entra-skyddad)"]
-        AS["IAdminService<br/>sätt PlanTier · av/på konto"]
+        AS["IAdminService<br/>sätt PlanTier · av/på · radera konto"]
+        PA["IPlanAdminService<br/>nivå-editor (CRUD)"]
     end
-    PC["IPlanCatalog (delad)"]
-    US[("UserSettings.PlanTier")]
+    PC["IPlanCatalog (cache)"]
+    DB[("Plans-tabell + UserSettings.PlanTier")]
     SUB --> PC
-    SUB --> US
+    SUB --> DB
     UI --> SUB
-    AS --> PC
-    AS --> US
+    AS --> DB
+    PA -->|"skriv + Reload()"| PC
+    PA --> DB
+    PC --> DB
 ```
 
 **Konsumentyta (läsvy):** `GET /api/v1/subscription` (`GetSubscriptionQuery`) returnerar
@@ -449,11 +458,15 @@ med "Uppgradera"-CTA. **Fas A** täcker de billiga räknarna vi redan har (space
 AI-foton och lagring blir mätbara när förbruknings­mätning finns (**Fas B**, samma maskineri
 som kvot-enforcement).
 
-**Adminyta (skrivvy):** nivån sätts av den **separata admin-hosten** (`StuffInABox.Admin.Web`,
-Entra-OIDC, `alla i tenanten = admin`) via `IAdminService.SetPlanTierAsync`, validerat mot
-`IPlanCatalog`. Admin och konsument delar Domain/Infrastructure och samma databas men är skilda
-publika ytor. `UserIdentity.DisabledAt` (av/på-konto) driver samma väg; avstängda konton avvisas
-vid e-post-login, OAuth och refresh.
+**Adminyta (skrivvy):** den **separata admin-hosten** (`StuffInABox.Admin.Web`, Entra-OIDC,
+`alla i tenanten = admin`) kan: sätta nivå (`IAdminService.SetPlanTierAsync`, validerat mot
+`IPlanCatalog`), **redigera själva katalogen live** (`IPlanAdminService` → `PUT/DELETE
+/api/admin/plans` + nivå-editor i konsolen), samt hantera konton. Kontohantering har **två skilda
+åtgärder**: `SetDisabledAsync` (`UserIdentity.DisabledAt`) = **reversibel spärr** (login/OAuth/
+refresh avvisas, data kvar), och `DeleteUserAsync` = **permanent radering** via den delade
+`IAccountDeletionService` (samma kaskad som konsumentens egen GDPR-radering: utrymmen, föremål,
+foton, medlemskap, tokens, settings, identitet). Admin och konsument delar Domain/Infrastructure
+och samma databas men är skilda publika ytor.
 
 De verkliga kostnadshävstängerna som motiverar nivåerna (AI-igenkänning i två steg, worker med
 3-parallell-gräns, R2-lagring, delade spaces) är beskrivna i idéskissen

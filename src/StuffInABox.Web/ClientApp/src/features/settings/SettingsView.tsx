@@ -261,7 +261,7 @@ function SubscriptionSection() {
   const price = (sek: number) =>
     sek <= 0 ? t('subscription.free0') : t('subscription.perMonth', { price: sek })
   const lim = (n: number) => (n < 0 ? t('subscription.unlimited') : String(n))
-  const storage = (mb: number) => (mb >= 1000 ? `${mb / 1000} GB` : `${mb} MB`)
+  const storage = (mb: number) => (mb >= 1024 ? `${Math.round(mb / 1024)} GB` : `${mb} MB`)
 
   return (
     <section style={{ marginTop: 32, borderTop: 'var(--bw) solid var(--border)', paddingTop: 24 }}>
