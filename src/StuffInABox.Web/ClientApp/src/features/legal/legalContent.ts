@@ -81,7 +81,7 @@ const sv: Record<LegalPage, LegalDoc> = {
       {
         heading: 'Uppgifter vi behandlar',
         paragraphs: [
-          'Kontouppgifter: Registrerar du dig med e-post lagrar vi din e-postadress (för inloggning och nödvändig kommunikation, t.ex. lösenordsåterställning) samt ditt lösenord i hashad form (BCrypt). Loggar du in med Google eller Apple lagrar vi endast ett anonymt id från leverantören — ingen e-post och inget namn.',
+          'Kontouppgifter: Registrerar du dig med e-post lagrar vi din e-postadress (för inloggning och nödvändig kommunikation, t.ex. lösenordsåterställning) samt ditt lösenord i hashad form (BCrypt). Loggar du in med Google eller Microsoft lagrar vi ett anonymt id från leverantören samt din e-postadress (så att vi kan identifiera och administrera ditt konto). Loggar du in med Apple lagrar vi endast ett anonymt id — ingen e-post och inget namn.',
           'Innehåll du skapar: utrymmen, lådor, föremål, taggar och foton du laddar upp.',
           'Inställningar: tema, design och språk.',
           'Teknisk data: tidsbegränsade inloggnings- och sessions-tokens (lagras hashade) samt serverloggar för drift och säkerhet.',
@@ -193,7 +193,7 @@ const en: Record<LegalPage, LegalDoc> = {
       {
         heading: 'Data we process',
         paragraphs: [
-          'Account data: If you register with email we store your email address (for sign-in and essential communication such as password resets) and your password in hashed form (BCrypt). If you sign in with Google or Apple we store only an anonymous id from the provider — no email or name.',
+          'Account data: If you register with email we store your email address (for sign-in and essential communication such as password resets) and your password in hashed form (BCrypt). If you sign in with Google or Microsoft we store an anonymous id from the provider together with your email address (so we can identify and administer your account). If you sign in with Apple we store only an anonymous id — no email or name.',
           'Content you create: spaces, boxes, items, tags and photos you upload.',
           'Settings: theme, design and language.',
           'Technical data: time-limited sign-in and session tokens (stored hashed) and server logs for operations and security.',

@@ -39,7 +39,7 @@ public class UserIdentity
         ExternalId = null!;
     }
 
-    public static UserIdentity CreateOAuth(string provider, string externalId)
+    public static UserIdentity CreateOAuth(string provider, string externalId, string? email = null)
     {
         ValidateProvider(provider);
         if (string.IsNullOrWhiteSpace(externalId))
@@ -51,6 +51,9 @@ public class UserIdentity
             InternalUserId = Guid.NewGuid(),
             Provider = provider.ToLowerInvariant(),
             ExternalId = externalId,
+            // The provider returns the email; store it so admins can see who this is.
+            // Null when the provider didn't supply one (e.g. Apple).
+            Email = string.IsNullOrWhiteSpace(email) ? null : email.Trim(),
             CreatedAt = now,
             EmailVerifiedAt = now // the OAuth provider has already verified the address
         };
@@ -81,6 +84,16 @@ public class UserIdentity
         if (Provider != "email")
             throw new InvalidOperationException("Password can only be set for email provider.");
         PasswordHash = newHash;
+    }
+
+    /// <summary>Backfills the email from the OAuth provider for an identity that doesn't
+    /// have one yet (older OAuth accounts created before we requested the email scope).
+    /// Never overwrites an existing address, and ignores an empty incoming value.</summary>
+    public void SetEmailFromProvider(string? email)
+    {
+        if (!string.IsNullOrWhiteSpace(Email)) return;
+        if (string.IsNullOrWhiteSpace(email)) return;
+        Email = email.Trim();
     }
 
     /// <summary>Marks the email address as verified (idempotent).</summary>

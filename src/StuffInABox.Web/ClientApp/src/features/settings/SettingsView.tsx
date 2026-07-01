@@ -1,11 +1,16 @@
 import { useState } from 'react'
-import { useQueryClient } from '@tanstack/react-query'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { IconArrowLeft, IconCheck, IconDeviceLaptop, IconSun, IconMoon, IconDownload, IconTrash } from '@tabler/icons-react'
 import { useUiStore } from '../../store/uiStore'
 import { useAuthStore } from '../../store/authStore'
 import { useSettingsStore, THEMES, DESIGNS, type Theme, type Design } from '../../store/settingsStore'
 import { exportData, deleteAccount } from '../../api/account'
-import { useT, useI18nStore, LANGS } from '../../i18n'
+import { getSubscription } from '../../api/subscription'
+import { useT, useI18nStore, LANGS, type MessageKey } from '../../i18n'
+
+// Interim contact for upgrades — plans are switched manually by an admin until Stripe
+// lands. TODO: point this at a real support inbox.
+const SUPPORT_EMAIL = 'hej@stuffinabox.se'
 
 // Accent swatch shown per design (mirrors the CSS in index.css)
 const DESIGN_ACCENT: Record<Design, string> = {
@@ -193,6 +198,9 @@ export default function SettingsView() {
         </div>
       </section>
 
+      {/* Subscription */}
+      <SubscriptionSection />
+
       {/* Account & data (GDPR) */}
       <section style={{ marginTop: 32, borderTop: 'var(--bw) solid var(--border)', paddingTop: 24 }}>
         <div className="field-label" style={{ marginBottom: 12 }}>{t('account.title')}</div>
@@ -235,6 +243,106 @@ export default function SettingsView() {
         </a>
       </div>
     </div>
+  )
+}
+
+// The user's plan, usage against its limits, and the tiers to compare/upgrade to.
+// Read-only in Fas A: spaces/items meters only (AI + storage meters follow usage tracking).
+function SubscriptionSection() {
+  const t = useT()
+  const { data } = useQuery({ queryKey: ['subscription'], queryFn: getSubscription })
+  if (!data) return null
+
+  const planLabel = (tier: string) => {
+    const key = `plan.${tier}.label` as MessageKey
+    const label = t(key)
+    return label === key ? tier : label // fall back to the raw key for unknown tiers
+  }
+  const price = (sek: number) =>
+    sek <= 0 ? t('subscription.free0') : t('subscription.perMonth', { price: sek })
+  const lim = (n: number) => (n < 0 ? t('subscription.unlimited') : String(n))
+  const storage = (mb: number) => (mb >= 1000 ? `${mb / 1000} GB` : `${mb} MB`)
+
+  return (
+    <section style={{ marginTop: 32, borderTop: 'var(--bw) solid var(--border)', paddingTop: 24 }}>
+      <div className="field-label" style={{ marginBottom: 12 }}>{t('subscription.title')}</div>
+
+      {/* Current plan + usage meters */}
+      <div style={{ ...cardStyle(true), flexDirection: 'column', alignItems: 'stretch', gap: 14, cursor: 'default' }}>
+        <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 12 }}>
+          <span style={{ fontSize: 16, fontWeight: 600 }}>{planLabel(data.tier)}</span>
+          <span style={{ fontSize: 14, color: 'var(--accent)', fontWeight: 600 }}>{price(data.priceSek)}</span>
+        </div>
+        <div style={{ display: 'grid', gap: 10 }}>
+          <UsageBar label={t('subscription.spaces')} used={data.usage.spaces} max={data.usage.maxSpaces} unlimited={t('subscription.unlimited')} />
+          <UsageBar label={t('subscription.items')} used={data.usage.items} max={data.usage.maxItems} unlimited={t('subscription.unlimited')} />
+        </div>
+      </div>
+
+      {/* Compare tiers */}
+      <div className="field-label" style={{ margin: '20px 0 10px' }}>{t('subscription.comparePlans')}</div>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: 10 }}>
+        {data.plans.map((p) => (
+          <div key={p.tier} style={{ ...cardStyle(p.current), flexDirection: 'column', alignItems: 'stretch', gap: 8, cursor: 'default' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <span style={{ fontSize: 15, fontWeight: 600 }}>{planLabel(p.tier)}</span>
+              {p.current && (
+                <span style={{ marginLeft: 'auto', fontSize: 11, fontWeight: 600, color: 'var(--accent)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                  {t('subscription.currentBadge')}
+                </span>
+              )}
+            </div>
+            <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--accent)' }}>{price(p.priceSek)}</div>
+            <ul style={{ margin: 0, padding: 0, listStyle: 'none', display: 'grid', gap: 5, fontSize: 12.5, color: 'var(--text-2)' }}>
+              <Feat text={t('subscription.limitSpaces', { n: lim(p.maxSpaces) })} />
+              <Feat text={t('subscription.limitItems', { n: lim(p.maxItems) })} />
+              <Feat text={t('subscription.limitAi', { n: p.aiPhotosPerMonth })} />
+              <Feat text={t('subscription.limitStorage', { size: storage(p.storageMb) })} />
+              <Feat text={t('subscription.limitMembers', { n: lim(p.maxMembers) })} />
+              {p.claudeEnrichment && <Feat text={t('subscription.featClaude')} />}
+              {p.priorityQueue && <Feat text={t('subscription.featPriority')} />}
+              {p.allThemes && <Feat text={t('subscription.featThemes')} />}
+            </ul>
+            {!p.current && (
+              <a
+                className="btn btn-outline btn-sm"
+                href={`mailto:${SUPPORT_EMAIL}?subject=${encodeURIComponent(`StuffInABox – ${t('subscription.upgrade')}: ${p.tier}`)}`}
+                style={{ marginTop: 'auto', textDecoration: 'none', justifyContent: 'center' }}
+              >
+                {t('subscription.upgrade')}
+              </a>
+            )}
+          </div>
+        ))}
+      </div>
+      <div style={{ fontSize: 12.5, color: 'var(--text-4)', marginTop: 10 }}>{t('subscription.upgradeNote')}</div>
+    </section>
+  )
+}
+
+function UsageBar({ label, used, max, unlimited }: { label: string; used: number; max: number; unlimited: string }) {
+  const pct = max <= 0 ? 0 : Math.min(100, Math.round((used / max) * 100))
+  return (
+    <div>
+      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, marginBottom: 5 }}>
+        <span style={{ color: 'var(--text-2)' }}>{label}</span>
+        <span style={{ fontWeight: 500 }}>{used} / {max < 0 ? unlimited : max}</span>
+      </div>
+      {max >= 0 && (
+        <div style={{ height: 6, borderRadius: 999, background: 'var(--border-2)', overflow: 'hidden' }}>
+          <div style={{ height: '100%', width: `${pct}%`, background: pct >= 100 ? '#B91C1C' : 'var(--accent)', transition: 'width 0.2s' }} />
+        </div>
+      )}
+    </div>
+  )
+}
+
+function Feat({ text }: { text: string }) {
+  return (
+    <li style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+      <IconCheck size={13} style={{ color: 'var(--accent)', flexShrink: 0 }} />
+      {text}
+    </li>
   )
 }
 

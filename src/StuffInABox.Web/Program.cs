@@ -182,6 +182,7 @@ app.MapPhotoEndpoints();
 app.MapSearchEndpoints();
 app.MapLabelEndpoints();
 app.MapSettingsEndpoints();
+app.MapSubscriptionEndpoints();
 app.MapAccountEndpoints();
 app.MapVersionEndpoints();
 

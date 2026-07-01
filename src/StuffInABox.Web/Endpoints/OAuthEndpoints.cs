@@ -81,20 +81,27 @@ public static class OAuthEndpoints
             return Results.Redirect($"{redirect}#error=oauth_state");
         var verifier = parts[1];
 
-        var subject = await oauth.ExchangeCodeForSubjectAsync(provider, code, verifier, ct);
-        if (string.IsNullOrEmpty(subject))
+        var principal = await oauth.ExchangeCodeForPrincipalAsync(provider, code, verifier, ct);
+        if (principal is null || string.IsNullOrEmpty(principal.Subject))
             return Results.Redirect($"{redirect}#error=oauth_exchange");
 
-        // Look up or create the identity — only (provider, sub) is stored, no PII.
-        var identity = await userRepo.FindAsync(provider, subject, ct);
+        // Look up or create the identity, keyed on (provider, sub). We also store the
+        // email (when the provider returned one) so admins can see who the account is.
+        var identity = await userRepo.FindAsync(provider, principal.Subject, ct);
         if (identity is null)
         {
-            identity = UserIdentity.CreateOAuth(provider, subject);
+            identity = UserIdentity.CreateOAuth(provider, principal.Subject, principal.Email);
             await userRepo.AddAsync(identity, ct);
         }
         else if (identity.IsDisabled)
         {
             return Results.Redirect($"{redirect}#error=account_disabled");
+        }
+        else if (string.IsNullOrWhiteSpace(identity.Email) && !string.IsNullOrWhiteSpace(principal.Email))
+        {
+            // Backfill accounts created before we captured the email.
+            identity.SetEmailFromProvider(principal.Email);
+            await userRepo.UpdateAsync(identity, ct);
         }
 
         // OAuth is a browser redirect flow → refresh stays in the cookie (raw ignored).

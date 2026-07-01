@@ -6,10 +6,16 @@ using Microsoft.IdentityModel.Tokens;
 
 namespace StuffInABox.Web.Auth;
 
+/// <summary>What an OAuth sign-in yields: the stable provider subject id (<c>sub</c>),
+/// plus the email address when the provider returns it. Google and Microsoft return it
+/// because we request the <c>email</c> scope; Apple stays null (we don't request it, and
+/// it would need the form_post flow).</summary>
+public sealed record OAuthPrincipal(string Subject, string? Email);
+
 /// <summary>
-/// Authorization-Code + PKCE OAuth for Google and Apple. We only ever read the
-/// <c>sub</c> (stable provider user id) from the returned id_token — no name or
-/// email is requested or stored, matching the privacy model of the app.
+/// Authorization-Code + PKCE OAuth for Google, Microsoft and Apple. We read the
+/// <c>sub</c> (stable provider user id) from the returned id_token, and — for Google
+/// and Microsoft — the <c>email</c> claim, so admins can see who they're administering.
 /// </summary>
 public sealed class OAuthService(HttpClient http, IConfiguration config)
 {
@@ -26,12 +32,12 @@ public sealed class OAuthService(HttpClient http, IConfiguration config)
 
         var (authEndpoint, scope, extra) = p switch
         {
-            "google" => ("https://accounts.google.com/o/oauth2/v2/auth", "openid", ""),
+            "google" => ("https://accounts.google.com/o/oauth2/v2/auth", "openid email", ""),
             // Apple requires response_mode=form_post when any scope is requested,
-            // so we request none and still receive `sub` in the id_token.
+            // so we request none and still receive `sub` in the id_token (no email).
             "apple" => ("https://appleid.apple.com/auth/authorize", "", "&response_mode=query"),
             // "common" = both personal Microsoft accounts and work/school (Entra) accounts.
-            "microsoft" => ("https://login.microsoftonline.com/common/oauth2/v2.0/authorize", "openid", ""),
+            "microsoft" => ("https://login.microsoftonline.com/common/oauth2/v2.0/authorize", "openid email", ""),
             _ => throw new InvalidOperationException($"Okänd OAuth-leverantör: {provider}"),
         };
 
@@ -50,8 +56,9 @@ public sealed class OAuthService(HttpClient http, IConfiguration config)
         return authEndpoint + query;
     }
 
-    /// <summary>Exchanges the authorization code for tokens and returns the provider subject id.</summary>
-    public async Task<string?> ExchangeCodeForSubjectAsync(
+    /// <summary>Exchanges the authorization code for tokens and returns the provider subject
+    /// id together with the email claim (when the provider supplied one).</summary>
+    public async Task<OAuthPrincipal?> ExchangeCodeForPrincipalAsync(
         string provider, string code, string codeVerifier, CancellationToken ct)
     {
         var p = provider.ToLowerInvariant();
@@ -87,7 +94,10 @@ public sealed class OAuthService(HttpClient http, IConfiguration config)
         if (string.IsNullOrEmpty(idToken)) return null;
 
         var jwt = new JwtSecurityTokenHandler().ReadJwtToken(idToken);
-        return jwt.Subject; // the `sub` claim
+        if (string.IsNullOrEmpty(jwt.Subject)) return null;
+
+        var email = jwt.Claims.FirstOrDefault(c => c.Type == "email")?.Value;
+        return new OAuthPrincipal(jwt.Subject, email);
     }
 
     // PKCE helpers

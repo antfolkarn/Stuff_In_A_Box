@@ -13,7 +13,7 @@ lager. Web är composition root och kopplar ihop allt.
 ```mermaid
 flowchart TD
     subgraph Web["StuffInABox.Web — Presentation / Composition root"]
-        EP["Minimal API-endpoints<br/>Auth · OAuth · Account · Spaces · Invites · Boxes · Items · Search · Labels · Settings"]
+        EP["Minimal API-endpoints<br/>Auth · OAuth · Account · Spaces · Invites · Boxes · Items · Search · Labels · Settings · Subscription"]
         MW["Middleware<br/>GlobalExceptionHandler · SecurityHeaders · Serilog"]
         AUTH["Auth<br/>JwtTokenService · TokenIssuer · OAuthService · CurrentUserService"]
         SPA["ClientApp (React SPA, byggs till wwwroot/)"]
@@ -146,29 +146,38 @@ token i `/#reset=<token>`-länken, engångs, 1 h). `POST /auth/reset-password` b
 lösenord och återkallar alla sessioner. E-post går via `IEmailService` — default loggar
 meddelandet (`LoggingEmailService`); en riktig leverantör pluggas in bakom `Email:Provider`.
 
-### 3b. OAuth (Google / Apple, Authorization Code + PKCE)
+### 3b. OAuth (Google / Microsoft / Apple, Authorization Code + PKCE)
 
 ```mermaid
 sequenceDiagram
     actor U as Webbläsare
     participant O as OAuthEndpoints
-    participant P as Leverantör (Google/Apple)
+    participant P as Leverantör (Google/Microsoft/Apple)
     participant UR as IUserIdentityRepository
 
     U->>O: GET /api/v1/auth/google/start
     O->>O: skapa state + PKCE verifier/challenge
-    O-->>U: 302 → leverantörens authorize-URL<br/>(cookie sib_oauth = state:verifier)
+    O-->>U: 302 → leverantörens authorize-URL<br/>(scope "openid email"; cookie sib_oauth = state:verifier)
     U->>P: loggar in & godkänner
     P-->>U: 302 → /api/v1/auth/google/callback?code&state
     U->>O: callback (cookie följer med)
     O->>O: validera state, byt code+verifier mot id_token
-    O->>O: läs `sub` ur id_token (ingen PII)
-    O->>UR: slå upp/skapa UserIdentity(provider, sub)
+    O->>O: läs `sub` + `email` (Google/Microsoft) ur id_token
+    O->>UR: slå upp/skapa UserIdentity(provider, sub, email)
     O-->>U: 302 → /#token=JWT  (+ refresh-cookie)
 ```
 
 SPA:n läser access-token ur URL-fragmentet vid laddning och rensar det ur historiken.
 Apple-client-secret signeras on-the-fly med ES256 från konfigurerad .p8-nyckel.
+
+**E-postinsamling:** Google och Microsoft begär `scope="openid email"` och
+`OAuthService.ExchangeCodeForPrincipalAsync` läser `email`-claimen ur id-token, så adressen
+lagras på `UserIdentity.Email` — det gör att admin kan identifiera vem ett konto tillhör.
+Konton som skapades innan detta **backfillas** vid nästa inloggning (`SetEmailFromProvider`
+skriver aldrig över en befintlig adress). Apple är undantaget: det lämnar bara e-post via
+`response_mode=form_post` vid första samtycket, så där lagras fortsatt bara `sub` (öppen TODO).
+Identiteten nycklas alltid på `(provider, sub)` — e-posten är för kontakt/administration, inte
+uppslag.
 
 ---
 
@@ -286,6 +295,7 @@ medlemmar behåller åtkomst tills de tas bort eller lämnar.
 | **Bildigenkänning** | `IImageRecognitionService` | Tre providers bakom `ImageRecognition:Provider`: `none` (no-op), `ollama` (self-hostad vision-modell) och `staik` (hostad, OpenAI-kompatibel vision-API — **prod kör denna**, modell `gemma4:31b`). Den svenska prompten och den toleranta JSON→tagg-parsningen delas av providers i `VisionRecognition`; bara HTTP-transporten skiljer. Returnerar `{ namn, taggar }` (föremål, färger, material, boktitlar; flera föremål → blandad rubrik men alla som taggar). Strikta guardrails (JSON-only-prompt + normalisering); kastar aldrig (null vid fel). Körs i bakgrunden — se §7. |
 | **Bakgrundsjobb** | `TagEnrichmentWorker`, `ImageRecognitionWorker` | In-process `Channel<T>` + `IHostedService`, bounded concurrency (max 3); kastar aldrig, blockerar aldrig sparet. Igenkänningsjobbet markerar alltid föremålet "berikat" (slutar snurra) även när igenkänning är av eller misslyckas. |
 | **Tema** | `ClientApp` `themeStore` | Ljust/mörkt via CSS-variabler och `data-theme`, persisterat i `localStorage`. Flimmerfritt: en liten inline-init i `index.html` sätter temat före första paint, tillåten av CSP via sin SHA-256-hash (ingen `'unsafe-inline'` för skript). Ändras skriptet måste hashen i `SecurityHeadersMiddleware` räknas om. |
+| **Prenumeration** | `IPlanCatalog` + `UserSettings.PlanTier` | Plan-katalog (nivåer + gränser) läses via `IPlanCatalog`; användarens nivå på `UserSettings.PlanTier`. Se §8. |
 | **Health checks** | `Program.cs` + `DatabaseHealthCheck` | `/health` (liveness) och `/health/ready` (readiness, kollar DB) för orkestrering. |
 | **Drift** | `Dockerfile`, `docker-compose.yml`, `.github/workflows/ci.yml` + `deploy.yml` | Multi-stage-bygge (SPA + .NET → Linux-runtime), CI som bygger och testar; CD deployar till Azure (se §7). SkiaSharp Linux-native-assets ingår så bildbehandling fungerar i container. |
 | **Version** | `VersionEndpoints` + UI-footer | `GET /version` (anonym) returnerar `{ version, commit, buildTimeUtc }`. Commit bakas in vid bygge via `SourceRevisionId` (ett MSBuild-target kör `git rev-parse HEAD`). Gör att man direkt kan se exakt vilken commit som kör — fångar "stale deploy". |
@@ -392,3 +402,59 @@ tar-arkiv och `azure/webapps-deploy@v3` matad med en mapp triggar en Oryx-build 
 OneDeploy på F1. En avbruten OneDeploy kan lämna ett föräldralöst Kudu-lås
 (`/home/site/locks/deployment/info.lock`) → "Another deployment is in progress"; rensas via
 Kudu VFS. Verifiera alltid efter deploy att `GET /version` visar rätt commit.
+
+---
+
+## 8. Prenumerationsnivåer (plan-katalog & entitlements)
+
+StuffInABox är på väg mot tre nivåer (**Free / Medium / Large**). Tre lager hålls isär så
+att en prismodell kan bytas utan att röra affärslogiken:
+
+| Fråga | Var | Not |
+|-------|-----|-----|
+| *Vad en nivå innehåller* | **plan-katalog** (`IPlanCatalog`) | Nivåernas gränser/flaggor. Data, inte hårdkodade fält. |
+| *Vilken nivå en användare har* | `UserSettings.PlanTier` | UserId-nyckel, ingen FK → icke-brytande. Följer `Space.OwnerId` (medlemmar ärver ägarens nivå). |
+| *Var det kontrolleras* | command-handlers (planerat) | Ett fåtal `CheckQuota`/`RequireFlag`-anrop. **Ännu ej inkopplat.** |
+
+**Plan-katalogen** (`IPlanCatalog` i `Application.Admin`, implementation `PlanCatalog` i
+Infrastructure) läser `Plans`-avsnittet i konfig och faller tillbaka på en inbyggd
+free/medium/large-uppsättning. Planerna sorteras **på pris** (billigast först) — konfig-barn
+kommer i nyckelordning, inte deklarationsordning, så ordningen måste påtvingas. Katalogen är
+registrerad i `AddInfrastructure` och **delas av både konsument-appen och admin-hosten**.
+Detta är sömmen där en framtida DB-baserad, admin-redigerbar katalog slår in — anroparna beror
+bara på gränssnittet.
+
+```mermaid
+flowchart LR
+    subgraph Consumer["Konsument-app (StuffInABox.Web)"]
+        SUB["GET /api/v1/subscription<br/>GetSubscriptionQuery"]
+        UI["SettingsView → SubscriptionSection<br/>plan · förbrukning · jämför-nivåer"]
+    end
+    subgraph Admin["Admin-host (StuffInABox.Admin.Web, Entra-skyddad)"]
+        AS["IAdminService<br/>sätt PlanTier · av/på konto"]
+    end
+    PC["IPlanCatalog (delad)"]
+    US[("UserSettings.PlanTier")]
+    SUB --> PC
+    SUB --> US
+    UI --> SUB
+    AS --> PC
+    AS --> US
+```
+
+**Konsumentyta (läsvy):** `GET /api/v1/subscription` (`GetSubscriptionQuery`) returnerar
+användarens nuvarande plan, förbrukning mot gränserna och hela nivålistan. Renderas som ett
+block i Settings (`SubscriptionSection`): plan + pris, förbruknings­mätare och jämför-nivåer-kort
+med "Uppgradera"-CTA. **Fas A** täcker de billiga räknarna vi redan har (spaces/items);
+AI-foton och lagring blir mätbara när förbruknings­mätning finns (**Fas B**, samma maskineri
+som kvot-enforcement).
+
+**Adminyta (skrivvy):** nivån sätts av den **separata admin-hosten** (`StuffInABox.Admin.Web`,
+Entra-OIDC, `alla i tenanten = admin`) via `IAdminService.SetPlanTierAsync`, validerat mot
+`IPlanCatalog`. Admin och konsument delar Domain/Infrastructure och samma databas men är skilda
+publika ytor. `UserIdentity.DisabledAt` (av/på-konto) driver samma väg; avstängda konton avvisas
+vid e-post-login, OAuth och refresh.
+
+De verkliga kostnadshävstängerna som motiverar nivåerna (AI-igenkänning i två steg, worker med
+3-parallell-gräns, R2-lagring, delade spaces) är beskrivna i idéskissen
+`StuffInABox-subscription-tiers-idea.md` utanför repot.

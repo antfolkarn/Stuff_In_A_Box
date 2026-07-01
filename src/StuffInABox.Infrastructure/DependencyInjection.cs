@@ -95,6 +95,10 @@ public static class DependencyInjection
         else
             services.AddSingleton<IImageRecognitionService, Recognition.NullImageRecognitionService>();
 
+        // Subscription plan catalog — read by both the consumer app (to show the user's
+        // plan + limits) and the admin host (to validate tier changes).
+        services.AddSingleton<Application.Admin.IPlanCatalog, Admin.PlanCatalog>();
+
         services.AddSingleton<EnrichmentQueue>();
         services.AddSingleton<IEnrichmentQueue>(sp => sp.GetRequiredService<EnrichmentQueue>());
         services.AddHostedService<TagEnrichmentWorker>();
@@ -112,7 +116,7 @@ public static class DependencyInjection
     /// not by the consumer app.</summary>
     public static IServiceCollection AddAdminCore(this IServiceCollection services)
     {
-        services.AddSingleton<Application.Admin.IPlanCatalog, Admin.PlanCatalog>();
+        // IPlanCatalog is registered in AddInfrastructure (shared with the consumer app).
         services.AddScoped<Application.Admin.IAdminService, Admin.AdminService>();
         return services;
     }

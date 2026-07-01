@@ -23,6 +23,52 @@ public class UserIdentityTests
     }
 
     [Fact]
+    public void CreateOAuth_StoresEmailWhenProvided()
+    {
+        var id = UserIdentity.CreateOAuth("google", "sub-123", "  User@Example.com ");
+
+        Assert.Equal("User@Example.com", id.Email);
+    }
+
+    [Fact]
+    public void CreateOAuth_NoEmail_LeavesEmailNull()
+    {
+        var id = UserIdentity.CreateOAuth("apple", "sub-123", "   ");
+
+        Assert.Null(id.Email);
+    }
+
+    [Fact]
+    public void SetEmailFromProvider_BackfillsWhenMissing()
+    {
+        var id = UserIdentity.CreateOAuth("google", "sub-123");
+
+        id.SetEmailFromProvider("user@example.com");
+
+        Assert.Equal("user@example.com", id.Email);
+    }
+
+    [Fact]
+    public void SetEmailFromProvider_DoesNotOverwriteExisting()
+    {
+        var id = UserIdentity.CreateOAuth("google", "sub-123", "first@example.com");
+
+        id.SetEmailFromProvider("second@example.com");
+
+        Assert.Equal("first@example.com", id.Email);
+    }
+
+    [Fact]
+    public void SetEmailFromProvider_IgnoresEmptyIncoming()
+    {
+        var id = UserIdentity.CreateOAuth("google", "sub-123");
+
+        id.SetEmailFromProvider("  ");
+
+        Assert.Null(id.Email);
+    }
+
+    [Fact]
     public void MarkEmailVerified_VerifiesEmailAccount()
     {
         var id = UserIdentity.CreateEmail("hashed", "pwhash", "user@example.com");
