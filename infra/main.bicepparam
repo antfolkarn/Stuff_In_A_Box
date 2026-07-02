@@ -14,6 +14,13 @@ param enableKeyVault = false
 param enablePostgres = false
 param enableStorage = false
 
+// Admin app host (StuffInABox.Admin.Web) — separate App Service, off by default. Turn on and
+// fill the three params below to deploy it. TenantId/ClientId come from entra/admin-app.bicep.
+param enableAdminApp = false
+param adminAppName = 'stuffinabox-admin-andree'
+param adminAzureAdTenantId = readEnvironmentVariable('SIB_ADMIN_TENANT_ID', '')
+param adminAzureAdClientId = readEnvironmentVariable('SIB_ADMIN_CLIENT_ID', '')
+
 // --- Non-secret app config (read from env, or set as GitHub *variables*) ---
 // NOTE: no secret VALUES here — all secrets live in Key Vault and are referenced at runtime.
 param brevoSmtpUser = readEnvironmentVariable('SIB_BREVO_USER', 'b0375d001@smtp-brevo.com')

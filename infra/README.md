@@ -10,6 +10,7 @@ tier) to start and to make a later move to "real" tiers a parameter change, not 
 | Resource group | `rg-stuffinabox-<env>` | created by the subscription-scoped deploy |
 | App Service plan + Web App (Linux, .NET) | **F1 Free** | hosts the API + the built SPA (wwwroot) |
 | Key Vault (RBAC) | **bootstrap** (`enableKeyVault`) | holds ALL app secrets; the app reads them via managed identity |
+| Admin App Service (Linux, .NET) | **off** (`enableAdminApp`) | separate host for `StuffInABox.Admin.Web`; own plan + Entra sign-in (see below) |
 | Azure PostgreSQL Flexible | **off** | prepared module — the DB is **Supabase** today |
 | Storage Account + blob container | **off** | prepared module for photos (app uses local disk now) |
 
@@ -68,6 +69,63 @@ az webapp deploy --resource-group rg-stuffinabox-dev --name <appName> --src-path
 ```
 
 (Or wire a GitHub Action later — the infra is unchanged.)
+
+## Admin app (StuffInABox.Admin.Web)
+
+The admin console is a **separate host** with its own public URL and its own deploy — it shares
+the core (same database) but is isolated from the consumer app. It's **off by default**.
+
+It signs users in with **Entra ID (single-tenant, ID-token-only → no client secret)**, so the
+only secret it needs is the DB connection (read from the same Key Vault as a reference). Every
+user in the tenant is treated as an admin — the tenant lock *is* the authorization.
+
+**Deploy:**
+
+1. **App registration** (once, tenant scope) — creates the Entra app the admin host signs in
+   against. From `infra/entra` so the local `bicepconfig.json` applies:
+
+   ```pwsh
+   az login --tenant <TENANT_ID> --allow-no-subscriptions
+   az deployment tenant create --location swedencentral --template-file entra/admin-app.bicep `
+     --parameters redirectUris='["http://localhost:5180/signin-oidc","https://<adminAppName>.azurewebsites.net/signin-oidc"]'
+   # note the `clientId` output
+   ```
+
+   (If tenant-scope deploy is denied on a personal tenant, use the `az ad app create` fallback
+   in the header of `entra/admin-app.bicep`.)
+
+2. **Host** — turn it on and pass the tenant + client id. These can come from env vars
+   (`SIB_ADMIN_TENANT_ID` / `SIB_ADMIN_CLIENT_ID`, see `main.bicepparam`) or `--parameters`:
+
+   ```pwsh
+   az deployment sub create -l swedencentral -f infra/main.bicep -p infra/main.bicepparam `
+     --parameters enableAdminApp=true adminAppName=<adminAppName> `
+                  adminAzureAdTenantId=<TENANT_ID> adminAzureAdClientId=<CLIENT_ID>
+   ```
+
+   During the **Key Vault bootstrap** (`enableKeyVault=true`) with `enableAdminApp=true`, the
+   admin host's managed identity is granted `Db-Connection` read access automatically.
+
+3. Publish the admin code the same way as the main app, targeting `src/StuffInABox.Admin.Web`
+   and `--name <adminAppName>`.
+
+### Hardening the admin surface
+
+The first cut keeps it simple: **HTTPS-only + Key Vault + single-tenant Entra sign-in**, no
+network restrictions. When you expose it for real, tighten it (roughly in order of value):
+
+- **IP access restrictions** — lock the site to your office/VPN egress IPs so the admin surface
+  isn't reachable from the open internet: `az webapp config access-restriction add -g <rg> -n <adminAppName> --rule-name office --action Allow --ip-address <cidr> --priority 100` (this leaves a default `Deny all`).
+- **Tighten "who is an admin"** — today *any* tenant user can sign in and is admin. Add an
+  app-role / group check or an explicit object-id allow-list so a new guest can't self-serve.
+- **Private networking** — VNet integration + Private Endpoints on the Key Vault (and DB) so
+  secrets/DB never traverse the public internet (needs a Basic+ plan).
+- **WAF** — front with Azure Front Door / App Gateway for rate-limiting + bot protection.
+- **Diagnostics** — ship app + auth logs to Log Analytics and alert on failed sign-ins.
+- **Least-privilege vault** — give the admin identity its own vault with only `Db-Connection`,
+  so a compromised admin host can't read the consumer app's OAuth/JWT secrets.
+
+The same list lives in the header of `modules/adminAppService.bicep`.
 
 ## Secrets in Key Vault
 

@@ -68,9 +68,21 @@ param enablePostgres bool = false
 @description('Provision a Storage Account + blob container for photos (off = local disk).')
 param enableStorage bool = false
 
+@description('Provision the separate admin app host (StuffInABox.Admin.Web) as its own App Service.')
+param enableAdminApp bool = false
+
 @secure()
 @description('Admin password if enablePostgres = true.')
 param postgresAdminPassword string = ''
+
+// --- Admin app (only used when enableAdminApp = true). Entra sign-in is ID-token-only, so
+//     no client secret is needed — just the tenant + client id from entra/admin-app.bicep. ---
+@description('Globally-unique admin web app name (becomes <name>.azurewebsites.net).')
+param adminAppName string = ''
+@description('Entra tenant id the admin sign-in is locked to (single-tenant).')
+param adminAzureAdTenantId string = ''
+@description('Entra app-registration client id for the admin app (output of entra/admin-app.bicep).')
+param adminAzureAdClientId string = ''
 
 var rgName = 'rg-stuffinabox-${environmentName}'
 var appBaseUrl = 'https://${appName}.azurewebsites.net'
@@ -105,6 +117,20 @@ module app 'modules/appService.bicep' = {
   }
 }
 
+module adminApp 'modules/adminAppService.bicep' = if (enableAdminApp) {
+  scope: rg
+  name: 'adminAppService'
+  params: {
+    location: location
+    adminAppName: adminAppName
+    skuName: appServiceSku
+    databaseProvider: databaseProvider
+    keyVaultName: keyVaultName
+    azureAdTenantId: adminAzureAdTenantId
+    azureAdClientId: adminAzureAdClientId
+  }
+}
+
 module keyVault 'modules/keyVault.bicep' = if (enableKeyVault) {
   scope: rg
   name: 'keyVault'
@@ -112,6 +138,8 @@ module keyVault 'modules/keyVault.bicep' = if (enableKeyVault) {
     location: location
     vaultName: keyVaultName
     webAppPrincipalId: app.outputs.principalId
+    // Grant the admin host's identity read access too (only when it's being deployed).
+    adminAppPrincipalId: adminApp.?outputs.principalId ?? ''
   }
 }
 
@@ -136,4 +164,5 @@ module storage 'modules/storage.bicep' = if (enableStorage) {
 }
 
 output webAppUrl string = appBaseUrl
+output adminAppUrl string = enableAdminApp ? 'https://${adminAppName}.azurewebsites.net' : ''
 output resourceGroup string = rgName

@@ -11,6 +11,9 @@ param vaultName string
 @description('Principal id of the web app managed identity to grant secret access.')
 param webAppPrincipalId string
 
+@description('Principal id of the admin app managed identity to also grant secret access (optional).')
+param adminAppPrincipalId string = ''
+
 // Built-in role: Key Vault Secrets User (read secret values).
 var keyVaultSecretsUserRoleId = '4633458b-17de-408a-b874-0445c86b69e6'
 
@@ -35,6 +38,17 @@ resource secretsUser 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
   properties: {
     roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', keyVaultSecretsUserRoleId)
     principalId: webAppPrincipalId
+    principalType: 'ServicePrincipal'
+  }
+}
+
+// The admin host (when deployed) reads the DB connection string from the same vault.
+resource adminSecretsUser 'Microsoft.Authorization/roleAssignments@2022-04-01' = if (!empty(adminAppPrincipalId)) {
+  scope: vault
+  name: guid(vault.id, adminAppPrincipalId, keyVaultSecretsUserRoleId)
+  properties: {
+    roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', keyVaultSecretsUserRoleId)
+    principalId: adminAppPrincipalId
     principalType: 'ServicePrincipal'
   }
 }
