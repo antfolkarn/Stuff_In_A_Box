@@ -18,6 +18,11 @@ export const updateItem = (
 export const deleteItem = (boxNumber: number, itemId: string) =>
   api.delete(`/boxes/${boxNumber}/items/${itemId}`)
 
+// Run AI recognition on a photo item on demand (e.g. one created without AI when the
+// monthly quota was spent). 202 Accepted; the worker fills in name + tags in the background.
+export const recognizeItem = (boxNumber: number, itemId: string) =>
+  api.post(`/boxes/${boxNumber}/items/${itemId}/recognize`)
+
 export const uploadItemPhoto = (boxNumber: number, itemId: string, file: File) => {
   const form = new FormData()
   form.append('file', file)

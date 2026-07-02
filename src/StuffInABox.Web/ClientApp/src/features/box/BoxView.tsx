@@ -2,10 +2,10 @@ import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import {
   IconTag, IconMapPin, IconPrinter, IconPhoto, IconPackage,
-  IconPencil, IconTrash, IconCheck, IconX, IconArrowLeft, IconCameraPlus, IconLoader2,
+  IconPencil, IconTrash, IconCheck, IconX, IconArrowLeft, IconCameraPlus, IconLoader2, IconSparkles,
 } from '@tabler/icons-react'
 import { getBoxDetail, moveBox, updateBoxLabel, deleteBox } from '../../api/boxes'
-import { getItemsByBox, deleteItem, updateItem } from '../../api/items'
+import { getItemsByBox, deleteItem, updateItem, recognizeItem } from '../../api/items'
 import { getSpaces } from '../../api/spaces'
 import { useUiStore } from '../../store/uiStore'
 import { useLightbox } from '../../store/lightboxStore'
@@ -287,6 +287,13 @@ function ItemCard({ item, boxNumber }: { item: ItemDto; boxNumber: number }) {
     },
   })
 
+  // Run AI on demand — for photo items created without it (monthly quota was spent) or to re-run.
+  // A quota rejection (403) surfaces the global upgrade modal via the axios interceptor.
+  const recognizeMut = useMutation({
+    mutationFn: () => recognizeItem(boxNumber, item.id),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['items', boxNumber] }),
+  })
+
   return (
     <div
       style={{
@@ -350,6 +357,16 @@ function ItemCard({ item, boxNumber }: { item: ItemDto; boxNumber: number }) {
               {isPending ? t('box.analyzing') : item.name}
             </span>
             <div style={{ display: 'flex', gap: 2, flexShrink: 0 }}>
+              {!isPending && hasPhoto && (
+                <button
+                  onClick={() => recognizeMut.mutate()}
+                  disabled={recognizeMut.isPending}
+                  title={t('box.runAi')}
+                  style={{ color: 'var(--accent)', display: 'flex', padding: 2 }}
+                >
+                  <IconSparkles size={14} />
+                </button>
+              )}
               {!isPending && (
                 <button onClick={() => { setDraft(item.name); setEditing(true) }} title={t('box.rename')} style={{ color: 'var(--text-5)', display: 'flex', padding: 2 }}>
                   <IconPencil size={14} />

@@ -86,6 +86,10 @@ public class Item
     /// <summary>Marks enrichment complete even when recognition produced nothing, so the UI stops waiting.</summary>
     public void MarkEnriched() => EnrichmentStatus = ItemEnrichmentStatus.Completed;
 
+    /// <summary>Re-queues recognition for a photo item (e.g. one created without AI when the
+    /// monthly quota was spent). The UI shows it as processing again until the worker runs.</summary>
+    public void MarkPendingRecognition() => EnrichmentStatus = ItemEnrichmentStatus.Pending;
+
     public void Rename(string name)
     {
         if (string.IsNullOrWhiteSpace(name))

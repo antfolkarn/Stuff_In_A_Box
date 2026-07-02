@@ -82,6 +82,7 @@ const sv = {
   'box.loading': 'Laddar låda…',
   'box.confirmDelete': 'Ta bort låda #{number} och alla dess föremål?',
   'box.rename': 'Byt namn',
+  'box.runAi': 'Kör AI',
   'box.deleteBox': 'Ta bort lådan',
   'box.items': '{count} föremål',
   'box.markBox': 'Märk lådan:',
@@ -271,6 +272,8 @@ const sv = {
   'quota.spaces': 'Din plan tillåter {limit} utrymmen. Uppgradera för fler.',
   'quota.items': 'Din plan tillåter {limit} föremål. Uppgradera för fler.',
   'quota.members': 'Din plan tillåter {limit} medlemmar per utrymme (inklusive dig). Uppgradera för att dela med fler.',
+  'quota.ai': 'Din plan tillåter {limit} AI-foton per månad. Uppgradera för fler.',
+  'quota.storage': 'Lagringsutrymmet på din plan är slut. Uppgradera för mer.',
   'quota.generic': 'Du har nått en gräns på din plan. Uppgradera för mer.',
   'quota.dismiss': 'Stäng',
 
@@ -376,6 +379,7 @@ const en: Record<MessageKey, string> = {
   'box.loading': 'Loading box…',
   'box.confirmDelete': 'Delete box #{number} and all its items?',
   'box.rename': 'Rename',
+  'box.runAi': 'Run AI',
   'box.deleteBox': 'Delete box',
   'box.items': '{count} items',
   'box.markBox': 'Label box:',
@@ -565,6 +569,8 @@ const en: Record<MessageKey, string> = {
   'quota.spaces': 'Your plan allows {limit} spaces. Upgrade for more.',
   'quota.items': 'Your plan allows {limit} items. Upgrade for more.',
   'quota.members': 'Your plan allows {limit} members per space (including you). Upgrade to share with more.',
+  'quota.ai': 'Your plan allows {limit} AI photos per month. Upgrade for more.',
+  'quota.storage': "You're out of storage on your plan. Upgrade for more.",
   'quota.generic': "You've hit a limit on your plan. Upgrade for more.",
   'quota.dismiss': 'Close',
 

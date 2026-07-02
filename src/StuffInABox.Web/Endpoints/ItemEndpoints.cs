@@ -6,6 +6,7 @@ using Microsoft.AspNetCore.Routing;
 using StuffInABox.Application.Items.Commands.AddItem;
 using StuffInABox.Application.Items.Commands.CreateItemFromPhoto;
 using StuffInABox.Application.Items.Commands.DeleteItem;
+using StuffInABox.Application.Items.Commands.RecognizeItem;
 using StuffInABox.Application.Items.Commands.UpdateItem;
 using StuffInABox.Application.Items.Commands.UploadItemPhoto;
 
@@ -51,6 +52,12 @@ public static class ItemEndpoints
         })
         .DisableAntiforgery()
         .WithSummary("Ladda upp foto för föremål");
+
+        group.MapPost("/{itemId:guid}/recognize", async (Guid itemId, IMediator mediator, CancellationToken ct) =>
+        {
+            await mediator.Send(new RecognizeItemCommand(itemId), ct);
+            return Results.Accepted();
+        }).WithSummary("Kör AI-igenkänning på ett foto-föremål");
 
         // Fast bulk path: upload a photo and create the item immediately with a placeholder;
         // name + tags are filled in by background recognition. The client uploads several of
