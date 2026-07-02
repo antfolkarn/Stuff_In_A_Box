@@ -75,6 +75,12 @@ public static class AuthEndpoints
         if (existing is not null)
             return Results.Conflict(new { code = "email_taken", error = "E-postadress redan registrerad." });
 
+        // Block registering an email that already belongs to a verified account (e.g. signed up
+        // with Google) — one address = one person. They should sign in with their existing method.
+        var linked = await repo.FindByEmailAsync(req.Email, ct);
+        if (linked is not null && linked.IsEmailVerified)
+            return Results.Conflict(new { code = "account_exists", error = "Du har redan ett konto med den här e-postadressen — logga in med din befintliga metod." });
+
         var passwordHash = BCrypt.Net.BCrypt.HashPassword(req.Password);
         var identity = UserIdentity.CreateEmail(externalId, passwordHash, req.Email.Trim());
         await repo.AddAsync(identity, ct);

@@ -13,6 +13,19 @@ public class UserIdentityRepository(AppDbContext db) : IUserIdentityRepository
     public async Task<UserIdentity?> FindByIdAsync(Guid internalUserId, CancellationToken ct = default) =>
         await db.UserIdentities.FirstOrDefaultAsync(u => u.InternalUserId == internalUserId, ct);
 
+    public async Task<UserIdentity?> FindByEmailAsync(string email, CancellationToken ct = default)
+    {
+        var e = email.Trim().ToLowerInvariant();
+        var matches = await db.UserIdentities
+            .Where(u => u.Email != null && u.Email.ToLower() == e)
+            .ToListAsync(ct);
+        // IsEmailVerified is computed (not a column), so pick in memory: verified wins.
+        return matches.FirstOrDefault(u => u.IsEmailVerified) ?? matches.FirstOrDefault();
+    }
+
+    public async Task<IReadOnlyList<UserIdentity>> FindAllByUserIdAsync(Guid userId, CancellationToken ct = default) =>
+        await db.UserIdentities.Where(u => u.UserId == userId).ToListAsync(ct);
+
     public async Task<IReadOnlyDictionary<Guid, string>> GetEmailsAsync(
         IReadOnlyCollection<Guid> userIds, CancellationToken ct = default)
     {
@@ -36,6 +49,6 @@ public class UserIdentityRepository(AppDbContext db) : IUserIdentityRepository
         await db.SaveChangesAsync(ct);
     }
 
-    public Task DeleteAsync(Guid internalUserId, CancellationToken ct = default) =>
-        db.UserIdentities.Where(u => u.InternalUserId == internalUserId).ExecuteDeleteAsync(ct);
+    public Task DeleteAsync(Guid userId, CancellationToken ct = default) =>
+        db.UserIdentities.Where(u => u.UserId == userId).ExecuteDeleteAsync(ct);
 }

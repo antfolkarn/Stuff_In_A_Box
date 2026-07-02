@@ -90,7 +90,22 @@ public static class OAuthEndpoints
         var identity = await userRepo.FindAsync(provider, principal.Subject, ct);
         if (identity is null)
         {
-            identity = UserIdentity.CreateOAuth(provider, principal.Subject, principal.Email);
+            // First time with this provider. If a verified account already uses this email,
+            // link the two logins to the same person (shared data) instead of making a second
+            // account. Only verified — linking to an unverified stub is an account-takeover vector.
+            var link = string.IsNullOrWhiteSpace(principal.Email)
+                ? null
+                : await userRepo.FindByEmailAsync(principal.Email, ct);
+            if (link is not null && link.IsEmailVerified)
+            {
+                if (link.IsDisabled)
+                    return Results.Redirect($"{redirect}#error=account_disabled");
+                identity = UserIdentity.CreateOAuthLinked(provider, principal.Subject, principal.Email, link.UserId);
+            }
+            else
+            {
+                identity = UserIdentity.CreateOAuth(provider, principal.Subject, principal.Email);
+            }
             await userRepo.AddAsync(identity, ct);
         }
         else if (identity.IsDisabled)

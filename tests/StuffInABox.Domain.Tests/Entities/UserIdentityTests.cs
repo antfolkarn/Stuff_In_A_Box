@@ -90,4 +90,41 @@ public class UserIdentityTests
 
         Assert.Equal(first, id.EmailVerifiedAt);
     }
+
+    [Fact]
+    public void CreateOAuth_IsItsOwnPerson()
+    {
+        var id = UserIdentity.CreateOAuth("google", "sub-123");
+
+        Assert.Equal(id.InternalUserId, id.UserId);
+        Assert.Equal(id.UserId, id.GetUserId().Value);
+    }
+
+    [Fact]
+    public void CreateEmail_IsItsOwnPerson()
+    {
+        var id = UserIdentity.CreateEmail("hashed", "pwhash", "user@example.com");
+
+        Assert.Equal(id.InternalUserId, id.UserId);
+    }
+
+    [Fact]
+    public void CreateOAuthLinked_SharesThePersonButKeepsItsOwnLoginRow()
+    {
+        var person = Guid.NewGuid();
+
+        var linked = UserIdentity.CreateOAuthLinked("google", "sub-123", "user@example.com", person);
+
+        Assert.Equal(person, linked.UserId);            // same person → same data
+        Assert.Equal(person, linked.GetUserId().Value);
+        Assert.NotEqual(person, linked.InternalUserId); // but its own login-method key
+        Assert.True(linked.IsEmailVerified);
+    }
+
+    [Fact]
+    public void CreateOAuthLinked_EmptyPerson_Throws()
+    {
+        Assert.Throws<ArgumentException>(
+            () => UserIdentity.CreateOAuthLinked("google", "sub-123", "e@x.com", Guid.Empty));
+    }
 }

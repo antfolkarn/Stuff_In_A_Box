@@ -92,7 +92,9 @@ if (!EF.IsDesignTime)
     var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
     if (db.Database.IsSqlite())
     {
-        db.Database.EnsureCreated();
+        // Tolerate the consumer app creating the shared file concurrently (both run in dev).
+        try { db.Database.EnsureCreated(); }
+        catch (Microsoft.Data.Sqlite.SqliteException) { /* created concurrently */ }
         // Dev only: seed the shared SQLite DB if the consumer app hasn't yet. On Postgres the
         // consumer app owns the schema + seed, so we don't touch it here.
         await StuffInABox.Infrastructure.Admin.PlanSeeder.SeedAsync(db);

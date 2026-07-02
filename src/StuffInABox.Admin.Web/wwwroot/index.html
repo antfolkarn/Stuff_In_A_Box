@@ -115,7 +115,8 @@
       if (!users.length) { rows.innerHTML = `<tr><td colspan="8" class="mut">Inga användare.</td></tr>`; return; }
 
       rows.innerHTML = users.map(u => {
-        const email = u.email ? esc(u.email) : `<span class="mut">(${esc(u.provider)})</span>`;
+        const providers = (u.providers || []).join(", ");
+        const email = u.email ? esc(u.email) : `<span class="mut">(${esc(providers)})</span>`;
         const opts = plans.map(p => `<option value="${esc(p.tier)}" ${p.tier === u.planTier ? "selected" : ""}>${esc(p.tier)}</option>`).join("");
         const status = u.isDisabled ? `<span class="pill disabled">Avstängd</span>` : `<span class="pill active">Aktiv</span>`;
         const action = u.isDisabled
@@ -124,7 +125,7 @@
         const del = `<button class="danger" data-del="${u.userId}" data-email="${esc(u.email || "")}">Radera</button>`;
         return `<tr>
           <td>${email}</td>
-          <td class="mut small">${esc(u.provider)}${u.emailVerified ? "" : " · overifierad"}</td>
+          <td class="mut small">${esc(providers)}${u.emailVerified ? "" : " · overifierad"}</td>
           <td><select data-plan="${u.userId}">${opts}</select></td>
           <td>${u.spaceCount}</td>
           <td>${u.itemCount}</td>

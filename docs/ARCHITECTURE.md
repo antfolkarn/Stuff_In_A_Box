@@ -179,6 +179,16 @@ skriver aldrig över en befintlig adress). Apple är undantaget: det lämnar bar
 Identiteten nycklas alltid på `(provider, sub)` — e-posten är för kontakt/administration, inte
 uppslag.
 
+**Kontosammanslagning (samma e-post = samma person).** En `UserIdentity` är *en inloggningsmetod*;
+`InternalUserId` är dess primärnyckel medan `UserId` pekar ut **personen** (och är det allt innehåll,
+inställningar och JWT-subjektet nycklas på). För ett olänkat konto är de lika, så person-id är alltid
+den *första* identitetens `InternalUserId`. Vid OAuth-inloggning: finns redan ett **verifierat** konto
+med samma e-post skapas en `CreateOAuthLinked`-identitet som **delar personens `UserId`** → båda
+inloggningssätten når samma data. Bara verifierat — att länka mot ett overifierat e-poststub vore en
+kapningsväg (någon förregistrerar din adress med ett eget lösenord). Av samma skäl **blockeras
+e-postregistrering** (`account_exists`) om ett verifierat konto med adressen redan finns. Admin-listan
+grupperar per person; av/på och radering gäller alla länkade inloggningssätt.
+
 ---
 
 ## 4. Domänmodell

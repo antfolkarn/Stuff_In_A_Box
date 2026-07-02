@@ -10,6 +10,10 @@ public class UserIdentityConfiguration : IEntityTypeConfiguration<UserIdentity>
     {
         builder.HasKey(u => u.InternalUserId);
 
+        // The person this login belongs to (equal to InternalUserId for unlinked accounts).
+        builder.Property(u => u.UserId).IsRequired();
+        builder.HasIndex(u => u.UserId);
+
         builder.Property(u => u.Provider).IsRequired().HasMaxLength(20);
         builder.Property(u => u.ExternalId).IsRequired().HasMaxLength(500);
         builder.Property(u => u.PasswordHash).HasMaxLength(200);

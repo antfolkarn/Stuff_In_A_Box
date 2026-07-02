@@ -215,7 +215,16 @@ if (!EF.IsDesignTime)
     using var scope = app.Services.CreateScope();
     var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
     if (db.Database.IsSqlite())
-        db.Database.EnsureCreated();
+    {
+        // SQLite EnsureCreated isn't concurrency-safe. Serialize in-process (parallel
+        // integration tests share one host type) and tolerate a concurrent creator in another
+        // process (dev: Web + Admin point at the same file). Postgres uses migrations instead.
+        lock (DbInitLock)
+        {
+            try { db.Database.EnsureCreated(); }
+            catch (Microsoft.Data.Sqlite.SqliteException) { /* created concurrently */ }
+        }
+    }
     else
         db.Database.Migrate();
 
@@ -279,4 +288,8 @@ app.MapFallbackToFile("index.html");
 
 app.Run();
 
-public partial class Program { }
+public partial class Program
+{
+    // Serializes SQLite schema creation across in-process hosts (parallel integration tests).
+    private static readonly object DbInitLock = new();
+}

@@ -22,13 +22,25 @@ public sealed class AdminService(AppDbContext db, IPlanCatalog catalog, IAccount
             q = q.Where(u => u.Email != null && EF.Functions.Like(u.Email, $"%{term}%"));
         }
 
-        // Order on the client: SQLite can't ORDER BY a DateTimeOffset in SQL.
-        var users = (await q.ToListAsync(ct))
-            .OrderByDescending(u => u.CreatedAt)
+        // Group login methods into persons (identities that share a UserId), so a linked
+        // email + Google account shows as one row. Ordering + IsDisabled/IsEmailVerified are
+        // computed, so materialize first (SQLite also can't ORDER BY a DateTimeOffset in SQL).
+        var persons = (await q.ToListAsync(ct))
+            .GroupBy(u => u.UserId)
+            .Select(g => new
+            {
+                UserId = g.Key,
+                Email = g.Select(u => u.Email).FirstOrDefault(e => !string.IsNullOrWhiteSpace(e)),
+                Providers = g.Select(u => u.Provider).Distinct().OrderBy(p => p).ToList(),
+                EmailVerified = g.Any(u => u.IsEmailVerified),
+                IsDisabled = g.Any(u => u.IsDisabled), // disabled if any login method is disabled
+                CreatedAt = g.Min(u => u.CreatedAt),
+            })
+            .OrderByDescending(p => p.CreatedAt)
             .Take(ListCap)
             .ToList();
 
-        var ids = users.Select(u => u.InternalUserId).ToList();
+        var ids = persons.Select(p => p.UserId).ToList();
 
         var plans = await db.UserSettings
             .Where(s => ids.Contains(s.UserId))
@@ -43,16 +55,16 @@ public sealed class AdminService(AppDbContext db, IPlanCatalog catalog, IAccount
         var itemCounts = (await db.Items.Select(i => i.OwnerId).ToListAsync(ct))
             .GroupBy(o => o.Value).ToDictionary(g => g.Key, g => g.Count());
 
-        return users.Select(u => new AdminUserRow(
-            UserId: u.InternalUserId,
-            Email: u.Email,
-            Provider: u.Provider,
-            EmailVerified: u.IsEmailVerified,
-            PlanTier: planByUser.GetValueOrDefault(u.InternalUserId, UserSettings.DefaultPlanTier),
-            IsDisabled: u.IsDisabled,
-            CreatedAt: u.CreatedAt,
-            SpaceCount: spaceCounts.GetValueOrDefault(u.InternalUserId),
-            ItemCount: itemCounts.GetValueOrDefault(u.InternalUserId)))
+        return persons.Select(p => new AdminUserRow(
+            UserId: p.UserId,
+            Email: p.Email,
+            Providers: p.Providers,
+            EmailVerified: p.EmailVerified,
+            PlanTier: planByUser.GetValueOrDefault(p.UserId, UserSettings.DefaultPlanTier),
+            IsDisabled: p.IsDisabled,
+            CreatedAt: p.CreatedAt,
+            SpaceCount: spaceCounts.GetValueOrDefault(p.UserId),
+            ItemCount: itemCounts.GetValueOrDefault(p.UserId)))
             .ToList();
     }
 
@@ -61,7 +73,7 @@ public sealed class AdminService(AppDbContext db, IPlanCatalog catalog, IAccount
         if (!catalog.IsValidTier(tier))
             throw new ArgumentException($"Okänd plan '{tier}'.", nameof(tier));
 
-        var exists = await db.UserIdentities.AnyAsync(u => u.InternalUserId == userId, ct);
+        var exists = await db.UserIdentities.AnyAsync(u => u.UserId == userId, ct);
         if (!exists) return false;
 
         var settings = await db.UserSettings.FirstOrDefaultAsync(s => s.UserId == userId, ct);
@@ -82,11 +94,15 @@ public sealed class AdminService(AppDbContext db, IPlanCatalog catalog, IAccount
 
     public async Task<bool> SetDisabledAsync(Guid userId, bool disabled, CancellationToken ct = default)
     {
-        var identity = await db.UserIdentities.FirstOrDefaultAsync(u => u.InternalUserId == userId, ct);
-        if (identity is null) return false;
+        // Disable/enable applies to the whole person — every linked login method.
+        var identities = await db.UserIdentities.Where(u => u.UserId == userId).ToListAsync(ct);
+        if (identities.Count == 0) return false;
 
-        if (disabled) identity.Disable();
-        else identity.Enable();
+        foreach (var identity in identities)
+        {
+            if (disabled) identity.Disable();
+            else identity.Enable();
+        }
 
         await db.SaveChangesAsync(ct);
         return true;
@@ -94,7 +110,7 @@ public sealed class AdminService(AppDbContext db, IPlanCatalog catalog, IAccount
 
     public async Task<bool> DeleteUserAsync(Guid userId, CancellationToken ct = default)
     {
-        var exists = await db.UserIdentities.AnyAsync(u => u.InternalUserId == userId, ct);
+        var exists = await db.UserIdentities.AnyAsync(u => u.UserId == userId, ct);
         if (!exists) return false;
 
         await deletion.DeleteAsync(new UserId(userId), ct);

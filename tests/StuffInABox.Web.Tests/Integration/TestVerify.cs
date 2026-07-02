@@ -31,10 +31,10 @@ internal static class TestVerify
         var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
         var user = db.UserIdentities.FirstOrDefault(u => u.Email == email);
         if (user is null) return;
-        var settings = db.UserSettings.FirstOrDefault(s => s.UserId == user.InternalUserId);
+        var settings = db.UserSettings.FirstOrDefault(s => s.UserId == user.UserId);
         if (settings is null)
         {
-            settings = UserSettings.CreateDefault(user.InternalUserId);
+            settings = UserSettings.CreateDefault(user.UserId);
             settings.SetPlanTier(tier);
             db.UserSettings.Add(settings);
         }
