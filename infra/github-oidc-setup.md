@@ -1,8 +1,20 @@
 # Letting GitHub Actions deploy to Azure (OIDC)
 
-The pipeline (`.github/workflows/deploy.yml`) authenticates to Azure with **GitHub OIDC
-federated credentials** — a trust between your GitHub repo and an Entra app that has a
-role on your subscription. **No Azure password is ever stored in GitHub.**
+Deployment is split into three workflows, each triggered by a push to **`main`** that
+touches its area (plus manual `workflow_dispatch`):
+
+| Workflow | Runs when these change | Does |
+|---|---|---|
+| `.github/workflows/infra.yml` | `infra/**` | deploys the Bicep (provisions **both** apps) |
+| `.github/workflows/deploy-web.yml` | `src/StuffInABox.Web/**` or a shared project (`Domain`/`Application`/`Infrastructure`) | builds the SPA + publishes the consumer app |
+| `.github/workflows/deploy-admin.yml` | `src/StuffInABox.Admin.Web/**` or a shared project | publishes the admin app |
+
+They all authenticate to Azure with **GitHub OIDC federated credentials** — a trust between
+your GitHub repo and an Entra app that has a role on your subscription. **No Azure password is
+ever stored in GitHub.**
+
+> First-time order: run **infra** first (it creates the App Services), then the code
+> workflows. After that they're independent — a code-only change redeploys just that app.
 
 ## 1. Prerequisite
 
@@ -60,11 +72,22 @@ Azure; it never handles secret values.
 | `SIB_GOOGLE_CLIENT_ID` | Google OAuth client id (public) |
 | `SIB_MICROSOFT_CLIENT_ID` | Microsoft OAuth client id (public) |
 
+**Admin app** (only needed if you deploy it — see `infra/README.md` → "Admin app"):
+
+| Name | Example |
+|---|---|
+| `AZURE_ENABLE_ADMIN_APP` | `true` |
+| `AZURE_ADMIN_APP_NAME` | `stuffinabox-admin-andree` (globally unique) |
+| `AZURE_ADMIN_TENANT_ID` | tenant the admin sign-in is locked to |
+| `AZURE_ADMIN_CLIENT_ID` | client id from `entra/admin-app.bicep` |
+
 ## 4. Deploy
 
-Push to `main` (or run the workflow manually from the **Actions** tab). The pipeline:
-builds the SPA → `dotnet publish` → deploys the Bicep infra (creates the resource group +
-App Service) → deploys the app code to the Web App.
+Push to `main` (or run a workflow manually from the **Actions** tab). Each workflow only
+fires for changes in its area (see the table at the top), so an infra change deploys infra,
+a web-code change redeploys the web app, and an admin-code change redeploys the admin app. A
+change that touches a shared project (`Domain`/`Application`/`Infrastructure`) redeploys both
+apps. On the very first setup, run **infra** first so the App Services exist.
 
 ## 5. After the first deploy
 

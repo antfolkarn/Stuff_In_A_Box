@@ -1,0 +1,54 @@
+name: Deploy admin app
+
+# Builds + deploys the ADMIN app (StuffInABox.Admin.Web) to its own App Service.
+# The admin console is a static wwwroot/index.html (no SPA build), so this just publishes the
+# .NET host. Triggers on changes to the admin host or any shared project it depends on.
+# Requires the admin infra to exist (infra.yml with AZURE_ENABLE_ADMIN_APP=true).
+
+on:
+  workflow_dispatch: {}
+  push:
+    branches: [main]
+    paths:
+      - 'src/StuffInABox.Admin.Web/**'
+      - 'src/StuffInABox.Domain/**'
+      - 'src/StuffInABox.Application/**'
+      - 'src/StuffInABox.Infrastructure/**'
+      - '.github/workflows/deploy-admin.yml'
+
+permissions:
+  id-token: write # required for OIDC login
+  contents: read
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    concurrency: deploy-admin
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Azure login (OIDC)
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Publish admin app
+        run: dotnet publish src/StuffInABox.Admin.Web -c Release -r linux-x64 --no-self-contained -o publish
+
+      - name: Deploy app to App Service
+        # Same pre-built-zip trick as the web app (skips the F1-tier Oryx build hang).
+        uses: azure/cli@v2
+        with:
+          azcliversion: latest
+          inlineScript: |
+            python3 -c "import shutil; shutil.make_archive('app', 'zip', 'publish')"
+            az webapp deploy \
+              --resource-group "rg-stuffinabox-${{ vars.AZURE_ENV }}" \
+              --name "${{ vars.AZURE_ADMIN_APP_NAME }}" \
+              --src-path app.zip --type zip

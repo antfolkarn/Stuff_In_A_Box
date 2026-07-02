@@ -307,7 +307,7 @@ medlemmar behåller åtkomst tills de tas bort eller lämnar.
 | **Tema** | `ClientApp` `themeStore` | Ljust/mörkt via CSS-variabler och `data-theme`, persisterat i `localStorage`. Flimmerfritt: en liten inline-init i `index.html` sätter temat före första paint, tillåten av CSP via sin SHA-256-hash (ingen `'unsafe-inline'` för skript). Ändras skriptet måste hashen i `SecurityHeadersMiddleware` räknas om. |
 | **Prenumeration** | `IPlanCatalog` + `UserSettings.PlanTier` | Plan-katalog (nivåer + gränser) läses via `IPlanCatalog`; användarens nivå på `UserSettings.PlanTier`. Se §8. |
 | **Health checks** | `Program.cs` + `DatabaseHealthCheck` | `/health` (liveness) och `/health/ready` (readiness, kollar DB) för orkestrering. |
-| **Drift** | `Dockerfile`, `docker-compose.yml`, `.github/workflows/ci.yml` + `deploy.yml` | Multi-stage-bygge (SPA + .NET → Linux-runtime), CI som bygger och testar; CD deployar till Azure (se §7). SkiaSharp Linux-native-assets ingår så bildbehandling fungerar i container. |
+| **Drift** | `Dockerfile`, `docker-compose.yml`, `.github/workflows/ci.yml` + `infra.yml`/`deploy-web.yml`/`deploy-admin.yml` | Multi-stage-bygge (SPA + .NET → Linux-runtime), CI som bygger och testar; CD deployar till Azure via tre path-triggade workflows (se §7). SkiaSharp Linux-native-assets ingår så bildbehandling fungerar i container. |
 | **Version** | `VersionEndpoints` + UI-footer | `GET /version` (anonym) returnerar `{ version, commit, buildTimeUtc }`. Commit bakas in vid bygge via `SourceRevisionId` (ett MSBuild-target kör `git rev-parse HEAD`). Gör att man direkt kan se exakt vilken commit som kör — fångar "stale deploy". |
 
 ---
@@ -391,19 +391,27 @@ sequenceDiagram
 
 ### CI/CD — GitHub Actions (OIDC)
 
-Push till `prod-migration` kör `.github/workflows/deploy.yml`. Autentisering sker via
-**GitHub OIDC** (federated credential mot en Entra-app med Contributor på prenumerationen)
-— inget Azure-lösenord lagras i GitHub. Endast icke-hemlig config skickas som GitHub-vars;
-appens hemligheter ligger i Key Vault.
+Deployen är **uppdelad i tre workflows** som var och en triggas av en push till `main` som
+rör dess område (path-filter) + manuell `workflow_dispatch`: `infra.yml` (Bicep → båda
+apparna), `deploy-web.yml` (konsument-appen) och `deploy-admin.yml` (admin-appen). En ändring
+i ett delat projekt (`Domain`/`Application`/`Infrastructure`) redeployar båda apparna.
+Autentisering sker via **GitHub OIDC** (federated credential mot en Entra-app med Contributor
+på prenumerationen, trust scopad till `refs/heads/main`) — inget Azure-lösenord lagras i
+GitHub. Endast icke-hemlig config skickas som GitHub-vars; appens hemligheter ligger i Key Vault.
 
 ```mermaid
 flowchart LR
-    Push["git push → prod-migration"] --> GH["GitHub Actions: deploy.yml"]
-    GH -->|OIDC-login| AZ["Azure"]
-    GH --> B1["Bygg SPA (npm) +<br/>dotnet publish (-r linux-x64)"]
-    B1 --> B2["az deployment sub create<br/>(Bicep, Staik-params)"]
-    B2 --> B3["az webapp deploy --type zip<br/>(förbyggd zip)"]
-    B3 --> App["App Service"]
+    subgraph Push["git push → main (path-filter)"]
+      Pi["infra/**"]
+      Pw["Web/** el. delat projekt"]
+      Pa["Admin.Web/** el. delat projekt"]
+    end
+    Pi --> Wi["infra.yml"]
+    Pw --> Ww["deploy-web.yml"]
+    Pa --> Wa["deploy-admin.yml"]
+    Wi -->|OIDC| B2["az deployment sub create<br/>(Bicep → båda apparna)"] --> App1["App Services"]
+    Ww -->|OIDC| Bw["SPA (npm) + dotnet publish<br/>→ az webapp deploy (zip)"] --> AppW["Web App"]
+    Wa -->|OIDC| Ba["dotnet publish<br/>→ az webapp deploy (zip)"] --> AppA["Admin App"]
 ```
 
 **Fallgropar (dokumenterade):** zip-deploy måste vara en *äkta* zip med framåtsnedstreck

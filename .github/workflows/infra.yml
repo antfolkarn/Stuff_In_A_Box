@@ -1,0 +1,67 @@
+name: Deploy infra
+
+# Provisions/updates the Azure infrastructure (subscription-scoped Bicep). This single
+# deploy covers BOTH apps — the consumer web app and, when AZURE_ENABLE_ADMIN_APP is true,
+# the admin app host (main.bicep wires them from the same template).
+#
+# Auth uses GitHub OIDC federated credentials (no stored Azure password) — see
+# infra/github-oidc-setup.md. No secrets are passed to the deploy; all app secrets live in
+# Key Vault and are read at runtime via the apps' managed identities.
+#
+# The Key Vault bootstrap (enableKeyVault=true, which also grants the admin identity access)
+# is a one-time Owner step run by hand — see infra/README.md — not this pipeline.
+
+on:
+  workflow_dispatch: {}
+  push:
+    branches: [main]
+    paths:
+      - 'infra/**'
+      - '.github/workflows/infra.yml'
+
+permissions:
+  id-token: write # required for OIDC login
+  contents: read
+
+jobs:
+  infra:
+    runs-on: ubuntu-latest
+    concurrency: deploy-infra # never two infra deploys at once
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Azure login (OIDC)
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Deploy infrastructure (Bicep)
+        uses: azure/cli@v2
+        with:
+          azcliversion: latest
+          inlineScript: |
+            az deployment sub create \
+              --name "stuffinabox-infra-${{ github.run_number }}" \
+              --location "${{ vars.AZURE_LOCATION }}" \
+              --template-file infra/main.bicep \
+              --parameters \
+                environmentName="${{ vars.AZURE_ENV }}" \
+                location="${{ vars.AZURE_LOCATION }}" \
+                appName="${{ vars.AZURE_APP_NAME }}" \
+                appServiceSku="${{ vars.AZURE_APP_SKU }}" \
+                databaseProvider="postgres" \
+                keyVaultName="${{ vars.AZURE_KEY_VAULT }}" \
+                brevoSmtpUser="${{ vars.SIB_BREVO_USER }}" \
+                emailFrom="${{ vars.SIB_EMAIL_FROM }}" \
+                googleClientId="${{ vars.SIB_GOOGLE_CLIENT_ID }}" \
+                microsoftClientId="${{ vars.SIB_MICROSOFT_CLIENT_ID }}" \
+                imageRecognitionProvider="staik" \
+                staikBaseUrl="https://api.staik.se" \
+                staikModel="gemma4:31b" \
+                staikTimeoutSeconds="180" \
+                enableAdminApp="${{ vars.AZURE_ENABLE_ADMIN_APP || 'false' }}" \
+                adminAppName="${{ vars.AZURE_ADMIN_APP_NAME }}" \
+                adminAzureAdTenantId="${{ vars.AZURE_ADMIN_TENANT_ID }}" \
+                adminAzureAdClientId="${{ vars.AZURE_ADMIN_CLIENT_ID }}"
