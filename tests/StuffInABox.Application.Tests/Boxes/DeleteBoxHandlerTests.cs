@@ -30,7 +30,7 @@ public class DeleteBoxHandlerTests
                 .ReturnsAsync(box);
 
         var withPhoto = Item.Create(box.Number, _userId, "Hammare");
-        withPhoto.SetPhoto("photo123.jpg");
+        withPhoto.SetPhoto("photo123.jpg", 0);
         var noPhoto = Item.Create(box.Number, _userId, "Skruvar");
         _itemRepo.Setup(r => r.GetByBoxAsync(box.Number, _userId, It.IsAny<CancellationToken>()))
                  .ReturnsAsync(new[] { withPhoto, noPhoto });

@@ -20,7 +20,7 @@ public class DeleteItemHandlerTests
     public async Task Handle_DeletesItem_AndPhoto()
     {
         var item = Item.Create(new BoxNumber(1), _userId, "Jacka");
-        item.SetPhoto("p.jpg");
+        item.SetPhoto("p.jpg", 0);
         _itemRepo.Setup(r => r.GetByIdAsync(item.Id, It.IsAny<CancellationToken>())).ReturnsAsync(item);
         _boxRepo.Setup(r => r.GetByNumberAsync(item.BoxNumber, _userId, It.IsAny<CancellationToken>()))
                 .ReturnsAsync(Box.Create(new BoxNumber(1), _spaceId, _userId, "Box"));

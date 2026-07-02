@@ -14,6 +14,7 @@ public class UploadItemPhotoHandlerTests
     private readonly Mock<IImageProcessor> _processor = new();
     private readonly Mock<IStorageService> _storage = new();
     private readonly Mock<ISpaceAccessService> _access = new();
+    private readonly Mock<IEntitlementService> _entitlements = new();
     private readonly UserId _userId = new(Guid.NewGuid());
     private readonly Guid _spaceId = Guid.NewGuid();
 
@@ -29,7 +30,7 @@ public class UploadItemPhotoHandlerTests
     }
 
     private UploadItemPhotoCommandHandler CreateHandler() =>
-        new(_itemRepo.Object, _boxRepo.Object, _processor.Object, _storage.Object, _access.Object);
+        new(_itemRepo.Object, _boxRepo.Object, _processor.Object, _storage.Object, _access.Object, _entitlements.Object);
 
     private void SetupItemAndBox(Item item)
     {
@@ -56,7 +57,7 @@ public class UploadItemPhotoHandlerTests
     public async Task Handle_ReplacesOldPhoto_DeletesPrevious()
     {
         var item = Item.Create(new BoxNumber(1), _userId, "Jacka");
-        item.SetPhoto("old-key.jpg");
+        item.SetPhoto("old-key.jpg", 100);
         SetupItemAndBox(item);
 
         await CreateHandler().Handle(

@@ -45,9 +45,10 @@ public class ItemTests
     public void SetPhoto_SetsStorageKey()
     {
         var item = Item.Create(BoxNum, OwnerId, "Hammare");
-        item.SetPhoto("items/user1/abc123.jpg");
+        item.SetPhoto("items/user1/abc123.jpg", 4096);
 
         Assert.Equal("items/user1/abc123.jpg", item.PhotoStorageKey);
+        Assert.Equal(4096, item.PhotoSizeBytes);
     }
 
     [Fact]

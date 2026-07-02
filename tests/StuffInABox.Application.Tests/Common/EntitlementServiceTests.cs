@@ -114,4 +114,53 @@ public class EntitlementServiceTests
 
         await Assert.ThrowsAsync<QuotaExceededException>(() => Svc().EnsureCanAddSpaceAsync(_owner));
     }
+
+    [Fact]
+    public async Task Storage_OverLimit_Throws()
+    {
+        OnTier("free"); // 250 MB
+        _items.Setup(r => r.SumPhotoBytesByOwnerAsync(_owner, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(250L * 1024 * 1024);
+
+        var ex = await Assert.ThrowsAsync<QuotaExceededException>(() => Svc().EnsureCanStoreAsync(_owner, 1));
+        Assert.Equal("storage", ex.Quota);
+        Assert.Equal(250, ex.Limit);
+    }
+
+    [Fact]
+    public async Task Storage_UnderLimit_Ok()
+    {
+        OnTier("free");
+        _items.Setup(r => r.SumPhotoBytesByOwnerAsync(_owner, It.IsAny<CancellationToken>())).ReturnsAsync(0L);
+
+        await Svc().EnsureCanStoreAsync(_owner, 10L * 1024 * 1024); // 10 MB into a 250 MB plan
+    }
+
+    [Fact]
+    public async Task Ai_WithinQuota_ConsumesAndReturnsTrue()
+    {
+        var settings = UserSettings.CreateDefault(_owner.Value);
+        settings.SetPlanTier("free"); // 5/month
+        _settings.Setup(r => r.GetAsync(_owner.Value, It.IsAny<CancellationToken>())).ReturnsAsync(settings);
+
+        var ok = await Svc().TryConsumeAiAsync(_owner);
+
+        Assert.True(ok);
+        _settings.Verify(r => r.UpsertAsync(It.IsAny<UserSettings>(), It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task Ai_Exhausted_ReturnsFalse_WithoutConsuming()
+    {
+        var settings = UserSettings.CreateDefault(_owner.Value);
+        settings.SetPlanTier("free");
+        var ym = EntitlementService.YearMonth(DateTimeOffset.UtcNow);
+        for (var i = 0; i < 5; i++) settings.RecordAiUsage(ym); // Free cap = 5
+        _settings.Setup(r => r.GetAsync(_owner.Value, It.IsAny<CancellationToken>())).ReturnsAsync(settings);
+
+        var ok = await Svc().TryConsumeAiAsync(_owner);
+
+        Assert.False(ok);
+        _settings.Verify(r => r.UpsertAsync(It.IsAny<UserSettings>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
 }

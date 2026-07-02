@@ -282,6 +282,8 @@ function SubscriptionSection() {
         <div style={{ display: 'grid', gap: 10 }}>
           <UsageBar label={t('subscription.spaces')} used={data.usage.spaces} max={data.usage.maxSpaces} unlimited={t('subscription.unlimited')} />
           <UsageBar label={t('subscription.items')} used={data.usage.items} max={data.usage.maxItems} unlimited={t('subscription.unlimited')} />
+          <UsageBar label={t('subscription.aiPhotos')} used={data.usage.aiPhotos} max={data.usage.aiPhotosLimit} unlimited={t('subscription.unlimited')} />
+          <UsageBar label={t('subscription.storage')} used={data.usage.storageMb} max={data.usage.storageLimitMb} unlimited={t('subscription.unlimited')} fmt={storage} />
         </div>
       </div>
 
@@ -326,15 +328,16 @@ function SubscriptionSection() {
   )
 }
 
-function UsageBar({ label, used, max, unlimited }: { label: string; used: number; max: number; unlimited: string }) {
+function UsageBar({ label, used, max, unlimited, fmt }: { label: string; used: number; max: number; unlimited: string; fmt?: (n: number) => string }) {
   const pct = max <= 0 ? 0 : Math.min(100, Math.round((used / max) * 100))
   // Being *at* your allowance is normal (amber nudge); only going *over* is a problem (red).
   const barColor = max > 0 && used > max ? '#B91C1C' : max > 0 && used >= max ? '#B7791F' : 'var(--accent)'
+  const show = fmt ?? ((n: number) => String(n))
   return (
     <div>
       <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, marginBottom: 5 }}>
         <span style={{ color: 'var(--text-2)' }}>{label}</span>
-        <span style={{ fontWeight: 500 }}>{used} / {max < 0 ? unlimited : max}</span>
+        <span style={{ fontWeight: 500 }}>{show(used)} / {max < 0 ? unlimited : show(max)}</span>
       </div>
       {max >= 0 && (
         <div style={{ height: 6, borderRadius: 999, background: 'var(--border-2)', overflow: 'hidden' }}>

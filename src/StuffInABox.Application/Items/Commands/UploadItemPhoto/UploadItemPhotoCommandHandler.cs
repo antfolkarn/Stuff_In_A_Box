@@ -11,7 +11,8 @@ public sealed class UploadItemPhotoCommandHandler(
     IBoxRepository boxRepo,
     IImageProcessor imageProcessor,
     IStorageService storage,
-    ISpaceAccessService access)
+    ISpaceAccessService access,
+    IEntitlementService entitlements)
     : IRequestHandler<UploadItemPhotoCommand, UploadItemPhotoResult>
 {
     // 10 MB cap, matching the plan's upload limit
@@ -34,13 +35,16 @@ public sealed class UploadItemPhotoCommandHandler(
         // Validates magic bytes + strips EXIF by re-encoding
         var processed = imageProcessor.ProcessAndStripMetadata(request.Content);
 
+        // Only the delta counts — this replaces the item's existing photo.
+        await entitlements.EnsureCanStoreAsync(item.OwnerId, processed.Bytes.Length - item.PhotoSizeBytes, ct);
+
         using var stream = new MemoryStream(processed.Bytes);
         var storageKey = await storage.StoreAsync(
             stream, $"photo{processed.Extension}", processed.ContentType, ct);
 
         // Replace any previous photo
         var oldKey = item.PhotoStorageKey;
-        item.SetPhoto(storageKey);
+        item.SetPhoto(storageKey, processed.Bytes.Length);
         await itemRepo.UpdateAsync(item, ct);
 
         if (oldKey is not null)

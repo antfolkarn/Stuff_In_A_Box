@@ -478,14 +478,17 @@ refresh avvisas, data kvar), och `DeleteUserAsync` = **permanent radering** via 
 foton, medlemskap, tokens, settings, identitet). Admin och konsument delar Domain/Infrastructure
 och samma databas men är skilda publika ytor.
 
-**Enforcement (Fas 3a):** `IEntitlementService` löser ägarens plan och kastar
-`QuotaExceededException` när en åtgärd skulle överskrida en numerisk gräns. Inkopplat i
-`CreateSpace` (utrymmen), `AddItem`/`CreateItemFromPhoto` (föremål) och `AcceptInvite`
-(medlemmar, inkl. ägaren i taket). `GlobalExceptionHandler` mappar undantaget till **403 med
-`code: "quota_exceeded"`** + `{quota, limit, plan}`; klientens axios-interceptor fångar det och
-visar en global uppgradera-modal (`QuotaNoticeModal`). Kontrollerna är additiva → nedgradering
-blockerar bara nya tillägg, aldrig befintligt (grandfathering). **Fas 3b** lägger till AI-foton/mån
-(förbrukning + månadsreset), lagringsbytes, prioriterad AI-kö och en "Kör AI"-åtgärd per föremål.
+**Enforcement:** `IEntitlementService` löser ägarens plan och kastar `QuotaExceededException` när
+en åtgärd skulle överskrida en gräns. Inkopplat i `CreateSpace` (utrymmen), `AddItem`/
+`CreateItemFromPhoto` (föremål), `AcceptInvite` (medlemmar, inkl. ägaren i taket), foto-upload
+(**lagring** — `EnsureCanStoreAsync` mot summan av `Item.PhotoSizeBytes`) och AI-igenkänning
+(**AI-foton/mån** — `TryConsumeAiAsync` mot `UserSettings.AiUsedThisMonth`, som nollställs vid
+månadsskifte via `AiUsageYearMonth`). Slut på AI-kvot → föremålet skapas ändå men **utan** AI
+(kan köras senare). `GlobalExceptionHandler` mappar undantaget till **403 med
+`code: "quota_exceeded"`** + `{quota, limit, plan}`; klientens axios-interceptor visar en global
+uppgradera-modal (`QuotaNoticeModal`). Kontrollerna är additiva → nedgradering blockerar bara nya
+tillägg (grandfathering). Blocket i Settings visar nu **riktiga mätare** för alla fyra axlarna.
+**Kvar (Fas 3b-slut):** prioriterad AI-kö i workern + en "Kör AI"-knapp per föremål.
 
 De verkliga kostnadshävstängerna som motiverar nivåerna (AI-igenkänning i två steg, worker med
 3-parallell-gräns, R2-lagring, delade spaces) är beskrivna i idéskissen

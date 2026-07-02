@@ -22,6 +22,10 @@ export interface Subscription {
     maxSpaces: number
     items: number
     maxItems: number
+    aiPhotos: number
+    aiPhotosLimit: number
+    storageMb: number
+    storageLimitMb: number
   }
   plans: PlanOption[]
 }

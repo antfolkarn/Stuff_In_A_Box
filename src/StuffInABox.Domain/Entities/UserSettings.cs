@@ -19,6 +19,13 @@ public class UserSettings
     /// <summary>Subscription tier the account is on (e.g. "free" | "medium" | "large").
     /// Validated against the plan catalog by the admin application before it's set.</summary>
     public string PlanTier { get; private set; } = DefaultPlanTier;
+
+    /// <summary>AI recognition runs consumed in <see cref="AiUsageYearMonth"/> (the monthly
+    /// quota resets when the month rolls over — see <see cref="RecordAiUsage"/>).</summary>
+    public int AiUsedThisMonth { get; private set; }
+    /// <summary>The month <see cref="AiUsedThisMonth"/> counts, as year*100 + month (e.g. 202607).</summary>
+    public int AiUsageYearMonth { get; private set; }
+
     public DateTimeOffset UpdatedAt { get; private set; }
 
     private UserSettings()
@@ -35,6 +42,22 @@ public class UserSettings
         PlanTier = DefaultPlanTier,
         UpdatedAt = DateTimeOffset.UtcNow,
     };
+
+    /// <summary>AI runs used in the given month (year*100+month); 0 once the month has rolled over.</summary>
+    public int AiUsedIn(int yearMonth) => AiUsageYearMonth == yearMonth ? AiUsedThisMonth : 0;
+
+    /// <summary>Records one AI recognition run in the given month, resetting the counter first
+    /// when the month has changed since the last run.</summary>
+    public void RecordAiUsage(int yearMonth)
+    {
+        if (AiUsageYearMonth != yearMonth)
+        {
+            AiUsageYearMonth = yearMonth;
+            AiUsedThisMonth = 0;
+        }
+        AiUsedThisMonth++;
+        UpdatedAt = DateTimeOffset.UtcNow;
+    }
 
     /// <summary>Sets the subscription tier. The caller (admin app) is responsible for
     /// validating the value against the plan catalog first.</summary>

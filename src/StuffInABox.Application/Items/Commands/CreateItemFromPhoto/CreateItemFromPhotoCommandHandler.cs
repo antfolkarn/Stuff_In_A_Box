@@ -37,17 +37,24 @@ public sealed class CreateItemFromPhotoCommandHandler(
         // Validates magic bytes + strips EXIF by re-encoding (same as the photo upload path).
         var processed = imageProcessor.ProcessAndStripMetadata(request.Content);
 
+        await entitlements.EnsureCanStoreAsync(ownerId, processed.Bytes.Length, ct);
+
         using var stream = new MemoryStream(processed.Bytes);
         var storageKey = await storage.StoreAsync(
             stream, $"photo{processed.Extension}", processed.ContentType, ct);
 
         // Content is owned by the space owner regardless of which member added it.
         var item = Item.CreateFromPhoto(boxNumber, ownerId);
-        item.SetPhoto(storageKey);
+        item.SetPhoto(storageKey, processed.Bytes.Length);
+
+        // AI recognition consumes a monthly credit. Over quota → keep the item but skip AI
+        // (it can be run later); the user's decision. Manual items never touch this path.
+        var runAi = await entitlements.TryConsumeAiAsync(ownerId, ct);
+        if (!runAi) item.MarkEnriched();
+
         await itemRepo.AddAsync(item, ct);
 
-        // Fire-and-forget: a worker reloads the photo and fills in name + tags.
-        recognitionQueue.EnqueueRecognition(item.Id);
+        if (runAi) recognitionQueue.EnqueueRecognition(item.Id);
 
         return new CreateItemFromPhotoResult(
             item.Id, item.Name, storage.GetUrl(storageKey), item.EnrichmentStatus);

@@ -23,6 +23,9 @@ public class Item
     public UserId OwnerId { get; private set; }
     public string Name { get; private set; }
     public string? PhotoStorageKey { get; private set; }
+    /// <summary>Stored bytes of the current photo (0 when there's none). Summed per owner for
+    /// the storage quota.</summary>
+    public long PhotoSizeBytes { get; private set; }
     public DateTimeOffset CreatedAt { get; private set; }
     public ItemEnrichmentStatus EnrichmentStatus { get; private set; } = ItemEnrichmentStatus.Completed;
 
@@ -90,11 +93,12 @@ public class Item
         Name = name.Trim();
     }
 
-    public void SetPhoto(string storageKey)
+    public void SetPhoto(string storageKey, long sizeBytes)
     {
         if (string.IsNullOrWhiteSpace(storageKey))
             throw new ArgumentException("Storage key cannot be empty.", nameof(storageKey));
         PhotoStorageKey = storageKey;
+        PhotoSizeBytes = sizeBytes < 0 ? 0 : sizeBytes;
     }
 
     public void ReplaceTags(IEnumerable<string> tags)

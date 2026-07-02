@@ -1,6 +1,7 @@
 using MediatR;
 using StuffInABox.Application.Admin;
 using StuffInABox.Application.Common.Interfaces;
+using StuffInABox.Application.Common.Services;
 using StuffInABox.Domain.Entities;
 using StuffInABox.Domain.Repositories;
 
@@ -27,12 +28,18 @@ public sealed class GetSubscriptionQueryHandler(
 
         var spaces = (await spaceRepo.GetAllAsync(userId, ct)).Count;
         var items = (await itemRepo.GetByOwnerAsync(userId, ct)).Count;
+        var storageMb = await itemRepo.SumPhotoBytesByOwnerAsync(userId, ct) / (1024 * 1024);
+        var aiUsed = settings?.AiUsedIn(EntitlementService.YearMonth(DateTimeOffset.UtcNow)) ?? 0;
 
         var usage = new SubscriptionUsageDto(
             Spaces: spaces,
             MaxSpaces: current?.MaxSpaces ?? -1,
             Items: items,
-            MaxItems: current?.MaxItems ?? -1);
+            MaxItems: current?.MaxItems ?? -1,
+            AiPhotos: aiUsed,
+            AiPhotosLimit: current?.AiPhotosPerMonth ?? -1,
+            StorageMb: storageMb,
+            StorageLimitMb: current?.StorageMb ?? -1);
 
         var plans = catalog.Plans.Select(p => new PlanOptionDto(
             p.Tier, p.PriceSek, p.MaxSpaces, p.MaxItems, p.MaxMembers,

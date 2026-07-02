@@ -12,6 +12,8 @@ public interface IItemRepository
     Task<IReadOnlyList<Item>> GetByOwnerAsync(UserId ownerId, CancellationToken ct = default);
     /// <summary>Number of items owned by the user (for quota checks).</summary>
     Task<int> CountByOwnerAsync(UserId ownerId, CancellationToken ct = default);
+    /// <summary>Total stored photo bytes owned by the user (for the storage quota).</summary>
+    Task<long> SumPhotoBytesByOwnerAsync(UserId ownerId, CancellationToken ct = default);
     Task<IReadOnlyList<Item>> SearchAsync(UserId ownerId, string query, CancellationToken ct = default);
     Task AddAsync(Item item, CancellationToken ct = default);
     Task UpdateAsync(Item item, CancellationToken ct = default);

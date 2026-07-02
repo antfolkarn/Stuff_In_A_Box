@@ -12,4 +12,12 @@ public interface IEntitlementService
     Task EnsureCanAddSpaceAsync(UserId owner, CancellationToken ct = default);
     Task EnsureCanAddItemAsync(UserId owner, CancellationToken ct = default);
     Task EnsureCanAddMemberAsync(Guid spaceId, UserId owner, CancellationToken ct = default);
+
+    /// <summary>Throws if adding <paramref name="addingBytes"/> would exceed the owner's storage limit.</summary>
+    Task EnsureCanStoreAsync(UserId owner, long addingBytes, CancellationToken ct = default);
+
+    /// <summary>Consumes one AI recognition run against the owner's monthly quota. Returns false
+    /// (without consuming) when the quota is exhausted, so the caller can create the item without
+    /// AI. Unlimited plans always return true.</summary>
+    Task<bool> TryConsumeAiAsync(UserId owner, CancellationToken ct = default);
 }

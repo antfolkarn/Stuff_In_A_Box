@@ -13,7 +13,11 @@ public sealed record SubscriptionUsageDto(
     int Spaces,
     int MaxSpaces,
     int Items,
-    int MaxItems);
+    int MaxItems,
+    int AiPhotos,
+    int AiPhotosLimit,
+    long StorageMb,
+    long StorageLimitMb);
 
 public sealed record PlanOptionDto(
     string Tier,
