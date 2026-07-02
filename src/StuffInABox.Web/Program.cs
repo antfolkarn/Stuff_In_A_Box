@@ -120,6 +120,14 @@ builder.Services.AddAuthorization();
 
 // Rate limiting — protect auth endpoints from brute force, partitioned per client IP
 var authPermitLimit = builder.Configuration.GetValue<int?>("RateLimiting:AuthPermitLimit") ?? 10;
+// A tighter, longer window just for the endpoints that send email (register, forgot-password,
+// resend). Stacks on top of "auth" so a single IP can't fire off a burst of verification/reset
+// emails to junk addresses and burn the provider's daily quota. Falls back to the general auth
+// override when not tuned separately, so a test that already raises AuthPermitLimit doesn't trip
+// this one; production sets neither, so the default 5/hour applies.
+var emailPermitLimit = builder.Configuration.GetValue<int?>("RateLimiting:EmailPermitLimit")
+    ?? builder.Configuration.GetValue<int?>("RateLimiting:AuthPermitLimit")
+    ?? 5;
 builder.Services.AddRateLimiter(options =>
 {
     options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
@@ -130,6 +138,15 @@ builder.Services.AddRateLimiter(options =>
             {
                 PermitLimit = authPermitLimit,
                 Window = TimeSpan.FromMinutes(1),
+                QueueLimit = 0,
+            }));
+    options.AddPolicy("auth-email", httpContext =>
+        RateLimitPartition.GetFixedWindowLimiter(
+            partitionKey: httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+            factory: _ => new FixedWindowRateLimiterOptions
+            {
+                PermitLimit = emailPermitLimit,
+                Window = TimeSpan.FromHours(1),
                 QueueLimit = 0,
             }));
 });

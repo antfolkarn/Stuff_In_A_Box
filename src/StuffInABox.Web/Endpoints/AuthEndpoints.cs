@@ -1,3 +1,4 @@
+using System.Net;
 using System.Security.Cryptography;
 using System.Text;
 using Microsoft.AspNetCore.Builder;
@@ -5,6 +6,7 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Hosting;
 using StuffInABox.Application.Common.Interfaces;
 using StuffInABox.Domain.Entities;
 using StuffInABox.Domain.Repositories;
@@ -21,6 +23,7 @@ public static class AuthEndpoints
 
         group.MapPost("/register", RegisterAsync)
             .AllowAnonymous()
+            .RequireRateLimiting("auth-email") // stacks on "auth": caps verification-email sends per IP
             .WithSummary("Registrera med e-post och lösenord");
 
         group.MapPost("/login", LoginAsync)
@@ -37,6 +40,7 @@ public static class AuthEndpoints
 
         group.MapPost("/forgot-password", ForgotPasswordAsync)
             .AllowAnonymous()
+            .RequireRateLimiting("auth-email") // stacks on "auth": caps reset-email sends per IP
             .WithSummary("Begär återställningslänk för lösenord");
 
         group.MapPost("/reset-password", ResetPasswordAsync)
@@ -49,6 +53,7 @@ public static class AuthEndpoints
 
         group.MapPost("/resend-verification", ResendVerificationAsync)
             .RequireAuthorization()
+            .RequireRateLimiting("auth-email") // caps repeat verification-email sends per IP
             .WithSummary("Skicka nytt verifieringsmejl");
 
         group.MapGet("/me", MeAsync)
@@ -67,6 +72,7 @@ public static class AuthEndpoints
         IEmailService email,
         JwtTokenService jwt,
         IConfiguration config,
+        IHostEnvironment env,
         HttpContext ctx,
         CancellationToken ct)
     {
@@ -80,6 +86,12 @@ public static class AuthEndpoints
         var linked = await repo.FindByEmailAsync(req.Email, ct);
         if (linked is not null && linked.IsEmailVerified)
             return Results.Conflict(new { code = "account_exists", error = "Du har redan ett konto med den här e-postadressen — logga in med din befintliga metod." });
+
+        // Reject addresses whose domain doesn't exist — cuts hard bounces and stops bots burning
+        // the email quota on junk domains. Production only: dev/tests use the log email provider
+        // (no real sends) and shouldn't depend on live DNS.
+        if (env.IsProduction() && !await DomainResolvesAsync(req.Email))
+            return Results.UnprocessableEntity(new { code = "invalid_email_domain", error = "E-postdomänen kan inte nås." });
 
         var passwordHash = BCrypt.Net.BCrypt.HashPassword(req.Password);
         var identity = UserIdentity.CreateEmail(externalId, passwordHash, req.Email.Trim());
@@ -343,6 +355,29 @@ public static class AuthEndpoints
 
     private static string HashEmail(string email) =>
         Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(email.Trim().ToLowerInvariant())));
+
+    // True unless the email's domain definitively doesn't exist (NXDOMAIN). Deliberately lenient:
+    // a domain with only MX records (no A/AAAA) or a transient DNS error fails open so we never
+    // block a real user — it only weeds out the obviously made-up domains bots sign up with.
+    private static async Task<bool> DomainResolvesAsync(string email)
+    {
+        var at = email.LastIndexOf('@');
+        if (at < 0 || at == email.Length - 1) return false;
+        var domain = email[(at + 1)..].Trim();
+        try
+        {
+            return (await Dns.GetHostAddressesAsync(domain)).Length > 0;
+        }
+        catch (System.Net.Sockets.SocketException ex)
+            when (ex.SocketErrorCode == System.Net.Sockets.SocketError.HostNotFound)
+        {
+            return false; // NXDOMAIN — the domain doesn't exist
+        }
+        catch
+        {
+            return true; // MX-only domain (NoData), timeout, or other transient issue — allow
+        }
+    }
 
     private record RegisterRequest(string Email, string Password);
     private record LoginRequest(string Email, string Password);
