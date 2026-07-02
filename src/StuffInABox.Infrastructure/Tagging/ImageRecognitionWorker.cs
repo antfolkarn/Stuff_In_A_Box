@@ -52,6 +52,7 @@ public class ImageRecognitionWorker(
         var recognizer = scope.ServiceProvider.GetRequiredService<IImageRecognitionService>();
         var storage = scope.ServiceProvider.GetRequiredService<IStorageService>();
         var itemRepo = scope.ServiceProvider.GetRequiredService<IItemRepository>();
+        var entitlements = scope.ServiceProvider.GetRequiredService<IEntitlementService>();
 
         var item = await itemRepo.GetByIdAsync(itemId, ct);
         if (item is null) return;
@@ -62,9 +63,16 @@ public class ImageRecognitionWorker(
 
         var result = bytes is not null ? await recognizer.RecognizeAsync(bytes, ct) : null;
         if (result is not null)
+        {
             item.ApplyRecognition(result.Name, result.Tags);
+            // Charge the owner only for a run that actually produced a result.
+            await entitlements.RecordAiRunAsync(item.OwnerId, ct);
+        }
         else
-            item.MarkEnriched(); // recognition unavailable/failed — keep the placeholder name, stop spinning
+        {
+            // Recognition off/failed/empty — no credit spent; offer "run AI" on demand.
+            item.MarkAiSkipped();
+        }
 
         await itemRepo.UpdateAsync(item, ct);
     }

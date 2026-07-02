@@ -45,7 +45,7 @@ export interface BoxDetailDto {
   spaceId: string
 }
 
-export type ItemEnrichmentStatus = 'Pending' | 'Completed'
+export type ItemEnrichmentStatus = 'Pending' | 'Completed' | 'Skipped'
 
 export interface ItemDto {
   id: string

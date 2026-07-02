@@ -23,8 +23,12 @@ public class RecognizeItemHandlerTests
 
     private Item SetupPhotoItem(bool withPhoto = true)
     {
-        var item = Item.Create(new BoxNumber(1), _userId, "Jacka");
-        if (withPhoto) item.SetPhoto("key.jpg", 1000);
+        var item = Item.CreateFromPhoto(new BoxNumber(1), _userId);
+        if (withPhoto)
+        {
+            item.SetPhoto("key.jpg", 1000);
+            item.MarkAiSkipped(); // a photo item that hasn't been AI-analyzed
+        }
         _itemRepo.Setup(r => r.GetByIdAsync(item.Id, It.IsAny<CancellationToken>())).ReturnsAsync(item);
         _boxRepo.Setup(r => r.GetByNumberAsync(item.BoxNumber, item.OwnerId, It.IsAny<CancellationToken>()))
                 .ReturnsAsync(Box.Create(item.BoxNumber, _spaceId, item.OwnerId, "Box"));
@@ -43,6 +47,18 @@ public class RecognizeItemHandlerTests
         Assert.Equal(ItemEnrichmentStatus.Pending, item.EnrichmentStatus);
         _queue.Verify(q => q.EnqueueRecognition(item.Id), Times.Once);
         _entitlements.Verify(e => e.EnsureAiCreditAsync(_userId, It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task Handle_AlreadyAnalyzed_IsNoOp()
+    {
+        var item = SetupPhotoItem();
+        item.ApplyRecognition("Skruvdragare", ["verktyg"]); // now Completed
+
+        await Handler().Handle(new RecognizeItemCommand(item.Id), default);
+
+        _queue.Verify(q => q.EnqueueRecognition(It.IsAny<Guid>()), Times.Never);
+        _entitlements.Verify(e => e.EnsureAiCreditAsync(It.IsAny<UserId>(), It.IsAny<CancellationToken>()), Times.Never);
     }
 
     [Fact]

@@ -31,7 +31,12 @@ public sealed class RecognizeItemCommandHandler(
         if (item.PhotoStorageKey is null)
             throw new NotFoundException("Photo", request.ItemId);
 
-        // Charged to the owner (their plan). Over monthly quota → QuotaExceededException → 403.
+        // Already analyzed → nothing to do. Don't let the user spend a credit re-running it.
+        if (item.EnrichmentStatus == ItemEnrichmentStatus.Completed)
+            return;
+
+        // Over monthly quota → QuotaExceededException → 403. The credit itself is spent by the
+        // worker only if recognition produces a result.
         await entitlements.EnsureAiCreditAsync(ownerId, ct);
 
         item.MarkPendingRecognition();

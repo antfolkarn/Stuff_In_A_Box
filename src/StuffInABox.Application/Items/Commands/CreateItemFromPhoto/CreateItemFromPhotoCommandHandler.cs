@@ -47,10 +47,11 @@ public sealed class CreateItemFromPhotoCommandHandler(
         var item = Item.CreateFromPhoto(boxNumber, ownerId);
         item.SetPhoto(storageKey, processed.Bytes.Length);
 
-        // AI recognition consumes a monthly credit. Over quota → keep the item but skip AI
-        // (it can be run later); the user's decision. Manual items never touch this path.
-        var runAi = await entitlements.TryConsumeAiAsync(ownerId, ct);
-        if (!runAi) item.MarkEnriched();
+        // Only queue AI when the owner has monthly quota left. Over quota → keep the item but
+        // mark it skipped (it can be run on demand later). The credit is spent only when a run
+        // actually produces a result, in the worker — not here.
+        var runAi = await entitlements.HasAiCreditAsync(ownerId, ct);
+        if (!runAi) item.MarkAiSkipped();
 
         await itemRepo.AddAsync(item, ct);
 

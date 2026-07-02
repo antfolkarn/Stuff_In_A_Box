@@ -9,8 +9,13 @@ namespace StuffInABox.Domain.Entities;
 /// </summary>
 public enum ItemEnrichmentStatus
 {
+    /// <summary>Photo recognition is queued/running.</summary>
     Pending = 0,
+    /// <summary>Recognition ran and produced a result (or the item was created manually).</summary>
     Completed = 1,
+    /// <summary>A photo item that hasn't been AI-analyzed — the monthly quota was spent, or
+    /// recognition produced nothing. Eligible for the on-demand "run AI" action.</summary>
+    Skipped = 2,
 }
 
 public class Item
@@ -83,8 +88,9 @@ public class Item
         EnrichmentStatus = ItemEnrichmentStatus.Completed;
     }
 
-    /// <summary>Marks enrichment complete even when recognition produced nothing, so the UI stops waiting.</summary>
-    public void MarkEnriched() => EnrichmentStatus = ItemEnrichmentStatus.Completed;
+    /// <summary>Marks a photo item as not AI-analyzed (quota spent, or recognition produced
+    /// nothing). The UI stops the spinner and offers the on-demand "run AI" action.</summary>
+    public void MarkAiSkipped() => EnrichmentStatus = ItemEnrichmentStatus.Skipped;
 
     /// <summary>Re-queues recognition for a photo item (e.g. one created without AI when the
     /// monthly quota was spent). The UI shows it as processing again until the worker runs.</summary>

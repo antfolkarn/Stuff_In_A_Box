@@ -53,31 +53,30 @@ public sealed class EntitlementService(
             throw new QuotaExceededException("storage", (int)plan.StorageMb, plan.Tier);
     }
 
+    public async Task<bool> HasAiCreditAsync(UserId owner, CancellationToken ct = default)
+    {
+        var plan = await ResolvePlanAsync(owner, ct);
+        if (plan.AiPhotosPerMonth < 0) return true; // unlimited
+        var settings = await settingsRepo.GetAsync(owner.Value, ct);
+        var used = settings?.AiUsedIn(YearMonth(DateTimeOffset.UtcNow)) ?? 0;
+        return used < plan.AiPhotosPerMonth;
+    }
+
     public async Task EnsureAiCreditAsync(UserId owner, CancellationToken ct = default)
+    {
+        if (await HasAiCreditAsync(owner, ct)) return;
+        var plan = await ResolvePlanAsync(owner, ct);
+        throw new QuotaExceededException("ai", plan.AiPhotosPerMonth, plan.Tier);
+    }
+
+    public async Task RecordAiRunAsync(UserId owner, CancellationToken ct = default)
     {
         var plan = await ResolvePlanAsync(owner, ct);
         if (plan.AiPhotosPerMonth < 0) return; // unlimited — no need to track
 
-        var yearMonth = YearMonth(DateTimeOffset.UtcNow);
         var settings = await settingsRepo.GetAsync(owner.Value, ct) ?? UserSettings.CreateDefault(owner.Value);
-        if (settings.AiUsedIn(yearMonth) >= plan.AiPhotosPerMonth)
-            throw new QuotaExceededException("ai", plan.AiPhotosPerMonth, plan.Tier);
-
-        settings.RecordAiUsage(yearMonth);
+        settings.RecordAiUsage(YearMonth(DateTimeOffset.UtcNow));
         await settingsRepo.UpsertAsync(settings, ct);
-    }
-
-    public async Task<bool> TryConsumeAiAsync(UserId owner, CancellationToken ct = default)
-    {
-        try
-        {
-            await EnsureAiCreditAsync(owner, ct);
-            return true;
-        }
-        catch (QuotaExceededException)
-        {
-            return false;
-        }
     }
 
     /// <summary>year*100 + month, e.g. 202607 — the key the monthly AI counter resets on.</summary>

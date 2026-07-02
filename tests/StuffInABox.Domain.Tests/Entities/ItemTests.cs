@@ -95,13 +95,13 @@ public class ItemTests
     }
 
     [Fact]
-    public void MarkEnriched_CompletesWithoutChangingName()
+    public void MarkAiSkipped_StopsWaitingWithoutChangingName()
     {
         var item = Item.CreateFromPhoto(BoxNum, OwnerId);
 
-        item.MarkEnriched();
+        item.MarkAiSkipped();
 
         Assert.Equal(Item.PhotoPlaceholderName, item.Name);
-        Assert.Equal(ItemEnrichmentStatus.Completed, item.EnrichmentStatus);
+        Assert.Equal(ItemEnrichmentStatus.Skipped, item.EnrichmentStatus);
     }
 }

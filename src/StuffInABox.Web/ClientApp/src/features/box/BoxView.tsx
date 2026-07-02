@@ -357,7 +357,9 @@ function ItemCard({ item, boxNumber }: { item: ItemDto; boxNumber: number }) {
               {isPending ? t('box.analyzing') : item.name}
             </span>
             <div style={{ display: 'flex', gap: 2, flexShrink: 0 }}>
-              {!isPending && hasPhoto && (
+              {/* Only offer "run AI" on a photo item that hasn't been analyzed — not on ones
+                  AI already handled (that would just waste a credit). */}
+              {item.status === 'Skipped' && hasPhoto && (
                 <button
                   onClick={() => recognizeMut.mutate()}
                   disabled={recognizeMut.isPending}

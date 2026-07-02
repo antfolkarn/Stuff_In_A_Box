@@ -137,20 +137,19 @@ public class EntitlementServiceTests
     }
 
     [Fact]
-    public async Task Ai_WithinQuota_ConsumesAndReturnsTrue()
+    public async Task HasAiCredit_TrueWhenUnderQuota_AndCheckDoesNotConsume()
     {
         var settings = UserSettings.CreateDefault(_owner.Value);
         settings.SetPlanTier("free"); // 5/month
         _settings.Setup(r => r.GetAsync(_owner.Value, It.IsAny<CancellationToken>())).ReturnsAsync(settings);
 
-        var ok = await Svc().TryConsumeAiAsync(_owner);
-
-        Assert.True(ok);
-        _settings.Verify(r => r.UpsertAsync(It.IsAny<UserSettings>(), It.IsAny<CancellationToken>()), Times.Once);
+        Assert.True(await Svc().HasAiCreditAsync(_owner));
+        // A pure check never touches the counter — the run itself does.
+        _settings.Verify(r => r.UpsertAsync(It.IsAny<UserSettings>(), It.IsAny<CancellationToken>()), Times.Never);
     }
 
     [Fact]
-    public async Task Ai_Exhausted_ReturnsFalse_WithoutConsuming()
+    public async Task Ai_Exhausted_HasNoCredit_AndEnsureThrows()
     {
         var settings = UserSettings.CreateDefault(_owner.Value);
         settings.SetPlanTier("free");
@@ -158,9 +157,21 @@ public class EntitlementServiceTests
         for (var i = 0; i < 5; i++) settings.RecordAiUsage(ym); // Free cap = 5
         _settings.Setup(r => r.GetAsync(_owner.Value, It.IsAny<CancellationToken>())).ReturnsAsync(settings);
 
-        var ok = await Svc().TryConsumeAiAsync(_owner);
+        Assert.False(await Svc().HasAiCreditAsync(_owner));
+        var ex = await Assert.ThrowsAsync<QuotaExceededException>(() => Svc().EnsureAiCreditAsync(_owner));
+        Assert.Equal("ai", ex.Quota);
+    }
 
-        Assert.False(ok);
-        _settings.Verify(r => r.UpsertAsync(It.IsAny<UserSettings>(), It.IsAny<CancellationToken>()), Times.Never);
+    [Fact]
+    public async Task RecordAiRun_IncrementsUsage()
+    {
+        var settings = UserSettings.CreateDefault(_owner.Value);
+        settings.SetPlanTier("free");
+        _settings.Setup(r => r.GetAsync(_owner.Value, It.IsAny<CancellationToken>())).ReturnsAsync(settings);
+
+        await Svc().RecordAiRunAsync(_owner);
+
+        Assert.Equal(1, settings.AiUsedIn(EntitlementService.YearMonth(DateTimeOffset.UtcNow)));
+        _settings.Verify(r => r.UpsertAsync(settings, It.IsAny<CancellationToken>()), Times.Once);
     }
 }

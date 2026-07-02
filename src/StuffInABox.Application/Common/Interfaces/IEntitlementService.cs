@@ -16,12 +16,16 @@ public interface IEntitlementService
     /// <summary>Throws if adding <paramref name="addingBytes"/> would exceed the owner's storage limit.</summary>
     Task EnsureCanStoreAsync(UserId owner, long addingBytes, CancellationToken ct = default);
 
-    /// <summary>Consumes one AI recognition run against the owner's monthly quota, throwing
-    /// <see cref="Domain.Exceptions.QuotaExceededException"/> when it's exhausted. Used by the
-    /// explicit "run AI" action, where being over quota should surface as an error.</summary>
+    /// <summary>True if the owner has AI runs left this month (unlimited → always true). A pure
+    /// check — nothing is consumed. Gates whether to queue recognition; the credit is only spent
+    /// when the run actually produces a result (<see cref="RecordAiRunAsync"/>).</summary>
+    Task<bool> HasAiCreditAsync(UserId owner, CancellationToken ct = default);
+
+    /// <summary>Throws <see cref="Domain.Exceptions.QuotaExceededException"/> when the AI quota is
+    /// exhausted. Used by the explicit "run AI" action, where being over quota is an error.</summary>
     Task EnsureAiCreditAsync(UserId owner, CancellationToken ct = default);
 
-    /// <summary>Like <see cref="EnsureAiCreditAsync"/> but returns false instead of throwing when
-    /// the quota is exhausted, so the caller can create the item without AI. Unlimited → true.</summary>
-    Task<bool> TryConsumeAiAsync(UserId owner, CancellationToken ct = default);
+    /// <summary>Records one AI recognition run that actually happened — called by the worker only
+    /// when recognition produced a result, so the quota reflects real usage. No limit check.</summary>
+    Task RecordAiRunAsync(UserId owner, CancellationToken ct = default);
 }
