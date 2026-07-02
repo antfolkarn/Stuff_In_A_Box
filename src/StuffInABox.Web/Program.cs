@@ -44,7 +44,9 @@ if (builder.Environment.IsDevelopment())
     builder.Configuration.AddJsonFile("appsettings.Local.json", optional: true, reloadOnChange: false);
 }
 
-// Structured logging to both console and a rolling daily file
+// Structured logging to both console (captured by App Service's log stream in Azure) and a
+// rolling daily file. Retention + size are capped and configurable so the file sink can't fill
+// the App Service /home quota — defaults keep only the current day and roll at a size ceiling.
 builder.Host.UseSerilog((context, loggerConfig) => loggerConfig
     .MinimumLevel.Information()
     .MinimumLevel.Override("Microsoft.AspNetCore", LogEventLevel.Warning)
@@ -54,7 +56,11 @@ builder.Host.UseSerilog((context, loggerConfig) => loggerConfig
     .WriteTo.File(
         path: context.Configuration["Logging:File:Path"] ?? "logs/stuffinabox-.log",
         rollingInterval: RollingInterval.Day,
-        retainedFileCountLimit: 14,
+        // ~1 day of data for now (config-overridable): keep the current day's file only, and
+        // roll to a new file if it exceeds the size cap so a single day can't grow unbounded.
+        retainedFileCountLimit: context.Configuration.GetValue<int?>("Logging:File:RetainedFileCount") ?? 1,
+        fileSizeLimitBytes: context.Configuration.GetValue<long?>("Logging:File:SizeLimitBytes") ?? 50L * 1024 * 1024,
+        rollOnFileSizeLimit: true,
         outputTemplate: "{Timestamp:yyyy-MM-dd HH:mm:ss.fff zzz} [{Level:u3}] {Message:lj}{NewLine}{Exception}"));
 
 // Resolve the uploads directory and keep it OUTSIDE wwwroot — otherwise an SPA

@@ -106,6 +106,27 @@ resource site 'Microsoft.Web/sites@2023-12-01' = {
   }
 }
 
+// Capture the admin host's stdout/console (default .NET logging) so it's viewable via
+// az webapp log tail / Log Stream / Kudu, capped to 1 day / 25 MB so it rolls.
+resource siteLogs 'Microsoft.Web/sites/config@2023-12-01' = {
+  parent: site
+  name: 'logs'
+  properties: {
+    applicationLogs: {
+      fileSystem: { level: 'Information' }
+    }
+    httpLogs: {
+      fileSystem: {
+        enabled: true
+        retentionInDays: 1
+        retentionInMb: 25
+      }
+    }
+    detailedErrorMessages: { enabled: false }
+    failedRequestsTracing: { enabled: false }
+  }
+}
+
 @description('System-assigned managed identity principal id (for Key Vault access).')
 output principalId string = site.identity.principalId
 

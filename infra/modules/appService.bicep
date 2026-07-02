@@ -107,6 +107,9 @@ resource site 'Microsoft.Web/sites@2023-12-01' = {
         { name: 'Database__Provider', value: databaseProvider }
         { name: 'App__BaseUrl', value: appBaseUrl }
         { name: 'Storage__Provider', value: storageProvider }
+        // Write the Serilog file into the App Service log area so it shows up in the log
+        // stream / Kudu. Retention + size are capped in code (Logging:File:*) to ~1 day.
+        { name: 'Logging__File__Path', value: '/home/LogFiles/stuffinabox/app-.log' }
         // --- Secrets: Key Vault references (resolved at runtime by the managed identity) ---
         { name: 'ConnectionStrings__Default', value: kvRef(keyVaultName, 'Db-Connection') }
         { name: 'Jwt__Secret', value: kvRef(keyVaultName, 'Jwt-Secret') }
@@ -139,6 +142,28 @@ resource site 'Microsoft.Web/sites@2023-12-01' = {
         { name: 'ImageRecognition__Staik__ApiKey', value: kvRef(keyVaultName, 'Staik-ApiKey') }
       ]
     }
+  }
+}
+
+// Enable App Service diagnostic logging so stdout/console is captured and viewable
+// (az webapp log tail / Log Stream / Kudu). Retention is capped to 1 day / 25 MB so it
+// rolls and can't fill the /home quota.
+resource siteLogs 'Microsoft.Web/sites/config@2023-12-01' = {
+  parent: site
+  name: 'logs'
+  properties: {
+    applicationLogs: {
+      fileSystem: { level: 'Information' }
+    }
+    httpLogs: {
+      fileSystem: {
+        enabled: true
+        retentionInDays: 1
+        retentionInMb: 25
+      }
+    }
+    detailedErrorMessages: { enabled: false }
+    failedRequestsTracing: { enabled: false }
   }
 }
 
