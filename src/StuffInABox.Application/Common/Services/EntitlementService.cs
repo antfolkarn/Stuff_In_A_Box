@@ -79,6 +79,12 @@ public sealed class EntitlementService(
         await settingsRepo.UpsertAsync(settings, ct);
     }
 
+    public async Task<bool> HasPriorityQueueAsync(UserId owner, CancellationToken ct = default)
+    {
+        var plan = await ResolvePlanAsync(owner, ct);
+        return plan.PriorityQueue;
+    }
+
     /// <summary>year*100 + month, e.g. 202607 — the key the monthly AI counter resets on.</summary>
     public static int YearMonth(DateTimeOffset when) => when.Year * 100 + when.Month;
 

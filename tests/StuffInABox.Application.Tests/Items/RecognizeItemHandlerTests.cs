@@ -45,8 +45,20 @@ public class RecognizeItemHandlerTests
         await Handler().Handle(new RecognizeItemCommand(item.Id), default);
 
         Assert.Equal(ItemEnrichmentStatus.Pending, item.EnrichmentStatus);
-        _queue.Verify(q => q.EnqueueRecognition(item.Id), Times.Once);
+        _queue.Verify(q => q.EnqueueRecognition(item.Id, It.IsAny<bool>()), Times.Once);
         _entitlements.Verify(e => e.EnsureAiCreditAsync(_userId, It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task Handle_PriorityPlan_EnqueuesWithPriority()
+    {
+        var item = SetupPhotoItem();
+        _entitlements.Setup(e => e.HasPriorityQueueAsync(_userId, It.IsAny<CancellationToken>()))
+                     .ReturnsAsync(true);
+
+        await Handler().Handle(new RecognizeItemCommand(item.Id), default);
+
+        _queue.Verify(q => q.EnqueueRecognition(item.Id, true), Times.Once);
     }
 
     [Fact]
@@ -57,7 +69,7 @@ public class RecognizeItemHandlerTests
 
         await Handler().Handle(new RecognizeItemCommand(item.Id), default);
 
-        _queue.Verify(q => q.EnqueueRecognition(It.IsAny<Guid>()), Times.Never);
+        _queue.Verify(q => q.EnqueueRecognition(It.IsAny<Guid>(), It.IsAny<bool>()), Times.Never);
         _entitlements.Verify(e => e.EnsureAiCreditAsync(It.IsAny<UserId>(), It.IsAny<CancellationToken>()), Times.Never);
     }
 
@@ -68,7 +80,7 @@ public class RecognizeItemHandlerTests
 
         await Assert.ThrowsAsync<NotFoundException>(
             () => Handler().Handle(new RecognizeItemCommand(item.Id), default));
-        _queue.Verify(q => q.EnqueueRecognition(It.IsAny<Guid>()), Times.Never);
+        _queue.Verify(q => q.EnqueueRecognition(It.IsAny<Guid>(), It.IsAny<bool>()), Times.Never);
     }
 
     [Fact]
@@ -80,6 +92,6 @@ public class RecognizeItemHandlerTests
 
         await Assert.ThrowsAsync<QuotaExceededException>(
             () => Handler().Handle(new RecognizeItemCommand(item.Id), default));
-        _queue.Verify(q => q.EnqueueRecognition(It.IsAny<Guid>()), Times.Never);
+        _queue.Verify(q => q.EnqueueRecognition(It.IsAny<Guid>(), It.IsAny<bool>()), Times.Never);
     }
 }

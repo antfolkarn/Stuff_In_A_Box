@@ -28,4 +28,8 @@ public interface IEntitlementService
     /// <summary>Records one AI recognition run that actually happened — called by the worker only
     /// when recognition produced a result, so the quota reflects real usage. No limit check.</summary>
     Task RecordAiRunAsync(UserId owner, CancellationToken ct = default);
+
+    /// <summary>True when the owner's plan grants priority AI processing — their recognition jobs
+    /// are queued ahead of non-priority plans.</summary>
+    Task<bool> HasPriorityQueueAsync(UserId owner, CancellationToken ct = default);
 }

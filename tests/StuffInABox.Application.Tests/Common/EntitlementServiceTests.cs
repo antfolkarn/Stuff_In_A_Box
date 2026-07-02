@@ -162,6 +162,16 @@ public class EntitlementServiceTests
         Assert.Equal("ai", ex.Quota);
     }
 
+    [Theory]
+    [InlineData("free", false)]
+    [InlineData("large", true)]
+    public async Task HasPriorityQueue_ReflectsPlanFlag(string tier, bool expected)
+    {
+        OnTier(tier);
+
+        Assert.Equal(expected, await Svc().HasPriorityQueueAsync(_owner));
+    }
+
     [Fact]
     public async Task RecordAiRun_IncrementsUsage()
     {

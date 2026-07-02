@@ -55,7 +55,11 @@ public sealed class CreateItemFromPhotoCommandHandler(
 
         await itemRepo.AddAsync(item, ct);
 
-        if (runAi) recognitionQueue.EnqueueRecognition(item.Id);
+        if (runAi)
+        {
+            var priority = await entitlements.HasPriorityQueueAsync(ownerId, ct);
+            recognitionQueue.EnqueueRecognition(item.Id, priority);
+        }
 
         return new CreateItemFromPhotoResult(
             item.Id, item.Name, storage.GetUrl(storageKey), item.EnrichmentStatus);

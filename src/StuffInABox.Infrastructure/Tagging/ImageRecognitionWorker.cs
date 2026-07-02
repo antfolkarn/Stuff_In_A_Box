@@ -25,7 +25,7 @@ public class ImageRecognitionWorker(
     {
         using var gate = new SemaphoreSlim(MaxConcurrency, MaxConcurrency);
 
-        await foreach (var itemId in queue.Reader.ReadAllAsync(stoppingToken))
+        await foreach (var itemId in queue.DequeueAllAsync(stoppingToken))
         {
             await gate.WaitAsync(stoppingToken);
             _ = Task.Run(async () =>

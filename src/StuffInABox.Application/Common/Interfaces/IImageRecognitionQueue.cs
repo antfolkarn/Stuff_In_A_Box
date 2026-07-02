@@ -6,5 +6,7 @@ namespace StuffInABox.Application.Common.Interfaces;
 /// </summary>
 public interface IImageRecognitionQueue
 {
-    void EnqueueRecognition(Guid itemId);
+    /// <summary>Queues an item for recognition. <paramref name="priority"/> plans are drained
+    /// ahead of everyone else so a paying user's upload isn't stuck behind a free user's burst.</summary>
+    void EnqueueRecognition(Guid itemId, bool priority = false);
 }

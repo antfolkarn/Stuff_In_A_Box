@@ -42,6 +42,7 @@ public sealed class RecognizeItemCommandHandler(
         item.MarkPendingRecognition();
         await itemRepo.UpdateAsync(item, ct);
 
-        recognitionQueue.EnqueueRecognition(item.Id);
+        var priority = await entitlements.HasPriorityQueueAsync(ownerId, ct);
+        recognitionQueue.EnqueueRecognition(item.Id, priority);
     }
 }

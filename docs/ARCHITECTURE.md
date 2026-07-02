@@ -303,7 +303,7 @@ medlemmar behåller åtkomst tills de tas bort eller lämnar.
 | **Bildlagring** | `IStorageService` | Lokal disk nu; byts mot t.ex. Azure Blob utan schemaändring (nyckel, inte URL, lagras). |
 | **Taggning** | `ITaggingService` | Tokenizer default; Claude API bakom `Tagging:Provider`-flagga. |
 | **Bildigenkänning** | `IImageRecognitionService` | Tre providers bakom `ImageRecognition:Provider`: `none` (no-op), `ollama` (self-hostad vision-modell) och `staik` (hostad, OpenAI-kompatibel vision-API — **prod kör denna**, modell `gemma4:31b`). Den svenska prompten och den toleranta JSON→tagg-parsningen delas av providers i `VisionRecognition`; bara HTTP-transporten skiljer. Returnerar `{ namn, taggar }` (föremål, färger, material, boktitlar; flera föremål → blandad rubrik men alla som taggar). Strikta guardrails (JSON-only-prompt + normalisering); kastar aldrig (null vid fel). Körs i bakgrunden — se §7. |
-| **Bakgrundsjobb** | `TagEnrichmentWorker`, `ImageRecognitionWorker` | In-process `Channel<T>` + `IHostedService`, bounded concurrency (max 3); kastar aldrig, blockerar aldrig sparet. Igenkänningsjobbet markerar alltid föremålet "berikat" (slutar snurra) även när igenkänning är av eller misslyckas. |
+| **Bakgrundsjobb** | `TagEnrichmentWorker`, `ImageRecognitionWorker` | In-process `Channel<T>` + `IHostedService`, bounded concurrency (max 3); kastar aldrig, blockerar aldrig sparet. Igenkänningsjobbet markerar alltid föremålet "berikat" (slutar snurra) även när igenkänning är av eller misslyckas. Igenkänningskön har två filer — prio (betalplaner) töms före normal. |
 | **Tema** | `ClientApp` `themeStore` | Ljust/mörkt via CSS-variabler och `data-theme`, persisterat i `localStorage`. Flimmerfritt: en liten inline-init i `index.html` sätter temat före första paint, tillåten av CSP via sin SHA-256-hash (ingen `'unsafe-inline'` för skript). Ändras skriptet måste hashen i `SecurityHeadersMiddleware` räknas om. |
 | **Prenumeration** | `IPlanCatalog` + `UserSettings.PlanTier` | Plan-katalog (nivåer + gränser) läses via `IPlanCatalog`; användarens nivå på `UserSettings.PlanTier`. Se §8. |
 | **Health checks** | `Program.cs` + `DatabaseHealthCheck` | `/health` (liveness) och `/health/ready` (readiness, kollar DB) för orkestrering. |
@@ -424,7 +424,7 @@ Tre lager hålls isär så att en prismodell kan bytas utan att röra affärslog
 |-------|-----|-----|
 | *Vad en nivå innehåller* | **plan-katalog** (`IPlanCatalog`, DB-baserad) | Nivåernas gränser/flaggor. Data, redigeras i admin. |
 | *Vilken nivå en användare har* | `UserSettings.PlanTier` | UserId-nyckel, ingen FK → icke-brytande. |
-| *Var det kontrolleras* | command-handlers via `IEntitlementService` | `EnsureCanAdd{Space,Item,Member}` mot **ägaren**. Numeriska kvoter inkopplade (Fas 3a); AI-mån/lagring + flaggor = Fas 3b. |
+| *Var det kontrolleras* | command-handlers via `IEntitlementService` | `EnsureCanAdd{Space,Item,Member}` mot **ägaren**. Numeriska kvoter (utrymmen/föremål/medlemmar/lagring/AI-mån) + prio-kö-flaggan inkopplade; tema-allowlist per nivå = Fas 4. |
 
 **Delningsmodell (regeln som löser nivåer + delning):** **ägarens nivå styr hela utrymmet.**
 Allt innehåll ägs av `Space.OwnerId`, så kvoten dras alltid från ägaren — aldrig från en
@@ -493,7 +493,11 @@ dev, tomt svar) markerar föremålet **`ItemEnrichmentStatus.Skipped`** utan att
 kvot vid uppladdning → föremålet skapas ändå som `Skipped`. Sådana kan köras på begäran via
 **`POST /items/{id}/recognize`** (`RecognizeItemCommand`, `EnsureAiCreditAsync` → 403 vid slut kvot;
 no-op om redan `Completed`) — "Kör AI"-knappen (gnistan) på kortet, som bara visas för `Skipped`.
-**Kvar:** prioriterad AI-kö i workern (för betalande).
+
+**Prioriterad AI-kö:** planer med `PriorityQueue`-flaggan köas i en separat prio-fil som
+`ImageRecognitionQueue` alltid tömmer **före** normalfilen (`EnqueueRecognition(itemId, priority)`;
+`IEntitlementService.HasPriorityQueueAsync` slår upp ägarens flagga vid köandet). Så en betalandes
+uppladdning fastnar inte bakom en gratisanvändares skur.
 
 De verkliga kostnadshävstängerna som motiverar nivåerna (AI-igenkänning i två steg, worker med
 3-parallell-gräns, R2-lagring, delade spaces) är beskrivna i idéskissen
