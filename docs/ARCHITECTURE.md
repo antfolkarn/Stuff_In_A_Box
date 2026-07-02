@@ -463,10 +463,8 @@ flowchart LR
 
 **Konsumentyta (läsvy):** `GET /api/v1/subscription` (`GetSubscriptionQuery`) returnerar
 användarens nuvarande plan, förbrukning mot gränserna och hela nivålistan. Renderas som ett
-block i Settings (`SubscriptionSection`): plan + pris, förbruknings­mätare och jämför-nivåer-kort
-med "Uppgradera"-CTA. **Fas A** täcker de billiga räknarna vi redan har (spaces/items);
-AI-foton och lagring blir mätbara när förbruknings­mätning finns (**Fas B**, samma maskineri
-som kvot-enforcement).
+block i Settings (`SubscriptionSection`): plan + pris, förbruknings­mätare för alla fyra axlarna
+(utrymmen, föremål, AI-foton/mån, lagring) och jämför-nivåer-kort med "Uppgradera"-CTA.
 
 **Adminyta (skrivvy):** den **separata admin-hosten** (`StuffInABox.Admin.Web`, Entra-OIDC,
 `alla i tenanten = admin`) kan: sätta nivå (`IAdminService.SetPlanTierAsync`, validerat mot
@@ -480,17 +478,22 @@ och samma databas men är skilda publika ytor.
 
 **Enforcement:** `IEntitlementService` löser ägarens plan och kastar `QuotaExceededException` när
 en åtgärd skulle överskrida en gräns. Inkopplat i `CreateSpace` (utrymmen), `AddItem`/
-`CreateItemFromPhoto` (föremål), `AcceptInvite` (medlemmar, inkl. ägaren i taket), foto-upload
-(**lagring** — `EnsureCanStoreAsync` mot summan av `Item.PhotoSizeBytes`) och AI-igenkänning
-(**AI-foton/mån** — `TryConsumeAiAsync` mot `UserSettings.AiUsedThisMonth`, som nollställs vid
-månadsskifte via `AiUsageYearMonth`). Slut på AI-kvot → föremålet skapas ändå men **utan** AI
-(kan köras senare). `GlobalExceptionHandler` mappar undantaget till **403 med
-`code: "quota_exceeded"`** + `{quota, limit, plan}`; klientens axios-interceptor visar en global
-uppgradera-modal (`QuotaNoticeModal`). Kontrollerna är additiva → nedgradering blockerar bara nya
-tillägg (grandfathering). Blocket i Settings visar nu **riktiga mätare** för alla fyra axlarna.
-Ett foto-föremål som skapats utan AI (eller ska köras om) kan få igenkänning på begäran via
-**`POST /items/{id}/recognize`** (`RecognizeItemCommand`, `EnsureAiCreditAsync` → 403 vid slut kvot)
-— "Kör AI"-knappen (gnistan) på föremålskortet. **Kvar:** prioriterad AI-kö i workern (för betalande).
+`CreateItemFromPhoto` (föremål), `AcceptInvite` (medlemmar, inkl. ägaren i taket) och foto-upload
+(**lagring** — `EnsureCanStoreAsync` mot summan av `Item.PhotoSizeBytes`). `GlobalExceptionHandler`
+mappar undantaget till **403 med `code: "quota_exceeded"`** + `{quota, limit, plan}`; klientens
+axios-interceptor visar en global uppgradera-modal (`QuotaNoticeModal`). Kontrollerna är additiva
+→ nedgradering blockerar bara nya tillägg (grandfathering). Settings-blocket visar **riktiga
+mätare** för alla fyra axlarna.
+
+**AI-kvoten (`AiPhotosPerMonth`) är tidsmässigt frikopplad** från de övriga: `HasAiCreditAsync`
+*gatar* bara om igenkänning ska köas (`UserSettings.AiUsedThisMonth`, nollställs vid månadsskifte
+via `AiUsageYearMonth`); krediten **dras först när en körning faktiskt gav ett resultat** —
+`ImageRecognitionWorker` anropar `RecordAiRunAsync` bara då. En körning som inte ger något (AI av i
+dev, tomt svar) markerar föremålet **`ItemEnrichmentStatus.Skipped`** utan att kosta kredit. Slut på
+kvot vid uppladdning → föremålet skapas ändå som `Skipped`. Sådana kan köras på begäran via
+**`POST /items/{id}/recognize`** (`RecognizeItemCommand`, `EnsureAiCreditAsync` → 403 vid slut kvot;
+no-op om redan `Completed`) — "Kör AI"-knappen (gnistan) på kortet, som bara visas för `Skipped`.
+**Kvar:** prioriterad AI-kö i workern (för betalande).
 
 De verkliga kostnadshävstängerna som motiverar nivåerna (AI-igenkänning i två steg, worker med
 3-parallell-gräns, R2-lagring, delade spaces) är beskrivna i idéskissen
