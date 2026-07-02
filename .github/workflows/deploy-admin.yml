@@ -22,6 +22,8 @@ permissions:
 
 jobs:
   deploy:
+    # Only run when the admin app is actually provisioned (its infra is off by default).
+    if: vars.AZURE_ENABLE_ADMIN_APP == 'true'
     runs-on: ubuntu-latest
     concurrency: deploy-admin
     steps:
