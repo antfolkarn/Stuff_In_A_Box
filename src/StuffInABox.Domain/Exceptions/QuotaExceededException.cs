@@ -6,7 +6,7 @@ namespace StuffInABox.Domain.Exceptions;
 public sealed class QuotaExceededException(string quota, int limit, string plan)
     : Exception($"Gränsen för din plan är nådd ({quota}: {limit}).")
 {
-    /// <summary>Stable code: "spaces" | "items" | "members".</summary>
+    /// <summary>Stable code: "spaces" | "items" | "members" | "storage" | "ai" | "themes".</summary>
     public string Quota { get; } = quota;
     public int Limit { get; } = limit;
     public string Plan { get; } = plan;

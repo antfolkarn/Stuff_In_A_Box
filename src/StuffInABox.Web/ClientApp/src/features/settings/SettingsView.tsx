@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { IconArrowLeft, IconCheck, IconDeviceLaptop, IconSun, IconMoon, IconDownload, IconTrash } from '@tabler/icons-react'
+import { IconArrowLeft, IconCheck, IconDeviceLaptop, IconSun, IconMoon, IconDownload, IconTrash, IconLock } from '@tabler/icons-react'
 import { useUiStore } from '../../store/uiStore'
 import { useAuthStore } from '../../store/authStore'
 import { useSettingsStore, THEMES, DESIGNS, type Theme, type Design } from '../../store/settingsStore'
@@ -22,6 +22,10 @@ const DESIGN_ACCENT: Record<Design, string> = {
   ledger: '#A8332A',
 }
 
+// Designs available on every plan; the rest need a plan with allThemes. Mirrors
+// SettingsOptions.FreeDesigns on the server (which enforces it).
+const FREE_DESIGNS: Design[] = ['standard', 'pop']
+
 const THEME_ICON: Record<Theme, typeof IconSun> = {
   light: IconSun,
   dark: IconMoon,
@@ -37,6 +41,10 @@ export default function SettingsView() {
   const design = useSettingsStore((s) => s.design)
   const setTheme = useSettingsStore((s) => s.setTheme)
   const setDesign = useSettingsStore((s) => s.setDesign)
+  // Shares the ['subscription'] cache with SubscriptionSection. Until it loads we assume
+  // the free plan (locks premium designs) — the server enforces the real rule regardless.
+  const { data: sub } = useQuery({ queryKey: ['subscription'], queryFn: getSubscription })
+  const allThemes = sub?.plans.find((p) => p.current)?.allThemes ?? false
   const displayName = useSettingsStore((s) => s.displayName)
   const setDisplayName = useSettingsStore((s) => s.setDisplayName)
   const lang = useI18nStore((s) => s.lang)
@@ -143,15 +151,22 @@ export default function SettingsView() {
         >
           {DESIGNS.map((id) => {
             const active = design === id
+            // Premium designs are locked without allThemes — but never lock the one that's
+            // currently active (grandfathered), so it still reads as selected.
+            const locked = !allThemes && !FREE_DESIGNS.includes(id) && !active
             return (
               <button
                 key={id}
-                onClick={() => setDesign(id)}
+                onClick={() => { if (!locked) setDesign(id) }}
+                aria-disabled={locked}
+                title={locked ? t('settings.designLocked') : undefined}
                 style={{
                   ...cardStyle(active),
                   flexDirection: 'column',
                   alignItems: 'flex-start',
                   gap: 8,
+                  cursor: locked ? 'not-allowed' : 'pointer',
+                  opacity: locked ? 0.55 : 1,
                 }}
               >
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10, width: '100%' }}>
@@ -164,6 +179,7 @@ export default function SettingsView() {
                   />
                   <span style={{ fontSize: 15, fontWeight: 500 }}>{t(`design.${id}.label`)}</span>
                   {active && <IconCheck size={16} style={{ marginLeft: 'auto', color: 'var(--accent)' }} />}
+                  {locked && <IconLock size={14} style={{ marginLeft: 'auto', color: 'var(--text-4)' }} />}
                 </div>
                 <span style={{ fontSize: 12.5, color: 'var(--text-3)' }}>{t(`design.${id}.desc`)}</span>
               </button>
@@ -171,7 +187,7 @@ export default function SettingsView() {
           })}
         </div>
         <div style={{ fontSize: 12.5, color: 'var(--text-4)', marginTop: 12 }}>
-          {t('settings.designNote')}
+          {allThemes ? t('settings.designNote') : t('settings.designLockedNote')}
         </div>
       </section>
 

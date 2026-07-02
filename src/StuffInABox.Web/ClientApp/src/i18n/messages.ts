@@ -230,6 +230,8 @@ const sv = {
   'settings.theme': 'FÄRGLÄGE',
   'settings.design': 'DESIGN',
   'settings.designNote': 'Varje design byter färger och typsnitt. Ljust/mörkt läge gäller fortfarande ovanpå.',
+  'settings.designLocked': 'Ingår i en betald plan.',
+  'settings.designLockedNote': 'Fler designer ingår i Hushåll och Pro. Standard och Pop är alltid gratis.',
   'settings.language': 'SPRÅK',
   'settings.languageNote': 'Väljs automatiskt efter din webbläsare. Engelska används om svenska inte är förstaspråk.',
   // Account & data (GDPR)
@@ -527,6 +529,8 @@ const en: Record<MessageKey, string> = {
   'settings.theme': 'COLOUR MODE',
   'settings.design': 'DESIGN',
   'settings.designNote': 'Each design changes colours and fonts. Light/dark mode still applies on top.',
+  'settings.designLocked': 'Included in a paid plan.',
+  'settings.designLockedNote': 'More designs come with Household and Pro. Standard and Pop are always free.',
   'settings.language': 'LANGUAGE',
   'settings.languageNote': "Chosen automatically from your browser. English is used when Swedish isn't your primary language.",
   // Account & data (GDPR)

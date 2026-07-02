@@ -32,4 +32,8 @@ public interface IEntitlementService
     /// <summary>True when the owner's plan grants priority AI processing — their recognition jobs
     /// are queued ahead of non-priority plans.</summary>
     Task<bool> HasPriorityQueueAsync(UserId owner, CancellationToken ct = default);
+
+    /// <summary>True when the owner's plan unlocks every design theme (the <c>AllThemes</c> flag);
+    /// otherwise only <see cref="Settings.SettingsOptions.FreeDesigns"/> may be selected.</summary>
+    Task<bool> HasAllThemesAsync(UserId owner, CancellationToken ct = default);
 }

@@ -424,7 +424,7 @@ Tre lager hålls isär så att en prismodell kan bytas utan att röra affärslog
 |-------|-----|-----|
 | *Vad en nivå innehåller* | **plan-katalog** (`IPlanCatalog`, DB-baserad) | Nivåernas gränser/flaggor. Data, redigeras i admin. |
 | *Vilken nivå en användare har* | `UserSettings.PlanTier` | UserId-nyckel, ingen FK → icke-brytande. |
-| *Var det kontrolleras* | command-handlers via `IEntitlementService` | `EnsureCanAdd{Space,Item,Member}` mot **ägaren**. Numeriska kvoter (utrymmen/föremål/medlemmar/lagring/AI-mån) + prio-kö-flaggan inkopplade; tema-allowlist per nivå = Fas 4. |
+| *Var det kontrolleras* | command-handlers via `IEntitlementService` | `EnsureCanAdd{Space,Item,Member}` mot **ägaren**. Numeriska kvoter (utrymmen/föremål/medlemmar/lagring/AI-mån) + flaggorna prio-kö och tema-allowlist inkopplade. |
 
 **Delningsmodell (regeln som löser nivåer + delning):** **ägarens nivå styr hela utrymmet.**
 Allt innehåll ägs av `Space.OwnerId`, så kvoten dras alltid från ägaren — aldrig från en
@@ -498,6 +498,13 @@ no-op om redan `Completed`) — "Kör AI"-knappen (gnistan) på kortet, som bara
 `ImageRecognitionQueue` alltid tömmer **före** normalfilen (`EnqueueRecognition(itemId, priority)`;
 `IEntitlementService.HasPriorityQueueAsync` slår upp ägarens flagga vid köandet). Så en betalandes
 uppladdning fastnar inte bakom en gratisanvändares skur.
+
+**Tema-allowlist (`AllThemes`):** `SettingsOptions.FreeDesigns` (`standard` + `pop`) är gratis på
+alla nivåer; övriga designer kräver `AllThemes`. `UpdateSettingsCommandHandler` gatar bara ett
+*byte* till ett premium-tema (`HasAllThemesAsync`) — att behålla ett redan valt tema är grandfathrat,
+så en orelaterad ändring (smeknamn/färgläge) aldrig faller på ett nu-för-dyrt tema. Frontend gråar ut
+låsta designer (delar `['subscription']`-cachen för `allThemes`); servern är den bindande spärren
+(→ 403 `quota_exceeded` med kod `themes`).
 
 De verkliga kostnadshävstängerna som motiverar nivåerna (AI-igenkänning i två steg, worker med
 3-parallell-gräns, R2-lagring, delade spaces) är beskrivna i idéskissen

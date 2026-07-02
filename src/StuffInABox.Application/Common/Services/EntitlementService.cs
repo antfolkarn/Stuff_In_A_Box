@@ -85,6 +85,12 @@ public sealed class EntitlementService(
         return plan.PriorityQueue;
     }
 
+    public async Task<bool> HasAllThemesAsync(UserId owner, CancellationToken ct = default)
+    {
+        var plan = await ResolvePlanAsync(owner, ct);
+        return plan.AllThemes;
+    }
+
     /// <summary>year*100 + month, e.g. 202607 — the key the monthly AI counter resets on.</summary>
     public static int YearMonth(DateTimeOffset when) => when.Year * 100 + when.Month;
 

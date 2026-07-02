@@ -3,6 +3,7 @@ using StuffInABox.Application.Common.Interfaces;
 using StuffInABox.Application.Settings.Commands;
 using StuffInABox.Application.Settings.Queries;
 using StuffInABox.Domain.Entities;
+using StuffInABox.Domain.Exceptions;
 using StuffInABox.Domain.Repositories;
 using StuffInABox.Domain.ValueObjects;
 
@@ -12,9 +13,13 @@ public class SettingsHandlerTests
 {
     private readonly Mock<IUserSettingsRepository> _repo = new();
     private readonly Mock<ICurrentUserService> _user = new();
+    private readonly Mock<IEntitlementService> _entitlements = new();
     private readonly UserId _userId = new(Guid.NewGuid());
 
     public SettingsHandlerTests() => _user.Setup(u => u.UserId).Returns(_userId);
+
+    private UpdateSettingsCommandHandler UpdateHandler() =>
+        new(_repo.Object, _user.Object, _entitlements.Object);
 
     [Fact]
     public async Task Get_NoStoredSettings_ReturnsDefaults()
@@ -37,7 +42,7 @@ public class SettingsHandlerTests
              .Callback<UserSettings, CancellationToken>((s, _) => saved = s)
              .Returns(Task.CompletedTask);
 
-        var result = await new UpdateSettingsCommandHandler(_repo.Object, _user.Object)
+        var result = await UpdateHandler()
             .Handle(new UpdateSettingsCommand("dark", "pop"), default);
 
         Assert.Equal("dark", result.Theme);
@@ -52,7 +57,7 @@ public class SettingsHandlerTests
         _repo.Setup(r => r.GetAsync(_userId.Value, It.IsAny<CancellationToken>())).ReturnsAsync((UserSettings?)null);
         _repo.Setup(r => r.UpsertAsync(It.IsAny<UserSettings>(), It.IsAny<CancellationToken>())).Returns(Task.CompletedTask);
 
-        var result = await new UpdateSettingsCommandHandler(_repo.Object, _user.Object)
+        var result = await UpdateHandler()
             .Handle(new UpdateSettingsCommand("system", "standard", "  Anna  "), default);
 
         Assert.Equal("Anna", result.DisplayName);
@@ -64,10 +69,50 @@ public class SettingsHandlerTests
         _repo.Setup(r => r.GetAsync(_userId.Value, It.IsAny<CancellationToken>())).ReturnsAsync((UserSettings?)null);
         _repo.Setup(r => r.UpsertAsync(It.IsAny<UserSettings>(), It.IsAny<CancellationToken>())).Returns(Task.CompletedTask);
 
-        var result = await new UpdateSettingsCommandHandler(_repo.Object, _user.Object)
+        var result = await UpdateHandler()
             .Handle(new UpdateSettingsCommand("system", "standard", "   "), default);
 
         Assert.Null(result.DisplayName);
+    }
+
+    [Fact]
+    public async Task Update_PremiumDesign_FreePlan_Throws()
+    {
+        _repo.Setup(r => r.GetAsync(_userId.Value, It.IsAny<CancellationToken>())).ReturnsAsync((UserSettings?)null);
+        _entitlements.Setup(e => e.HasAllThemesAsync(_userId, It.IsAny<CancellationToken>())).ReturnsAsync(false);
+
+        var ex = await Assert.ThrowsAsync<QuotaExceededException>(
+            () => UpdateHandler().Handle(new UpdateSettingsCommand("system", "atelier"), default));
+        Assert.Equal("themes", ex.Quota);
+        _repo.Verify(r => r.UpsertAsync(It.IsAny<UserSettings>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task Update_PremiumDesign_WithAllThemes_Succeeds()
+    {
+        _repo.Setup(r => r.GetAsync(_userId.Value, It.IsAny<CancellationToken>())).ReturnsAsync((UserSettings?)null);
+        _repo.Setup(r => r.UpsertAsync(It.IsAny<UserSettings>(), It.IsAny<CancellationToken>())).Returns(Task.CompletedTask);
+        _entitlements.Setup(e => e.HasAllThemesAsync(_userId, It.IsAny<CancellationToken>())).ReturnsAsync(true);
+
+        var result = await UpdateHandler().Handle(new UpdateSettingsCommand("system", "atelier"), default);
+
+        Assert.Equal("atelier", result.Design);
+    }
+
+    [Fact]
+    public async Task Update_KeepsGrandfatheredPremiumDesign_DoesNotThrow()
+    {
+        // Already on a premium design (e.g. after a downgrade) — an unrelated change must not fail.
+        var existing = UserSettings.CreateDefault(_userId.Value);
+        existing.Update("system", "atelier", null);
+        _repo.Setup(r => r.GetAsync(_userId.Value, It.IsAny<CancellationToken>())).ReturnsAsync(existing);
+        _repo.Setup(r => r.UpsertAsync(It.IsAny<UserSettings>(), It.IsAny<CancellationToken>())).Returns(Task.CompletedTask);
+        _entitlements.Setup(e => e.HasAllThemesAsync(_userId, It.IsAny<CancellationToken>())).ReturnsAsync(false);
+
+        var result = await UpdateHandler().Handle(new UpdateSettingsCommand("dark", "atelier", "Anna"), default);
+
+        Assert.Equal("atelier", result.Design);
+        Assert.Equal("Anna", result.DisplayName);
     }
 
     [Fact]
