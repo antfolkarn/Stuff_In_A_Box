@@ -32,3 +32,4 @@ design/extracted/
 
 # Generated EF migration scripts (reproducible via dotnet ef migrations script)
 artifacts/
+appsettings.Local.json

@@ -19,6 +19,30 @@ using StuffInABox.Web.Middleware;
 
 var builder = WebApplication.CreateBuilder(args);
 
+// Load user-secrets explicitly (by the Program assembly) in Development. The automatic load
+// resolves the secret store via env.ApplicationName, which in some run configurations doesn't
+// match this assembly — leaving OAuth client ids empty (→ #error=oauth_not_configured). Binding
+// to the concrete type is deterministic. Dev only; production uses Key Vault references.
+if (builder.Environment.IsDevelopment())
+{
+    builder.Configuration.AddUserSecrets<Program>(optional: true);
+
+    // Belt-and-braces: AddUserSecrets resolves the store from the APPDATA environment
+    // variable, which a launcher (e.g. VS's debug host) can hand down corrupted — making the
+    // whole store "missing" for that process tree. The known-folder API asks Windows instead
+    // of trusting the inherited variable, so load the same file via that path too.
+    var knownFolderStore = Path.Combine(
+        Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
+        "Microsoft", "UserSecrets", "2d43a745-3dac-489a-9470-798817153c40", "secrets.json");
+    builder.Configuration.AddJsonFile(knownFolderStore, optional: true, reloadOnChange: false);
+
+    // Last-resort dev store: a git-ignored file in the project folder, for machines where the
+    // profile UserSecrets folder is unreadable from the IDE-spawned process (observed: the VS
+    // debug host got DirectoryNotFound on an existing store — endpoint security suspected).
+    // The project folder is always readable (appsettings.json comes from it).
+    builder.Configuration.AddJsonFile("appsettings.Local.json", optional: true, reloadOnChange: false);
+}
+
 // Structured logging to both console and a rolling daily file
 builder.Host.UseSerilog((context, loggerConfig) => loggerConfig
     .MinimumLevel.Information()
@@ -130,6 +154,57 @@ builder.Services.AddProblemDetails();
 builder.Services.AddOpenApi();
 
 var app = builder.Build();
+
+// Startup diagnostic: confirms the environment and whether the OAuth client ids resolved
+// at runtime (values themselves are never logged). If these are false in Development, the
+// user-secrets store didn't load — the resolved path/user pins down WHY (e.g. the process
+// inheriting a different APPDATA and thus looking in another profile's store).
+if (app.Environment.IsDevelopment())
+{
+    var secretsPath = Microsoft.Extensions.Configuration.UserSecrets.PathHelper
+        .GetSecretsPathFromSecretsId("2d43a745-3dac-489a-9470-798817153c40");
+
+    // File.Exists hides the reason (returns false on access errors too) — attempt an
+    // actual read and surface the concrete exception instead.
+    string readProbe;
+    try
+    {
+        var text = File.ReadAllText(secretsPath);
+        readProbe = $"OK ({text.Length} chars)";
+    }
+    catch (Exception e)
+    {
+        readProbe = $"{e.GetType().Name}: {e.Message}";
+    }
+
+    string dirProbe;
+    try
+    {
+        var dir = Path.GetDirectoryName(secretsPath)!;
+        dirProbe = Directory.Exists(dir)
+            ? $"dir exists, {Directory.GetFiles(dir).Length} file(s)"
+            : "dir MISSING";
+    }
+    catch (Exception e)
+    {
+        dirProbe = $"{e.GetType().Name}: {e.Message}";
+    }
+
+    // Delimited + length so an invisible character (trailing space, stray quote) in the
+    // inherited variable shows up; the known-folder value is what Windows itself says.
+    var appDataEnv = Environment.GetEnvironmentVariable("APPDATA") ?? "";
+    app.Logger.LogInformation(
+        "OAuth startup check — env={Env}, Google ClientId set={Google}, Microsoft ClientId set={Microsoft}, " +
+        "secretsPath={Path}, read={Read}, dir={Dir}, user={User}, " +
+        "APPDATA=|{AppData}| (len={Len}), knownFolder=|{Known}|",
+        app.Environment.EnvironmentName,
+        !string.IsNullOrWhiteSpace(app.Configuration["OAuth:Google:ClientId"]),
+        !string.IsNullOrWhiteSpace(app.Configuration["OAuth:Microsoft:ClientId"]),
+        secretsPath, readProbe, dirProbe,
+        Environment.UserName,
+        appDataEnv, appDataEnv.Length,
+        Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData));
+}
 
 // Prepare the database on startup. SQLite (dev/tests) builds the schema straight from
 // the model — no migrations to maintain for the throwaway dev DB. Postgres (production)
