@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { IconArrowLeft, IconCheck, IconDeviceLaptop, IconSun, IconMoon, IconDownload, IconTrash, IconLock } from '@tabler/icons-react'
+import { IconArrowLeft, IconCheck, IconSun, IconMoon, IconDownload, IconTrash, IconLock } from '@tabler/icons-react'
 import { useUiStore } from '../../store/uiStore'
 import { useAuthStore } from '../../store/authStore'
 import { useSettingsStore, THEMES, DESIGNS, type Theme, type Design } from '../../store/settingsStore'
@@ -29,7 +29,6 @@ const FREE_DESIGNS: Design[] = ['standard', 'pop']
 const THEME_ICON: Record<Theme, typeof IconSun> = {
   light: IconSun,
   dark: IconMoon,
-  system: IconDeviceLaptop,
 }
 
 export default function SettingsView() {

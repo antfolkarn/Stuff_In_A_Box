@@ -29,7 +29,7 @@ public class SettingsHandlerTests
         var result = await new GetSettingsQueryHandler(_repo.Object, _user.Object)
             .Handle(new GetSettingsQuery(), default);
 
-        Assert.Equal("system", result.Theme);
+        Assert.Equal("light", result.Theme);
         Assert.Equal("standard", result.Design);
     }
 
@@ -58,7 +58,7 @@ public class SettingsHandlerTests
         _repo.Setup(r => r.UpsertAsync(It.IsAny<UserSettings>(), It.IsAny<CancellationToken>())).Returns(Task.CompletedTask);
 
         var result = await UpdateHandler()
-            .Handle(new UpdateSettingsCommand("system", "standard", "  Anna  "), default);
+            .Handle(new UpdateSettingsCommand("light", "standard", "  Anna  "), default);
 
         Assert.Equal("Anna", result.DisplayName);
     }
@@ -70,7 +70,7 @@ public class SettingsHandlerTests
         _repo.Setup(r => r.UpsertAsync(It.IsAny<UserSettings>(), It.IsAny<CancellationToken>())).Returns(Task.CompletedTask);
 
         var result = await UpdateHandler()
-            .Handle(new UpdateSettingsCommand("system", "standard", "   "), default);
+            .Handle(new UpdateSettingsCommand("light", "standard", "   "), default);
 
         Assert.Null(result.DisplayName);
     }
@@ -82,7 +82,7 @@ public class SettingsHandlerTests
         _entitlements.Setup(e => e.HasAllThemesAsync(_userId, It.IsAny<CancellationToken>())).ReturnsAsync(false);
 
         var ex = await Assert.ThrowsAsync<QuotaExceededException>(
-            () => UpdateHandler().Handle(new UpdateSettingsCommand("system", "atelier"), default));
+            () => UpdateHandler().Handle(new UpdateSettingsCommand("light", "atelier"), default));
         Assert.Equal("themes", ex.Quota);
         _repo.Verify(r => r.UpsertAsync(It.IsAny<UserSettings>(), It.IsAny<CancellationToken>()), Times.Never);
     }
@@ -94,7 +94,7 @@ public class SettingsHandlerTests
         _repo.Setup(r => r.UpsertAsync(It.IsAny<UserSettings>(), It.IsAny<CancellationToken>())).Returns(Task.CompletedTask);
         _entitlements.Setup(e => e.HasAllThemesAsync(_userId, It.IsAny<CancellationToken>())).ReturnsAsync(true);
 
-        var result = await UpdateHandler().Handle(new UpdateSettingsCommand("system", "atelier"), default);
+        var result = await UpdateHandler().Handle(new UpdateSettingsCommand("light", "atelier"), default);
 
         Assert.Equal("atelier", result.Design);
     }
@@ -104,7 +104,7 @@ public class SettingsHandlerTests
     {
         // Already on a premium design (e.g. after a downgrade) — an unrelated change must not fail.
         var existing = UserSettings.CreateDefault(_userId.Value);
-        existing.Update("system", "atelier", null);
+        existing.Update("light", "atelier", null);
         _repo.Setup(r => r.GetAsync(_userId.Value, It.IsAny<CancellationToken>())).ReturnsAsync(existing);
         _repo.Setup(r => r.UpsertAsync(It.IsAny<UserSettings>(), It.IsAny<CancellationToken>())).Returns(Task.CompletedTask);
         _entitlements.Setup(e => e.HasAllThemesAsync(_userId, It.IsAny<CancellationToken>())).ReturnsAsync(false);
@@ -119,7 +119,7 @@ public class SettingsHandlerTests
     public void Validator_RejectsTooLongDisplayName()
     {
         var result = new UpdateSettingsCommandValidator()
-            .Validate(new UpdateSettingsCommand("system", "standard", new string('x', 41)));
+            .Validate(new UpdateSettingsCommand("light", "standard", new string('x', 41)));
         Assert.False(result.IsValid);
     }
 
@@ -135,7 +135,7 @@ public class SettingsHandlerTests
     [Fact]
     public void Validator_AcceptsKnownValues()
     {
-        var result = new UpdateSettingsCommandValidator().Validate(new UpdateSettingsCommand("system", "atelier"));
+        var result = new UpdateSettingsCommandValidator().Validate(new UpdateSettingsCommand("light", "atelier"));
         Assert.True(result.IsValid);
     }
 }

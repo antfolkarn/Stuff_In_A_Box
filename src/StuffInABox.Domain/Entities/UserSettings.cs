@@ -11,7 +11,7 @@ public class UserSettings
     public const string DefaultPlanTier = "free";
 
     public Guid UserId { get; private set; }
-    public string Theme { get; private set; }   // "light" | "dark" | "system"
+    public string Theme { get; private set; }   // "light" | "dark"
     public string Design { get; private set; }  // "standard" | "atelier" | "pop"
     /// <summary>Optional nickname the user picks. When set it's shown to other members
     /// instead of their email; null means "no nickname" (callers fall back to email).</summary>
@@ -37,7 +37,7 @@ public class UserSettings
     public static UserSettings CreateDefault(Guid userId) => new()
     {
         UserId = userId,
-        Theme = "system",
+        Theme = "light",
         Design = "standard",
         PlanTier = DefaultPlanTier,
         UpdatedAt = DateTimeOffset.UtcNow,

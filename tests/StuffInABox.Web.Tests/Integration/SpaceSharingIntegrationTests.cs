@@ -119,7 +119,7 @@ public class SpaceSharingIntegrationTests : IClassFixture<WebApplicationFactory<
 
         // Member sets a nickname → that wins over the email.
         var put = await member.PutAsJsonAsync("/api/v1/settings",
-            new { theme = "system", design = "standard", displayName = "Stina" });
+            new { theme = "light", design = "standard", displayName = "Stina" });
         Assert.Equal(HttpStatusCode.OK, put.StatusCode);
 
         var relisted = await owner.GetFromJsonAsync<JsonElement>($"/api/v1/spaces/{spaceId}/members");

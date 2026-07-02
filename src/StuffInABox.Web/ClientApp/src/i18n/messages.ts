@@ -282,7 +282,6 @@ const sv = {
   // Themes
   'theme.light': 'Ljust',
   'theme.dark': 'Mörkt',
-  'theme.system': 'System',
 
   // Designs
   'design.standard.label': 'Standard',
@@ -581,7 +580,6 @@ const en: Record<MessageKey, string> = {
   // Themes
   'theme.light': 'Light',
   'theme.dark': 'Dark',
-  'theme.system': 'System',
 
   // Designs
   'design.standard.label': 'Standard',

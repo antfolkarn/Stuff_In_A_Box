@@ -11,7 +11,7 @@ public static class SecurityHeadersMiddleware
     // SHA-256 of the inline theme-init script in ClientApp/index.html (runs before
     // first paint to set data-theme, avoiding a light→dark flash). If that script
     // changes, recompute this hash — keeping script-src otherwise free of 'unsafe-inline'.
-    private const string ThemeScriptHash = "'sha256-3rsySJz2ymADKD1OT95TaKKPyHvxLoWFfbFzorU+xzU='";
+    private const string ThemeScriptHash = "'sha256-22KRLQ0py+nMdCD3NukdarrOyXmKAeRVV87GoFQkGDM='";
 
     private const string ContentSecurityPolicy =
         "default-src 'self'; " +

@@ -2,22 +2,20 @@ import { create } from 'zustand'
 import { getSettings, updateSettings } from '../api/settings'
 import { useAuthStore } from './authStore'
 
-export type Theme = 'light' | 'dark' | 'system'
+export type Theme = 'light' | 'dark'
 export type Design = 'standard' | 'atelier' | 'pop' | 'nord' | 'console' | 'ledger'
 
 // Order only — labels/descriptions live in the i18n dictionary (design.* / theme.*).
 export const DESIGNS: Design[] = ['standard', 'atelier', 'pop', 'nord', 'console', 'ledger']
-export const THEMES: Theme[] = ['light', 'dark', 'system']
+export const THEMES: Theme[] = ['light', 'dark']
 
 const THEME_KEY = 'sib_theme'
 const DESIGN_KEY = 'sib_design'
 const DISPLAYNAME_KEY = 'sib_displayname'
 
 export function resolveTheme(theme: Theme): 'light' | 'dark' {
-  if (theme === 'system') {
-    return window.matchMedia?.('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'
-  }
-  return theme
+  // Only light/dark now (the "system" option was removed); anything else falls back to light.
+  return theme === 'dark' ? 'dark' : 'light'
 }
 
 function applyToDom(theme: Theme, design: Design) {
@@ -59,7 +57,7 @@ function readStored<T extends string>(key: string, allowed: readonly T[], fallba
 
 export const useSettingsStore = create<SettingsState>((set, get) => {
   const authed = useAuthStore.getState().isAuthenticated
-  const cachedTheme = readStored<Theme>(THEME_KEY, THEMES, 'system')
+  const cachedTheme = readStored<Theme>(THEME_KEY, THEMES, 'light')
   const cachedDesign = readStored<Design>(DESIGN_KEY, DESIGNS, 'standard')
   const initialDisplayName = localStorage.getItem(DISPLAYNAME_KEY) ?? ''
   const init = initialAppearance(authed, cachedTheme, cachedDesign)
@@ -114,7 +112,7 @@ export const useSettingsStore = create<SettingsState>((set, get) => {
     loadFromServer: async () => {
       const s = await getSettings()
       if (!s) return
-      const theme = (THEMES as string[]).includes(s.theme) ? (s.theme as Theme) : 'system'
+      const theme = (THEMES as string[]).includes(s.theme) ? (s.theme as Theme) : 'light'
       const design = (DESIGNS as string[]).includes(s.design) ? (s.design as Design) : 'standard'
       const displayName = s.displayName ?? ''
       localStorage.setItem(THEME_KEY, theme)

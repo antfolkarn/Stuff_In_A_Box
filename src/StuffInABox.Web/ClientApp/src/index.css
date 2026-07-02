@@ -717,6 +717,8 @@ html[data-design='pop'] .space-card:hover {
   /* Make the header action buttons icon-only so they don't overflow */
   .app-header .btn-label { display: none; }
   .app-header .btn { padding: 0 12px; }
+  /* Colour mode lives in Settings on mobile — drop the header toggle to save space */
+  .app-header .header-theme-toggle { display: none; }
 
   .main-content { padding: 20px 14px 72px; }
 

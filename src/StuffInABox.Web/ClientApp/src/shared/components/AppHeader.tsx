@@ -115,11 +115,17 @@ export default function AppHeader() {
           )}
         </div>
 
-        {/* Actions */}
+        {/* Actions — primary action first, then appearance/config, then account */}
         <div className="header-actions" style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-          {/* Theme toggle */}
+          {/* Add button (primary) */}
+          <button className="btn btn-accent" onClick={() => openAdd()} aria-label={t('header.add')} style={{ flexShrink: 0 }}>
+            <IconPlus size={17} />
+            <span className="btn-label">{t('header.add')}</span>
+          </button>
+
+          {/* Theme toggle — hidden on mobile (colour mode lives in Settings there) */}
           <button
-            className="btn btn-outline"
+            className="btn btn-outline header-theme-toggle"
             onClick={toggleTheme}
             title={isDark ? t('header.lightMode') : t('header.darkMode')}
             aria-label={t('header.toggleTheme')}
@@ -139,13 +145,7 @@ export default function AppHeader() {
             <IconSettings size={18} />
           </button>
 
-          {/* Add button */}
-          <button className="btn btn-accent" onClick={() => openAdd()} aria-label={t('header.add')} style={{ flexShrink: 0 }}>
-            <IconPlus size={17} />
-            <span className="btn-label">{t('header.add')}</span>
-          </button>
-
-          {/* Logout */}
+          {/* Logout (account) */}
           <button
             className="btn btn-outline"
             onClick={handleLogout}

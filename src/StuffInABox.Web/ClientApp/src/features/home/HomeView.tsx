@@ -60,19 +60,19 @@ export default function HomeView() {
         <div style={{ display: 'flex', gap: 8 }}>
           <button
             className="btn btn-outline btn-sm"
-            onClick={() => goLabels()}
-          >
-            <IconPrinter size={16} />
-            {t('home.labels')}
-          </button>
-          <button
-            className="btn btn-outline btn-sm"
             onClick={() => setAddingSpace((v) => !v)}
             disabled={needsVerification}
             title={needsVerification ? t('verify.gatedHint') : undefined}
           >
             <IconPlus size={16} />
             {t('home.newSpace')}
+          </button>
+          <button
+            className="btn btn-outline btn-sm"
+            onClick={() => goLabels()}
+          >
+            <IconPrinter size={16} />
+            {t('home.labels')}
           </button>
         </div>
       </div>
