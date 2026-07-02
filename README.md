@@ -153,6 +153,25 @@ Alla värden ligger i `src/StuffInABox.Web/appsettings.json` (hemligheter hör h
 | `Logging:File:Path` | Sökväg för loggfil (default `logs/stuffinabox-.log`, roteras dagligen). |
 | `RateLimiting:AuthPermitLimit` | Tillåtna `/auth/*`-anrop per minut och IP (default 10). |
 
+### OAuth-inloggning lokalt (user-secrets)
+
+Google-/Microsoft-inloggning kräver client-id + secret. Lägg dem i **user-secrets** (checkas aldrig in):
+
+```bash
+cd src/StuffInABox.Web
+dotnet user-secrets set "OAuth:Google:ClientId" "<id>"
+dotnet user-secrets set "OAuth:Google:ClientSecret" "<secret>"
+# samma för OAuth:Microsoft:ClientId / :ClientSecret
+```
+
+Kör i **Development** (i Visual Studio: välj **`https`**-profilen i dropdownen bredvid Play — *inte* det bara projektnamnet, som kör Production utan user-secrets). Vid start loggas en rad `OAuth startup check — … Google ClientId set=True/False …` som direkt visar om nycklarna lästes in — kolla den först vid `#error=oauth_not_configured`.
+
+**Om IDE:n inte kan läsa user-secrets** (sällsynt — sett när endpoint-säkerhet spärrar IDE-debuggerns barnprocess från `%APPDATA%\Microsoft\UserSecrets`): lägg samma OAuth-nycklar i en **git-ignorerad `src/StuffInABox.Web/appsettings.Local.json`**. Den ligger i projektmappen (alltid läsbar) och laddas sist i Development.
+
+```json
+{ "OAuth:Google:ClientId": "<id>", "OAuth:Google:ClientSecret": "<secret>" }
+```
+
 ### Lokal bildigenkänning
 
 När du lägger till ett föremål analyseras fotot och **namn + taggar** (föremål, färger, material, boktitlar) för-ifylls. Detta drivs av en lokal vision-modell via Ollama.
@@ -211,7 +230,7 @@ till med Testing Library.
 
 ## Säkerhet
 
-- **Minimal PII.** För e-postinloggning sparas `SHA256(e-post)` (för uppslag) + BCrypt-hash av lösenordet, **samt e-postadressen i klartext** för att kunna kontakta användaren (t.ex. lösenordsåterställning). För OAuth sparas bara `(provider, sub)` — ingen e-post.
+- **Minimal PII.** För e-postinloggning sparas `SHA256(e-post)` (för uppslag) + BCrypt-hash av lösenordet, **samt e-postadressen i klartext** för att kunna kontakta användaren (t.ex. lösenordsåterställning). För OAuth sparas `(provider, sub)` samt e-postadressen från Google/Microsoft (så att admin kan identifiera kontot); Apple lämnar ingen e-post och sparas som enbart `(provider, sub)`.
 - **Glömt lösenord.** `POST /auth/forgot-password` skickar en återställningslänk (alltid `200`, avslöjar aldrig om adressen finns). Återställnings-token lagras som hash, är engångs, går ut efter 1 timme; vid lyckad återställning återkallas alla sessioner. E-post skickas via `IEmailService` (logg-default; riktig leverantör bakom `Email:Provider`).
 - **GDPR.** Användaren kan exportera all sin data (`GET /account/export`, JSON) och radera kontot (`DELETE /account`) — radering tar bort allt: utrymmen/lådor/föremål (+ foton), medlemskap/inbjudningar, sessioner, reset-tokens, inställningar och identiteten.
 - **Refresh-tokens** lagras endast som SHA-256-hash, levereras i `HttpOnly; SameSite=Strict`-cookie, roteras vid varje förnyelse och kan återkallas vid utloggning.
