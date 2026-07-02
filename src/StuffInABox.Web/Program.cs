@@ -3,6 +3,7 @@ using System.Threading.RateLimiting;
 using FluentValidation;
 using MediatR;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
@@ -153,6 +154,17 @@ builder.Services.AddProblemDetails();
 // OpenAPI
 builder.Services.AddOpenApi();
 
+// Behind App Service (a reverse proxy that terminates TLS) honour X-Forwarded-Proto/For so the
+// request scheme is https — HttpsRedirection/HSTS and secure-cookie decisions see the real
+// scheme, and the client IP (rate limiting, logs) is the caller, not the proxy. App Service sets
+// these headers and strips inbound copies, so clearing KnownNetworks/KnownProxies is safe.
+builder.Services.Configure<ForwardedHeadersOptions>(o =>
+{
+    o.ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto;
+    o.KnownNetworks.Clear();
+    o.KnownProxies.Clear();
+});
+
 var app = builder.Build();
 
 // Startup diagnostic: confirms the environment and whether the OAuth client ids resolved
@@ -231,6 +243,9 @@ if (!EF.IsDesignTime)
     // Fill the plan catalog on first run (idempotent; admin owns it thereafter).
     await StuffInABox.Infrastructure.Admin.PlanSeeder.SeedAsync(db);
 }
+
+// First: correct scheme/client IP from the App Service proxy before anything else runs.
+app.UseForwardedHeaders();
 
 app.UseSerilogRequestLogging();
 app.UseExceptionHandler();

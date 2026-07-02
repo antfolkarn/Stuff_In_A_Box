@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authentication.OpenIdConnect;
+using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Protocols.OpenIdConnect;
 using StuffInABox.Admin.Web.Endpoints;
@@ -82,6 +83,17 @@ builder.Services.AddAuthentication(options =>
 builder.Services.AddAuthorizationBuilder()
     .AddPolicy("admin", policy => policy.RequireAuthenticatedUser());
 
+// Behind App Service (a reverse proxy that terminates TLS) honour X-Forwarded-Proto/For so the
+// OIDC redirect_uri is built as https — not http, which would fail the Entra redirect match —
+// and the client IP is correct. App Service sets these headers and strips any inbound copies,
+// so clearing KnownNetworks/KnownProxies to trust them is safe.
+builder.Services.Configure<ForwardedHeadersOptions>(o =>
+{
+    o.ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto;
+    o.KnownNetworks.Clear();
+    o.KnownProxies.Clear();
+});
+
 var app = builder.Build();
 
 // Prepare the dev database. SQLite (dev) builds the schema from the model; Postgres (prod)
@@ -100,6 +112,9 @@ if (!EF.IsDesignTime)
         await StuffInABox.Infrastructure.Admin.PlanSeeder.SeedAsync(db);
     }
 }
+
+// Must run before authentication so the scheme/host are corrected first.
+app.UseForwardedHeaders();
 
 app.UseDefaultFiles();
 app.UseStaticFiles();
