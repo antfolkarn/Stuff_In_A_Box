@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { IconPlus, IconPrinter, IconX, IconBox, IconUsers } from '@tabler/icons-react'
+import { IconPlus, IconPrinter, IconX, IconUsers } from '@tabler/icons-react'
 import { getSpaces, createSpace } from '../../api/spaces'
 import { useUiStore } from '../../store/uiStore'
 import { Icon } from '../../shared/components/Icon'
@@ -147,16 +147,35 @@ export default function HomeView() {
               onClick={() => goSpace(space.id)}
             />
           ))}
-        </div>
-      )}
 
-      {!isLoading && spaces.length === 0 && !addingSpace && (
-        <div style={{ textAlign: 'center', padding: '60px 0', color: 'var(--text-3)' }}>
-          <IconBox size={40} style={{ display: 'block', margin: '0 auto 12px' }} />
-          <div style={{ fontSize: 16, fontWeight: 500 }}>{t('home.emptyTitle')}</div>
-          <div style={{ fontSize: 14, marginTop: 6 }}>
-            {t('home.emptyBody')}
-          </div>
+          {/* New-space tile — mirrors the "new box" tile inside a space. A space carries more
+              info (name + icon), so it opens the fuller form above rather than filling inline. */}
+          {!addingSpace && (
+            <button
+              className="dashed-tile"
+              onClick={() => setAddingSpace(true)}
+              disabled={needsVerification}
+              title={needsVerification ? t('verify.gatedHint') : undefined}
+              style={{
+                background: 'transparent',
+                borderRadius: 'var(--r-lg)',
+                minHeight: 118,
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: 6,
+                cursor: 'pointer',
+                color: 'var(--text-4)',
+                transition: 'color 0.15s, border-color 0.15s',
+                fontSize: 14,
+                fontFamily: 'inherit',
+              }}
+            >
+              <IconPlus size={22} />
+              {t('home.newSpace')}
+            </button>
+          )}
         </div>
       )}
     </div>
