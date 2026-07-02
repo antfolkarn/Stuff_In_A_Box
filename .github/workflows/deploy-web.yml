@@ -64,7 +64,25 @@ jobs:
           azcliversion: latest
           inlineScript: |
             python3 -c "import shutil; shutil.make_archive('app', 'zip', 'publish')"
+            # On F1 the CLI's async status poll can time out and exit non-zero even when the
+            # deploy lands. Don't fail here on that — the next step verifies the commit is
+            # actually live and fails the job if it isn't (so real failures still go red).
             az webapp deploy \
               --resource-group "rg-stuffinabox-${{ vars.AZURE_ENV }}" \
               --name "${{ vars.AZURE_APP_NAME }}" \
-              --src-path app.zip --type zip
+              --src-path app.zip --type zip || echo "az deploy exited non-zero — verifying liveness next"
+
+      - name: Verify the new commit is live
+        # /version returns the commit baked in at build (SourceRevisionId). Poll until it
+        # matches the pushed SHA, so the job's status reflects what's actually serving.
+        run: |
+          expected="${{ github.sha }}"
+          url="https://${{ vars.AZURE_APP_NAME }}.azurewebsites.net/version"
+          echo "Waiting for $url to report $expected"
+          for i in $(seq 1 40); do
+            body=$(curl -s -m 20 "$url" || true)
+            echo "attempt $i: $body"
+            case "$body" in *"$expected"*) echo "Verified live."; exit 0 ;; esac
+            sleep 15
+          done
+          echo "Timed out — new commit not live."; exit 1

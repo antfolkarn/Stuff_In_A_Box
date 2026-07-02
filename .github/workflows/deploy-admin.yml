@@ -44,7 +44,8 @@ jobs:
         run: dotnet publish src/StuffInABox.Admin.Web -c Release -r linux-x64 --no-self-contained -o publish
 
       - name: Deploy app to App Service
-        # Same pre-built-zip trick as the web app (skips the F1-tier Oryx build hang).
+        # Same pre-built-zip trick as the web app (skips the F1-tier Oryx build hang). Tolerate
+        # the CLI's F1 status-poll timeout here; the next step verifies the app responds.
         uses: azure/cli@v2
         with:
           azcliversion: latest
@@ -53,4 +54,15 @@ jobs:
             az webapp deploy \
               --resource-group "rg-stuffinabox-${{ vars.AZURE_ENV }}" \
               --name "${{ vars.AZURE_ADMIN_APP_NAME }}" \
-              --src-path app.zip --type zip
+              --src-path app.zip --type zip || echo "az deploy exited non-zero — verifying liveness next"
+
+      - name: Verify the admin app responds
+        run: |
+          url="https://${{ vars.AZURE_ADMIN_APP_NAME }}.azurewebsites.net/"
+          for i in $(seq 1 40); do
+            code=$(curl -s -m 20 -o /dev/null -w "%{http_code}" "$url" || echo 000)
+            echo "attempt $i: HTTP $code"
+            case "$code" in 2*|3*|401) echo "Admin app responding."; exit 0 ;; esac
+            sleep 15
+          done
+          echo "Timed out — admin app not responding."; exit 1
